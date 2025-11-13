@@ -12,7 +12,10 @@
 
 namespace callflow {
 
-NdpiWrapper::NdpiWrapper() : ndpi_struct_(nullptr), initialized_(false) {}
+NdpiWrapper::NdpiWrapper() : ndpi_struct_(nullptr), initialized_(false) {
+    // Initialize flow cache (300 second timeout, 100K max flows)
+    flow_cache_ = std::make_unique<NdpiFlowCache>(300, 100000);
+}
 
 NdpiWrapper::~NdpiWrapper() {
     shutdown();
@@ -40,7 +43,7 @@ bool NdpiWrapper::initialize() {
     ndpi_struct_ = static_cast<void*>(ndpi_struct);
     initialized_ = true;
 
-    LOG_INFO("nDPI engine initialized successfully");
+    LOG_INFO("nDPI engine initialized successfully with flow caching");
     return true;
 #else
     LOG_WARN("nDPI not available, using port-based heuristics");
@@ -55,37 +58,24 @@ ProtocolType NdpiWrapper::classifyPacket(const uint8_t* data, size_t len, const 
     }
 
 #ifdef NDPI_INCLUDE_DIR
-    if (ndpi_struct_ && len > 0) {
+    if (ndpi_struct_ && len > 0 && flow_cache_) {
         auto* ndpi_struct = static_cast<struct ndpi_detection_module_struct*>(ndpi_struct_);
 
-        // Create flow and src/dst id structures
-        // Note: In production, these should be cached per 5-tuple
-        struct ndpi_flow_struct* flow = (struct ndpi_flow_struct*)calloc(1, sizeof(struct ndpi_flow_struct));
-        struct ndpi_id_struct* src_id = (struct ndpi_id_struct*)calloc(1, sizeof(struct ndpi_id_struct));
-        struct ndpi_id_struct* dst_id = (struct ndpi_id_struct*)calloc(1, sizeof(struct ndpi_id_struct));
-
-        if (!flow || !src_id || !dst_id) {
-            free(flow);
-            free(src_id);
-            free(dst_id);
-            return ProtocolType::UNKNOWN;
+        // Get or create cached flow for this 5-tuple
+        NdpiCachedFlow* cached_flow = flow_cache_->getOrCreateFlow(ft);
+        if (!cached_flow || !cached_flow->flow || !cached_flow->src_id || !cached_flow->dst_id) {
+            LOG_ERROR("Failed to get cached flow");
+            return fallbackClassification(ft);
         }
 
-        // Classify packet
-        struct ndpi_iphdr* iph = nullptr;
-        struct ndpi_ipv6hdr* iph6 = nullptr;
-        uint16_t ip_offset = 0;
-        uint16_t ip_len = len;
-
-        // Create a minimal IP header for classification
-        // In real usage, this would come from the actual packet
+        // Classify packet using cached flow state
         ndpi_protocol detected = ndpi_detection_process_packet(
             ndpi_struct,
-            flow,
-            data, ip_len,
+            cached_flow->flow.get(),
+            data, len,
             0,  // timestamp
-            src_id,
-            dst_id
+            cached_flow->src_id.get(),
+            cached_flow->dst_id.get()
         );
 
         ProtocolType result = ProtocolType::UNKNOWN;
@@ -106,11 +96,6 @@ ProtocolType NdpiWrapper::classifyPacket(const uint8_t* data, size_t len, const 
                 result = mapNdpiProtocol(proto_name);
             }
         }
-
-        // Cleanup
-        free(flow);
-        free(src_id);
-        free(dst_id);
 
         if (result != ProtocolType::UNKNOWN) {
             return result;
@@ -198,6 +183,21 @@ ProtocolType NdpiWrapper::fallbackClassification(const FiveTuple& ft) {
     }
 
     return ProtocolType::UNKNOWN;
+}
+
+size_t NdpiWrapper::cleanupExpiredFlows() {
+    if (flow_cache_) {
+        auto now = std::chrono::system_clock::now();
+        return flow_cache_->cleanupExpiredFlows(now);
+    }
+    return 0;
+}
+
+NdpiFlowCache::Stats NdpiWrapper::getCacheStats() const {
+    if (flow_cache_) {
+        return flow_cache_->getStats();
+    }
+    return NdpiFlowCache::Stats{};
 }
 
 }  // namespace callflow

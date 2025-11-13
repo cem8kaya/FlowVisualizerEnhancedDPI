@@ -31,6 +31,7 @@ target_link_libraries(pcap_ingest PUBLIC
 if(NOT NEED_NDPI_BUILD)
     add_library(ndpi_engine STATIC
         ndpi_engine/ndpi_wrapper.cpp
+        ndpi_engine/ndpi_flow_cache.cpp
         ndpi_engine/flow_classifier.cpp
     )
     target_include_directories(ndpi_engine PUBLIC
