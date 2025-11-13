@@ -88,12 +88,19 @@ enum class MessageType {
     GTP_DELETE_SESSION_RESP,
     GTP_ECHO_REQ,
     GTP_ECHO_RESP,
-    // HTTP/2
+    // HTTP/2 (frames)
     HTTP2_HEADERS,
     HTTP2_DATA,
     HTTP2_SETTINGS,
     HTTP2_PING,
-    HTTP2_GOAWAY
+    HTTP2_GOAWAY,
+    // HTTP/2 (request/response)
+    HTTP2_GET,
+    HTTP2_POST,
+    HTTP2_PUT,
+    HTTP2_DELETE,
+    HTTP2_REQUEST,
+    HTTP2_RESPONSE
 };
 
 std::string messageTypeToString(MessageType type);

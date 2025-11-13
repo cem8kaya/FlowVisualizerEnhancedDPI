@@ -127,6 +127,12 @@ std::string messageTypeToString(MessageType type) {
         case MessageType::HTTP2_SETTINGS: return "SETTINGS";
         case MessageType::HTTP2_PING: return "PING";
         case MessageType::HTTP2_GOAWAY: return "GOAWAY";
+        case MessageType::HTTP2_GET: return "GET";
+        case MessageType::HTTP2_POST: return "POST";
+        case MessageType::HTTP2_PUT: return "PUT";
+        case MessageType::HTTP2_DELETE: return "DELETE";
+        case MessageType::HTTP2_REQUEST: return "HTTP/2 Request";
+        case MessageType::HTTP2_RESPONSE: return "HTTP/2 Response";
         default: return "UNKNOWN";
     }
 }

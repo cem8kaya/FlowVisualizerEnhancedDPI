@@ -64,6 +64,17 @@ else()
     message(STATUS "nDPI headers: ${NDPI_INCLUDE_DIR}")
 endif()
 
+# Find SQLite3
+find_package(SQLite3)
+if(NOT SQLite3_FOUND)
+    message(WARNING "SQLite3 not found. Install with: apt-get install libsqlite3-dev")
+    message(STATUS "Building without database persistence support")
+    set(HAVE_SQLITE3 FALSE)
+else()
+    message(STATUS "Found SQLite3: ${SQLite3_LIBRARIES}")
+    set(HAVE_SQLITE3 TRUE)
+endif()
+
 # FetchContent for external dependencies
 include(FetchContent)
 
