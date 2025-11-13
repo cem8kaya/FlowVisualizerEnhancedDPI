@@ -1,0 +1,56 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Compiled files
+*.o
+*.so
+*.a
+*.dylib
+*.dll
+*.exe
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# PCAP files (exclude large test files)
+*.pcap
+*.pcapng
+!tests/samples/*.pcap
+!tests/samples/*.pcapng
+
+# Test outputs
+tests/output/
+*.log
+
+# Dependencies
+third_party/
+vendor/
+
+# Documentation build
+docs/_build/
+docs/html/
+docs/latex/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Temporary files
+*.tmp
+*.bak
+core
