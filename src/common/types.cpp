@@ -79,6 +79,25 @@ SessionType stringToSessionType(const std::string& str) {
     return SessionType::UNKNOWN;
 }
 
+// Job status conversions
+std::string jobStatusToString(JobStatus status) {
+    switch (status) {
+        case JobStatus::QUEUED: return "queued";
+        case JobStatus::RUNNING: return "running";
+        case JobStatus::COMPLETED: return "completed";
+        case JobStatus::FAILED: return "failed";
+        default: return "unknown";
+    }
+}
+
+JobStatus stringToJobStatus(const std::string& str) {
+    if (str == "queued") return JobStatus::QUEUED;
+    if (str == "running") return JobStatus::RUNNING;
+    if (str == "completed") return JobStatus::COMPLETED;
+    if (str == "failed") return JobStatus::FAILED;
+    return JobStatus::QUEUED;
+}
+
 // Message type to string
 std::string messageTypeToString(MessageType type) {
     switch (type) {

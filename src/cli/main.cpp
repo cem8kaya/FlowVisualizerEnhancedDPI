@@ -1,6 +1,7 @@
 #include "common/logger.h"
 #include "common/types.h"
 #include "common/utils.h"
+#include "common/config_loader.h"
 #include "cli/cli_parser.h"
 #include "pcap_ingest/pcap_reader.h"
 #include "pcap_ingest/packet_queue.h"
@@ -10,10 +11,17 @@
 #include "flow_manager/session_correlator.h"
 #include "event_extractor/json_exporter.h"
 
+#ifdef BUILD_API_SERVER
+#include "api_server/http_server.h"
+#include "api_server/job_manager.h"
+#include "api_server/websocket_handler.h"
+#endif
+
 #include <iostream>
 #include <thread>
 #include <vector>
 #include <atomic>
+#include <csignal>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -246,6 +254,107 @@ int processPcap(const CliArgs& args) {
     return 0;
 }
 
+/**
+ * Run API server mode
+ */
+int runApiServer(const CliArgs& args) {
+#ifdef BUILD_API_SERVER
+    // Load configuration
+    Config config;
+    config.worker_threads = args.worker_threads;
+
+    if (!args.config_file.empty()) {
+        ConfigLoader loader;
+        if (!loader.loadFromFile(args.config_file, config)) {
+            LOG_ERROR("Failed to load config file: " << args.config_file);
+            return 1;
+        }
+        LOG_INFO("Loaded configuration from: " << args.config_file);
+    }
+
+    // Apply environment overrides
+    ConfigLoader loader;
+    loader.applyEnvOverrides(config);
+
+    config.enable_api_server = true;
+
+    LOG_INFO("Starting API server mode...");
+    LOG_INFO("Bind address: " << config.api_bind_address);
+    LOG_INFO("Port: " << config.api_port);
+    LOG_INFO("Worker threads: " << config.api_worker_threads);
+    LOG_INFO("Upload directory: " << config.upload_dir);
+    LOG_INFO("Results directory: " << config.results_dir);
+
+    // Create components
+    auto job_manager = std::make_shared<JobManager>(config);
+    auto ws_handler = std::make_shared<WebSocketHandler>(config);
+    auto http_server = std::make_shared<HttpServer>(config, job_manager, ws_handler);
+
+    // Set callbacks
+    job_manager->setProgressCallback([ws_handler](const JobId& job_id, int progress, const std::string& msg) {
+        ws_handler->broadcastEvent(job_id, "progress", {
+            {"progress", progress},
+            {"message", msg}
+        });
+    });
+
+    job_manager->setEventCallback([ws_handler](const JobId& job_id, const std::string& event_type, const nlohmann::json& data) {
+        ws_handler->broadcastEvent(job_id, event_type, data);
+    });
+
+    // Start services
+    if (!job_manager->start()) {
+        LOG_ERROR("Failed to start job manager");
+        return 1;
+    }
+
+    if (!ws_handler->start()) {
+        LOG_ERROR("Failed to start WebSocket handler");
+        job_manager->stop();
+        return 1;
+    }
+
+    if (!http_server->start()) {
+        LOG_ERROR("Failed to start HTTP server");
+        ws_handler->stop();
+        job_manager->stop();
+        return 1;
+    }
+
+    LOG_INFO("API server started successfully");
+    LOG_INFO("API endpoint: http://" << config.api_bind_address << ":" << config.api_port);
+    LOG_INFO("Health check: http://" << config.api_bind_address << ":" << config.api_port << "/health");
+    LOG_INFO("Press Ctrl+C to stop");
+
+    // Wait for termination signal
+    std::signal(SIGINT, [](int) {
+        LOG_INFO("Received SIGINT, shutting down...");
+        exit(0);
+    });
+
+    std::signal(SIGTERM, [](int) {
+        LOG_INFO("Received SIGTERM, shutting down...");
+        exit(0);
+    });
+
+    // Keep running
+    while (http_server->isRunning()) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+
+    // Cleanup
+    http_server->stop();
+    ws_handler->stop();
+    job_manager->stop();
+
+    LOG_INFO("API server stopped");
+    return 0;
+#else
+    LOG_ERROR("API server support not compiled. Build with -DBUILD_API_SERVER=ON");
+    return 1;
+#endif
+}
+
 int main(int argc, char** argv) {
     CliParser parser;
     CliArgs args;
@@ -254,8 +363,17 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // Configure logging
+    Logger::getInstance().setLevel(args.log_level);
+
     try {
-        return processPcap(args);
+        // Check if running in API server mode
+        if (args.enable_api_server) {
+            return runApiServer(args);
+        } else {
+            // Traditional CLI mode
+            return processPcap(args);
+        }
     } catch (const std::exception& e) {
         LOG_FATAL("Fatal error: " << e.what());
         return 1;

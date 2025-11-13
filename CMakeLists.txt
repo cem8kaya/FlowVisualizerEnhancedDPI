@@ -64,13 +64,25 @@ else()
     message(STATUS "nDPI headers: ${NDPI_INCLUDE_DIR}")
 endif()
 
-# JSON library (nlohmann/json - header only)
+# FetchContent for external dependencies
 include(FetchContent)
+
+# JSON library (nlohmann/json - header only)
 FetchContent_Declare(
     json
     URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
 )
 FetchContent_MakeAvailable(json)
+
+# cpp-httplib (header only HTTP server/client library)
+if(BUILD_API_SERVER)
+    FetchContent_Declare(
+        httplib
+        URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.14.3.tar.gz
+    )
+    FetchContent_MakeAvailable(httplib)
+    message(STATUS "cpp-httplib fetched for API server")
+endif()
 
 # Add subdirectories
 add_subdirectory(src)

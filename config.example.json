@@ -1,0 +1,34 @@
+{
+  "server": {
+    "bind_address": "0.0.0.0",
+    "port": 8080,
+    "workers": 4,
+    "max_upload_size_mb": 10240
+  },
+  "processing": {
+    "worker_threads": 8,
+    "packet_queue_size": 10000,
+    "flow_timeout_sec": 300
+  },
+  "storage": {
+    "upload_dir": "/tmp/callflow-uploads",
+    "output_dir": "/tmp/callflow-results",
+    "retention_hours": 24
+  },
+  "ndpi": {
+    "enable": true,
+    "protocols": [
+      "SIP",
+      "RTP",
+      "HTTP",
+      "DNS",
+      "TLS",
+      "GTP",
+      "DIAMETER"
+    ]
+  },
+  "websocket": {
+    "heartbeat_interval_sec": 30,
+    "event_queue_max": 1000
+  }
+}
