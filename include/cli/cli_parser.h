@@ -22,6 +22,7 @@ struct CliArgs {
     bool enable_api_server = false;
     uint16_t api_port = 8080;
     std::string api_bind_address = "0.0.0.0";
+    std::string config_file;  // Configuration file path
 };
 
 /**

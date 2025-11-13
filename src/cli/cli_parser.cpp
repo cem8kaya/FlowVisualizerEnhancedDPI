@@ -68,6 +68,13 @@ bool CliParser::parse(int argc, char** argv, CliArgs& args) {
                 std::cerr << "Error: --api-bind requires an argument" << std::endl;
                 return false;
             }
+        } else if (arg == "--config" || arg == "-c") {
+            if (i + 1 < argc) {
+                args.config_file = argv[++i];
+            } else {
+                std::cerr << "Error: --config requires an argument" << std::endl;
+                return false;
+            }
         } else {
             std::cerr << "Error: Unknown argument: " << arg << std::endl;
             return false;
@@ -96,6 +103,7 @@ void CliParser::printUsage(const char* program_name) {
               << "  --api-server            Enable REST API server\n"
               << "  --api-port PORT         API server port (default: 8080)\n"
               << "  --api-bind ADDR         API bind address (default: 0.0.0.0)\n"
+              << "  -c, --config FILE       Configuration file (JSON format)\n"
               << "\n"
               << "Examples:\n"
               << "  " << program_name << " --input capture.pcap\n"

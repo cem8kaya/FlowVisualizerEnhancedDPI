@@ -3,6 +3,7 @@ add_library(callflow_common STATIC
     common/logger.cpp
     common/types.cpp
     common/utils.cpp
+    common/config_loader.cpp
 )
 target_include_directories(callflow_common PUBLIC
     ${PROJECT_SOURCE_DIR}/include
@@ -88,14 +89,27 @@ if(BUILD_API_SERVER)
         api_server/http_server.cpp
         api_server/websocket_handler.cpp
         api_server/routes.cpp
+        api_server/job_manager.cpp
     )
     target_include_directories(api_server PUBLIC
         ${PROJECT_SOURCE_DIR}/include
     )
     target_link_libraries(api_server PUBLIC
         callflow_common
+        pcap_ingest
+        flow_manager
+        protocol_parsers
         event_extractor
+        httplib::httplib
     )
+    target_compile_definitions(api_server PRIVATE
+        CPPHTTPLIB_OPENSSL_SUPPORT
+    )
+    # Link OpenSSL for HTTPS support (optional)
+    find_package(OpenSSL)
+    if(OPENSSL_FOUND)
+        target_link_libraries(api_server PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+    endif()
 endif()
 
 # Main CLI executable

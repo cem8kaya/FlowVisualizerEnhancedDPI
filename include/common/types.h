@@ -146,6 +146,33 @@ struct SessionMetrics {
     std::optional<uint32_t> duration_ms;
 };
 
+// Job status enumeration
+enum class JobStatus {
+    QUEUED = 0,
+    RUNNING,
+    COMPLETED,
+    FAILED
+};
+
+std::string jobStatusToString(JobStatus status);
+JobStatus stringToJobStatus(const std::string& str);
+
+// Job information structure
+struct JobInfo {
+    JobId job_id;
+    std::string input_filename;
+    std::string output_filename;
+    JobStatus status;
+    int progress;  // 0-100
+    Timestamp created_at;
+    Timestamp started_at;
+    Timestamp completed_at;
+    std::string error_message;  // if failed
+    std::vector<SessionId> session_ids;
+    size_t total_packets = 0;
+    size_t total_bytes = 0;
+};
+
 // Configuration
 struct Config {
     // Processing
@@ -168,6 +195,19 @@ struct Config {
     bool enable_api_server = false;
     uint16_t api_port = 8080;
     std::string api_bind_address = "0.0.0.0";
+    int api_worker_threads = 4;
+    size_t max_upload_size_mb = 10240;  // 10GB
+    std::string upload_dir = "/tmp/callflow-uploads";
+    std::string results_dir = "/tmp/callflow-results";
+    uint32_t retention_hours = 24;
+
+    // WebSocket
+    uint32_t ws_heartbeat_interval_sec = 30;
+    size_t ws_event_queue_max = 1000;
+
+    // nDPI
+    bool enable_ndpi = true;
+    std::vector<std::string> ndpi_protocols = {"SIP", "RTP", "HTTP", "DNS", "TLS"};
 };
 
 }  // namespace callflow

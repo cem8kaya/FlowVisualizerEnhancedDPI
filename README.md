@@ -4,18 +4,16 @@ A production-ready Callflow Visualizer that ingests PCAPs, decodes telecom proto
 
 ## Project Status
 
-**Current Milestone: M1 (Prototype)** ✅
+**Current Milestone: M2 (REST API + nDPI + WebSocket)** ✅
 
-- ✅ Basic PCAP upload CLI
-- ✅ libpcap ingestion
-- ✅ SIP/RTP parsing
-- ✅ Session correlation
-- ✅ JSON export
-- ⏳ nDPI integration (placeholder, full implementation in M2)
-- ⏳ REST API (planned for M2)
-- ⏳ WebSocket streaming (planned for M2)
+**Completed:**
+- ✅ M1: Basic PCAP upload CLI, libpcap ingestion, SIP/RTP parsing, Session correlation, JSON export
+- ✅ M2: REST API server, WebSocket streaming, nDPI integration, Job management, Configuration system
+
+**In Progress:**
 - ⏳ DIAMETER & GTP parsing (planned for M3)
 - ⏳ HTTP/2 parsing (planned for M4)
+- ⏳ Web UI (planned for M3-M4)
 
 ## Architecture
 
@@ -67,7 +65,7 @@ A production-ready Callflow Visualizer that ingests PCAPs, decodes telecom proto
 
 ## Features
 
-### ✅ Implemented (M1)
+### ✅ M1 Features
 
 - **PCAP Ingestion**: Stream processing of PCAP files using libpcap
 - **SIP Parser**: Full SIP message parsing with SDP support
@@ -77,10 +75,36 @@ A production-ready Callflow Visualizer that ingests PCAPs, decodes telecom proto
 - **JSON Export**: Structured JSON output with sessions and events
 - **CLI Interface**: Command-line tool for PCAP processing
 
+### ✅ M2 Features (NEW!)
+
+- **REST API**: Full HTTP server with multipart file upload
+  - `POST /api/v1/upload`: Upload PCAP files (up to 10GB)
+  - `GET /api/v1/jobs/{id}/status`: Check job progress
+  - `GET /api/v1/jobs/{id}/sessions`: Retrieve sessions with pagination
+  - `GET /api/v1/sessions/{id}`: Get detailed session info
+  - `DELETE /api/v1/jobs/{id}`: Remove completed jobs
+  - `GET /health`: Health check endpoint
+- **WebSocket Streaming**: Real-time event notifications
+  - Per-job event channels
+  - Progress updates every 1000 packets
+  - Heartbeat mechanism for connection management
+- **nDPI Integration**: Deep packet inspection
+  - Protocol classification using nDPI library
+  - Support for SIP, RTP, HTTP, DNS, TLS, GTP, DIAMETER
+  - Fallback to port-based heuristics when nDPI unavailable
+- **Job Management**: Background processing with thread pool
+  - Asynchronous PCAP processing
+  - Job queue with configurable workers
+  - Progress tracking (0-100%)
+  - Job retention with configurable expiry
+- **Configuration Management**:
+  - JSON configuration files
+  - Environment variable overrides
+  - Runtime configuration via CLI args
+
 ### ⏳ Planned
 
-- **M2**: REST API, WebSocket streaming, full nDPI integration
-- **M3**: DIAMETER & GTP parsing
+- **M3**: DIAMETER & GTP parsing, basic web UI
 - **M4**: HTTP/2 parsing, performance optimization
 - **M5**: Docker, CI/CD, documentation, security hardening
 
@@ -174,7 +198,82 @@ API Server Options (M2):
   --api-server            Enable REST API server
   --api-port PORT         API server port (default: 8080)
   --api-bind ADDR         API bind address (default: 0.0.0.0)
+  -c, --config FILE       Configuration file (JSON format)
 ```
+
+### API Server Mode (M2)
+
+Start the API server for web-based PCAP uploads and processing:
+
+```bash
+# Start API server on default port (8080)
+./callflowd --api-server
+
+# Start with custom configuration
+./callflowd --api-server --config config.json
+
+# Start on custom port
+./callflowd --api-server --api-port 9090
+
+# With environment overrides
+export CALLFLOW_PORT=8080
+export CALLFLOW_UPLOAD_DIR=/data/uploads
+./callflowd --api-server
+```
+
+### API Usage Examples
+
+```bash
+# Upload a PCAP file
+curl -X POST http://localhost:8080/api/v1/upload \
+  -F "file=@capture.pcap"
+# Response: {"job_id": "550e8400-...", "status": "queued"}
+
+# Check job status
+curl http://localhost:8080/api/v1/jobs/550e8400-.../status
+
+# Get sessions (with pagination)
+curl http://localhost:8080/api/v1/jobs/550e8400-.../sessions?page=1&limit=50
+
+# Get session detail
+curl http://localhost:8080/api/v1/sessions/SESSION_ID
+
+# Delete job
+curl -X DELETE http://localhost:8080/api/v1/jobs/550e8400-...
+```
+
+For complete API documentation, see [docs/API.md](docs/API.md).
+
+### Configuration File
+
+Create a `config.json` file:
+
+```json
+{
+  "server": {
+    "bind_address": "0.0.0.0",
+    "port": 8080,
+    "workers": 4,
+    "max_upload_size_mb": 10240
+  },
+  "processing": {
+    "worker_threads": 8,
+    "packet_queue_size": 10000,
+    "flow_timeout_sec": 300
+  },
+  "storage": {
+    "upload_dir": "/tmp/callflow-uploads",
+    "output_dir": "/tmp/callflow-results",
+    "retention_hours": 24
+  },
+  "ndpi": {
+    "enable": true,
+    "protocols": ["SIP", "RTP", "HTTP", "DNS", "TLS"]
+  }
+}
+```
+
+See [config.example.json](config.example.json) for a complete example.
 
 ## Output Format
 

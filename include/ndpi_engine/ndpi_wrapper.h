@@ -29,6 +29,16 @@ public:
     void shutdown();
 
 private:
+    /**
+     * Map nDPI protocol name to ProtocolType
+     */
+    ProtocolType mapNdpiProtocol(const std::string& ndpi_proto_name);
+
+    /**
+     * Fallback classification using port-based heuristics
+     */
+    ProtocolType fallbackClassification(const FiveTuple& ft);
+
     void* ndpi_struct_;  // Opaque pointer to nDPI structure
     bool initialized_;
 };
