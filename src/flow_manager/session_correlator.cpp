@@ -222,6 +222,39 @@ void SessionCorrelator::addEventToSession(std::shared_ptr<Session> session,
     } else if (protocol == ProtocolType::RTP) {
         event.short_description = "RTP packet";
         event.message_type = MessageType::UNKNOWN;
+    } else if (protocol == ProtocolType::DIAMETER) {
+        std::string command_name = parsed_data.value("command_name", "DIAMETER");
+        event.short_description = "DIAMETER " + command_name;
+
+        // Extract message type from header
+        if (parsed_data.contains("header") && parsed_data["header"].contains("command_code")) {
+            uint32_t cmd_code = parsed_data["header"]["command_code"].get<uint32_t>();
+            bool is_request = parsed_data["header"].value("request_flag", false);
+
+            if (cmd_code == 272) {  // Credit-Control
+                event.message_type = is_request ? MessageType::DIAMETER_CCR : MessageType::DIAMETER_CCA;
+            } else if (cmd_code == 265) {  // AA-Request
+                event.message_type = is_request ? MessageType::DIAMETER_AAR : MessageType::DIAMETER_AAA;
+            }
+        }
+    } else if (protocol == ProtocolType::GTP_C) {
+        std::string msg_name = parsed_data.value("message_type_name", "GTP");
+        event.short_description = "GTP " + msg_name;
+
+        // Extract message type from header
+        if (parsed_data.contains("header") && parsed_data["header"].contains("message_type")) {
+            uint8_t msg_type = parsed_data["header"]["message_type"].get<uint8_t>();
+
+            switch (msg_type) {
+                case 32: event.message_type = MessageType::GTP_CREATE_SESSION_REQ; break;
+                case 33: event.message_type = MessageType::GTP_CREATE_SESSION_RESP; break;
+                case 36: event.message_type = MessageType::GTP_DELETE_SESSION_REQ; break;
+                case 37: event.message_type = MessageType::GTP_DELETE_SESSION_RESP; break;
+                case 1: event.message_type = MessageType::GTP_ECHO_REQ; break;
+                case 2: event.message_type = MessageType::GTP_ECHO_RESP; break;
+                default: event.message_type = MessageType::UNKNOWN; break;
+            }
+        }
     }
 
     event.details = parsed_data;

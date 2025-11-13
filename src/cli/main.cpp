@@ -7,6 +7,8 @@
 #include "pcap_ingest/packet_queue.h"
 #include "protocol_parsers/sip_parser.h"
 #include "protocol_parsers/rtp_parser.h"
+#include "protocol_parsers/diameter_parser.h"
+#include "protocol_parsers/gtp_parser.h"
 #include "flow_manager/flow_tracker.h"
 #include "flow_manager/session_correlator.h"
 #include "event_extractor/json_exporter.h"
@@ -38,8 +40,45 @@ public:
         : config_(config), correlator_(correlator) {}
 
     void processPacket(const PacketMetadata& packet) {
-        // Try to parse as SIP
+        // Protocol detection and parsing
         if (packet.five_tuple.protocol == 17) {  // UDP
+            // Check for DIAMETER (port 3868, but can also run on TCP)
+            if (packet.five_tuple.src_port == 3868 || packet.five_tuple.dst_port == 3868) {
+                DiameterParser diameter_parser;
+                auto diameter_msg = diameter_parser.parse(packet.raw_data.data(),
+                                                         packet.raw_data.size());
+
+                if (diameter_msg.has_value()) {
+                    LOG_DEBUG("Parsed DIAMETER message: " << diameter_msg->getCommandName());
+                    correlator_.processPacket(packet, ProtocolType::DIAMETER, diameter_msg->toJson());
+                    return;
+                }
+            }
+
+            // Check for GTP-C (port 2123)
+            if (packet.five_tuple.src_port == 2123 || packet.five_tuple.dst_port == 2123) {
+                GtpParser gtp_parser;
+                auto gtp_msg = gtp_parser.parse(packet.raw_data.data(), packet.raw_data.size());
+
+                if (gtp_msg.has_value()) {
+                    LOG_DEBUG("Parsed GTP message: " << gtp_msg->getMessageTypeName());
+                    correlator_.processPacket(packet, ProtocolType::GTP_C, gtp_msg->toJson());
+                    return;
+                }
+            }
+
+            // Check for GTP-U (port 2152)
+            if (packet.five_tuple.src_port == 2152 || packet.five_tuple.dst_port == 2152) {
+                GtpParser gtp_parser;
+                auto gtp_msg = gtp_parser.parse(packet.raw_data.data(), packet.raw_data.size());
+
+                if (gtp_msg.has_value()) {
+                    LOG_DEBUG("Parsed GTP-U message: " << gtp_msg->getMessageTypeName());
+                    correlator_.processPacket(packet, ProtocolType::GTP_U, gtp_msg->toJson());
+                    return;
+                }
+            }
+
             // Check if likely SIP (port 5060)
             if (packet.five_tuple.src_port == 5060 || packet.five_tuple.dst_port == 5060) {
                 SipParser sip_parser;
@@ -63,6 +102,19 @@ public:
                     LOG_TRACE("Parsed RTP packet: SSRC=" << rtp_header->ssrc
                               << " seq=" << rtp_header->sequence_number);
                     correlator_.processPacket(packet, ProtocolType::RTP, rtp_header->toJson());
+                    return;
+                }
+            }
+        } else if (packet.five_tuple.protocol == 6) {  // TCP
+            // DIAMETER can also run on TCP (port 3868)
+            if (packet.five_tuple.src_port == 3868 || packet.five_tuple.dst_port == 3868) {
+                DiameterParser diameter_parser;
+                auto diameter_msg = diameter_parser.parse(packet.raw_data.data(),
+                                                         packet.raw_data.size());
+
+                if (diameter_msg.has_value()) {
+                    LOG_DEBUG("Parsed DIAMETER message (TCP): " << diameter_msg->getCommandName());
+                    correlator_.processPacket(packet, ProtocolType::DIAMETER, diameter_msg->toJson());
                     return;
                 }
             }
