@@ -1,0 +1,121 @@
+# Common utilities library
+add_library(callflow_common STATIC
+    common/logger.cpp
+    common/types.cpp
+    common/utils.cpp
+)
+target_include_directories(callflow_common PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(callflow_common PUBLIC
+    nlohmann_json::nlohmann_json
+    Threads::Threads
+)
+
+# PCAP ingestion library
+add_library(pcap_ingest STATIC
+    pcap_ingest/pcap_reader.cpp
+    pcap_ingest/packet_queue.cpp
+)
+target_include_directories(pcap_ingest PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+    ${PCAP_INCLUDE_DIR}
+)
+target_link_libraries(pcap_ingest PUBLIC
+    callflow_common
+    ${PCAP_LIBRARY}
+)
+
+# nDPI engine wrapper
+if(NOT NEED_NDPI_BUILD)
+    add_library(ndpi_engine STATIC
+        ndpi_engine/ndpi_wrapper.cpp
+        ndpi_engine/flow_classifier.cpp
+    )
+    target_include_directories(ndpi_engine PUBLIC
+        ${PROJECT_SOURCE_DIR}/include
+        ${NDPI_INCLUDE_DIR}
+    )
+    target_link_libraries(ndpi_engine PUBLIC
+        callflow_common
+        ${NDPI_LIBRARY}
+    )
+endif()
+
+# Flow manager library
+add_library(flow_manager STATIC
+    flow_manager/flow_tracker.cpp
+    flow_manager/session_correlator.cpp
+)
+target_include_directories(flow_manager PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(flow_manager PUBLIC
+    callflow_common
+)
+
+# Protocol parsers library
+add_library(protocol_parsers STATIC
+    protocol_parsers/sip_parser.cpp
+    protocol_parsers/rtp_parser.cpp
+    protocol_parsers/gtp_parser.cpp
+    protocol_parsers/diameter_parser.cpp
+    protocol_parsers/http2_parser.cpp
+)
+target_include_directories(protocol_parsers PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(protocol_parsers PUBLIC
+    callflow_common
+)
+
+# Event extractor library
+add_library(event_extractor STATIC
+    event_extractor/event_builder.cpp
+    event_extractor/json_exporter.cpp
+)
+target_include_directories(event_extractor PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(event_extractor PUBLIC
+    callflow_common
+    protocol_parsers
+)
+
+# API server library (optional)
+if(BUILD_API_SERVER)
+    add_library(api_server STATIC
+        api_server/http_server.cpp
+        api_server/websocket_handler.cpp
+        api_server/routes.cpp
+    )
+    target_include_directories(api_server PUBLIC
+        ${PROJECT_SOURCE_DIR}/include
+    )
+    target_link_libraries(api_server PUBLIC
+        callflow_common
+        event_extractor
+    )
+endif()
+
+# Main CLI executable
+add_executable(callflowd
+    cli/main.cpp
+    cli/cli_parser.cpp
+)
+
+target_link_libraries(callflowd PRIVATE
+    callflow_common
+    pcap_ingest
+    flow_manager
+    protocol_parsers
+    event_extractor
+)
+
+if(NOT NEED_NDPI_BUILD)
+    target_link_libraries(callflowd PRIVATE ndpi_engine)
+endif()
+
+if(BUILD_API_SERVER)
+    target_link_libraries(callflowd PRIVATE api_server)
+endif()

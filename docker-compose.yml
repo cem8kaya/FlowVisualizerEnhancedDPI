@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  callflow-visualizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: callflow-visualizer
+    volumes:
+      - ./samples:/app/samples:ro
+      - ./output:/app/output
+    command: >
+      --input /app/samples/sample.pcap
+      --output /app/output/result.json
+      --workers 4
+    restart: unless-stopped
+
+  # Future: API server (M2)
+  # callflow-api:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: callflow-api
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./output:/app/output
+  #   command: >
+  #     --api-server
+  #     --api-port 8080
+  #     --api-bind 0.0.0.0
+  #   restart: unless-stopped
+
+  # Future: Database (M5)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: callflow-db
+  #   environment:
+  #     POSTGRES_DB: callflow
+  #     POSTGRES_USER: callflow
+  #     POSTGRES_PASSWORD: changeme
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+volumes:
+  postgres_data:
