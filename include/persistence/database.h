@@ -251,6 +251,12 @@ public:
      */
     bool isOpen() const { return db_ != nullptr; }
 
+    /**
+     * Get raw SQLite3 handle (for internal use only)
+     * @return SQLite3 database handle
+     */
+    void* getHandle() { return db_; }
+
 private:
     DatabaseConfig config_;
     sqlite3* db_;

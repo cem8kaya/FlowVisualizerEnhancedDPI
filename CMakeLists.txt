@@ -27,6 +27,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 # Options
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_API_SERVER "Build REST API server" ON)
+option(BUILD_BENCHMARKS "Build performance benchmarks" ON)
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
 option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
@@ -117,12 +118,42 @@ if(BUILD_API_SERVER)
     message(STATUS "jwt-cpp fetched for authentication")
 endif()
 
+# Google Test for unit testing
+if(BUILD_TESTS)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.14.0
+    )
+    # Prevent GoogleTest from overriding compiler/linker options
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+    message(STATUS "GoogleTest fetched for unit testing")
+endif()
+
+# Google Benchmark for performance testing
+if(BUILD_BENCHMARKS)
+    FetchContent_Declare(
+        benchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG v1.8.3
+    )
+    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+    set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(benchmark)
+    message(STATUS "Google Benchmark fetched for performance testing")
+endif()
+
 # Add subdirectories
 add_subdirectory(src)
 
 if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+if(BUILD_BENCHMARKS)
+    add_subdirectory(bench)
 endif()
 
 # Installation
@@ -154,6 +185,7 @@ message(STATUS "Configuration Summary:")
 message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build tests: ${BUILD_TESTS}")
+message(STATUS "  Build benchmarks: ${BUILD_BENCHMARKS}")
 message(STATUS "  Build API server: ${BUILD_API_SERVER}")
 message(STATUS "  Enable TLS/HTTPS: ${ENABLE_TLS}")
 message(STATUS "  Enable sanitizers: ASAN=${ENABLE_ASAN} UBSAN=${ENABLE_UBSAN}")
