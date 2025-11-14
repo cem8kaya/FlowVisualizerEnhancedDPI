@@ -1,48 +1,91 @@
 version: '3.8'
 
 services:
-  callflow-visualizer:
+  callflowd:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: callflow-visualizer
+    image: callflowd:latest
+    container_name: callflowd-server
+    ports:
+      - "8080:8080"  # REST API
+      - "8081:8081"  # WebSocket
     volumes:
-      - ./samples:/app/samples:ro
-      - ./output:/app/output
-    command: >
-      --input /app/samples/sample.pcap
-      --output /app/output/result.json
-      --workers 4
+      - ./data:/app/data          # PCAP uploads
+      - ./output:/app/output      # JSON outputs
+      - ./db:/app/db              # SQLite database
+      - ./logs:/app/logs          # Application logs
+      - ./config.json:/app/config.json:ro  # Configuration (read-only)
+      # Uncomment for TLS/HTTPS:
+      # - ./certs:/app/certs:ro
+    environment:
+      - API_PORT=8080
+      - WS_PORT=8081
+      - WORKERS=8
+      - LOG_LEVEL=INFO
+      - DATABASE_ENABLED=true
+      - DATABASE_PATH=/app/db/callflowd.db
+      - CONFIG_PATH=/app/config.json
+      # Authentication settings (override via config.json or env vars)
+      - AUTH_ENABLED=true
+      - JWT_SECRET=${JWT_SECRET:-CHANGE_THIS_SECRET_IN_PRODUCTION}
+      - JWT_EXPIRY_HOURS=24
+      # Rate limiting
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_RPM=60
+      - RATE_LIMIT_BURST=10
+      # TLS/HTTPS (uncomment when certificates are ready)
+      # - TLS_ENABLED=true
+      # - TLS_CERT_FILE=/app/certs/server.crt
+      # - TLS_KEY_FILE=/app/certs/server.key
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - callflowd-net
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 512M
 
-  # Future: API server (M2)
-  # callflow-api:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: callflow-api
-  #   ports:
-  #     - "8080:8080"
-  #   volumes:
-  #     - ./output:/app/output
-  #   command: >
-  #     --api-server
-  #     --api-port 8080
-  #     --api-bind 0.0.0.0
-  #   restart: unless-stopped
+  # Optional: Nginx reverse proxy with TLS termination
+  nginx:
+    image: nginx:alpine
+    container_name: callflowd-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx-locations.conf:/etc/nginx/conf.d/locations.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./ui/static:/usr/share/nginx/html:ro
+    depends_on:
+      - callflowd
+    restart: unless-stopped
+    networks:
+      - callflowd-net
+    # Only start if you have certs configured
+    profiles:
+      - with-proxy
 
-  # Future: Database (M5)
-  # postgres:
-  #   image: postgres:15-alpine
-  #   container_name: callflow-db
-  #   environment:
-  #     POSTGRES_DB: callflow
-  #     POSTGRES_USER: callflow
-  #     POSTGRES_PASSWORD: changeme
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
+networks:
+  callflowd-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
 volumes:
-  postgres_data:
+  data:
+  output:
+  db:
+  logs:
