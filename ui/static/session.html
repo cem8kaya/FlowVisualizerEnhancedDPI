@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Details - Callflow Visualizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/timeline.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-diagram-3"></i> Callflow Visualizer
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="bi bi-arrow-left"></i> Back to Jobs
+                </a>
+                <a class="nav-link" href="#" id="darkModeToggle">
+                    <i class="bi bi-moon-fill"></i> Dark Mode
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Session Header -->
+    <div class="container-fluid mt-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> Session Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="sessionInfo">
+                    <div class="col-md-3">
+                        <p><strong>Session ID:</strong> <span id="sessionId">-</span></p>
+                        <p><strong>Type:</strong> <span id="sessionType">-</span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Start Time:</strong> <span id="startTime">-</span></p>
+                        <p><strong>Duration:</strong> <span id="duration">-</span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Packets:</strong> <span id="packetCount">-</span></p>
+                        <p><strong>Bytes:</strong> <span id="byteCount">-</span></p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Participants:</strong></p>
+                        <ul id="participants" class="small"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs" id="sessionTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="timeline-tab" data-bs-toggle="tab"
+                        data-bs-target="#timeline" type="button">
+                    <i class="bi bi-clock-history"></i> Timeline
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="flowchart-tab" data-bs-toggle="tab"
+                        data-bs-target="#flowchart" type="button">
+                    <i class="bi bi-diagram-3"></i> Flow Diagram
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="events-tab" data-bs-toggle="tab"
+                        data-bs-target="#events" type="button">
+                    <i class="bi bi-list-ul"></i> Events
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="metrics-tab" data-bs-toggle="tab"
+                        data-bs-target="#metrics" type="button">
+                    <i class="bi bi-bar-chart"></i> Metrics
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content p-3 border border-top-0 bg-white" id="sessionTabsContent">
+            <!-- Timeline Tab -->
+            <div class="tab-pane fade show active" id="timeline">
+                <div class="d-flex justify-content-between mb-3">
+                    <h6>Interactive Timeline</h6>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="zoomInBtn">
+                            <i class="bi bi-zoom-in"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" id="zoomOutBtn">
+                            <i class="bi bi-zoom-out"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" id="exportTimelineBtn">
+                            <i class="bi bi-download"></i> Export SVG
+                        </button>
+                    </div>
+                </div>
+                <div id="timelineViz" class="timeline-container"></div>
+            </div>
+
+            <!-- Flow Diagram Tab -->
+            <div class="tab-pane fade" id="flowchart">
+                <div class="d-flex justify-content-between mb-3">
+                    <h6>Sequence Diagram</h6>
+                    <button class="btn btn-sm btn-outline-secondary" id="exportFlowBtn">
+                        <i class="bi bi-download"></i> Export SVG
+                    </button>
+                </div>
+                <div id="flowchartViz" class="flowchart-container"></div>
+            </div>
+
+            <!-- Events Tab -->
+            <div class="tab-pane fade" id="events">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Protocol</th>
+                                <th>Type</th>
+                                <th>Source</th>
+                                <th>Destination</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eventsTableBody">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">Loading events...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Metrics Tab -->
+            <div class="tab-pane fade" id="metrics">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Protocol Distribution</div>
+                            <div class="card-body">
+                                <canvas id="protocolChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">Packet Rate Over Time</div>
+                            <div class="card-body">
+                                <canvas id="packetRateChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">Session Metrics</div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tbody id="metricsTableBody">
+                                        <tr><td>Loading metrics...</td></tr>
+                                    </tbody>
+                                </table>
+                                <button class="btn btn-sm btn-outline-primary" id="exportMetricsBtn">
+                                    <i class="bi bi-file-earmark-spreadsheet"></i> Export as CSV
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Packet Inspector Modal -->
+    <div class="modal fade" id="packetModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Packet Inspector</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-pills mb-3" id="packetTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#packetSummary">
+                                Summary
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#packetDetails">
+                                Protocol Details
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#packetRaw">
+                                Raw Data
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="packetSummary">
+                            <table class="table table-sm">
+                                <tbody id="packetSummaryBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="tab-pane fade" id="packetDetails">
+                            <pre id="packetDetailsContent" class="bg-light p-3 overflow-auto" style="max-height: 400px;"></pre>
+                        </div>
+                        <div class="tab-pane fade" id="packetRaw">
+                            <div class="d-flex justify-content-end mb-2">
+                                <button class="btn btn-sm btn-outline-secondary" id="copyRawBtn">
+                                    <i class="bi bi-clipboard"></i> Copy
+                                </button>
+                            </div>
+                            <pre id="packetRawContent" class="bg-dark text-light p-3 font-monospace overflow-auto" style="max-height: 400px; font-size: 0.85rem;"></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="prevPacketBtn">
+                        <i class="bi bi-arrow-left"></i> Previous
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="nextPacketBtn">
+                        Next <i class="bi bi-arrow-right"></i>
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="/js/app.js"></script>
+    <script src="/js/timeline.js"></script>
+    <script src="/js/flowchart.js"></script>
+    <script src="/js/packet-inspector.js"></script>
+    <script src="/js/session-list.js"></script>
+</body>
+</html>

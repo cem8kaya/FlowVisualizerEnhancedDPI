@@ -4,15 +4,16 @@ A production-ready Callflow Visualizer that ingests PCAPs, decodes telecom proto
 
 ## Project Status
 
-**Current Milestone: M3 (DIAMETER/GTP Parsers & Flow Caching)** ✅
+**Current Milestone: M4 (HTTP/2, Web UI, Database Persistence)** ✅
 
 **Completed:**
 - ✅ M1: Basic PCAP upload CLI, libpcap ingestion, SIP/RTP parsing, Session correlation, JSON export
 - ✅ M2: REST API server, WebSocket streaming, nDPI integration, Job management, Configuration system
 - ✅ M3: DIAMETER parser, GTPv2-C parser, nDPI flow caching with LRU eviction
+- ✅ M4: HTTP/2 parser with HPACK, Advanced web UI, SQLite3 database persistence
 
 **Planned:**
-- ⏳ M4: HTTP/2 parsing, Advanced web UI, Database persistence, Live capture
+- ⏳ M5: Docker, CI/CD, Advanced analytics, Security hardening
 
 ## Architecture
 
@@ -131,10 +132,38 @@ A production-ready Callflow Visualizer that ingests PCAPs, decodes telecom proto
   - Automatic session type classification
   - Event timeline for DIAMETER and GTP messages
 
+### ✅ M4 Features (NEW!)
+
+- **HTTP/2 Protocol Parser**: Complete RFC 7540 implementation
+  - All 10 frame types (DATA, HEADERS, SETTINGS, PING, etc.)
+  - Full HPACK header compression/decompression (RFC 7541)
+  - Static table (61 entries) + dynamic table with LRU
+  - Stream multiplexing and session correlation
+  - Pseudo-header extraction (:method, :path, :authority, :status)
+  - Connection settings negotiation
+- **Advanced Web UI**: Production-ready interface
+  - Drag-and-drop PCAP upload with progress tracking
+  - Real-time job monitoring with WebSocket updates
+  - Interactive timeline visualization using D3.js
+  - Session detail view with tabbed interface
+  - Packet inspector modal with hex dump
+  - Dark mode support with persistent preference
+  - Responsive Bootstrap 5 design
+- **Database Persistence**: SQLite3 integration
+  - Schema with jobs, sessions, and events tables
+  - Indexed queries for performance
+  - Retention policy with auto-cleanup
+  - Thread-safe operations with prepared statements
+  - Transaction support and WAL mode
+  - Statistics and maintenance operations
+- **Build System**: SQLite3 integration in CMake
+  - Automatic dependency detection
+  - Graceful degradation if SQLite3 unavailable
+  - Persistence library with full CRUD API
+
 ### ⏳ Planned
 
-- **M4**: HTTP/2 parsing, Advanced web UI, Database persistence, Live capture
-- **M5**: Docker, CI/CD, Advanced analytics, Security hardening
+- **M5**: Docker containerization, CI/CD pipeline, Advanced analytics, Security hardening
 
 ## Building
 
@@ -147,9 +176,10 @@ sudo apt-get install -y \
     build-essential \
     cmake \
     git \
-    libpcap-dev
+    libpcap-dev \
+    libsqlite3-dev
 
-# Optional: nDPI (will be fully integrated in M2)
+# Optional: nDPI for enhanced protocol detection
 # git clone https://github.com/ntop/nDPI.git
 # cd nDPI && ./autogen.sh && ./configure && make && sudo make install
 ```
