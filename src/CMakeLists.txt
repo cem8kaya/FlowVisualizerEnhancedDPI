@@ -108,6 +108,11 @@ if(BUILD_API_SERVER)
         api_server/job_manager.cpp
         api_server/rate_limiter.cpp
         api_server/input_validator.cpp
+        api_server/auth_manager.cpp
+        api_server/auth_middleware.cpp
+        api_server/auth_routes.cpp
+        api_server/analytics_manager.cpp
+        api_server/analytics_routes.cpp
     )
     target_include_directories(api_server PUBLIC
         ${PROJECT_SOURCE_DIR}/include
@@ -133,6 +138,11 @@ if(BUILD_API_SERVER)
 
     # Link jwt-cpp for JWT authentication
     target_link_libraries(api_server PUBLIC jwt-cpp::jwt-cpp)
+
+    # Link persistence for auth manager (if available)
+    if(SQLite3_FOUND)
+        target_link_libraries(api_server PUBLIC persistence)
+    endif()
 endif()
 
 # Main CLI executable
@@ -160,4 +170,16 @@ endif()
 if(SQLite3_FOUND)
     target_link_libraries(callflowd PRIVATE persistence)
     target_compile_definitions(callflowd PRIVATE ENABLE_DATABASE_PERSISTENCE)
+
+    # Create admin user tool (requires persistence and auth)
+    if(BUILD_API_SERVER)
+        add_executable(create_admin
+            cli/create_admin.cpp
+        )
+        target_link_libraries(create_admin PRIVATE
+            callflow_common
+            persistence
+            api_server
+        )
+    endif()
 endif()
