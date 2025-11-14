@@ -111,6 +111,8 @@ if(BUILD_API_SERVER)
         api_server/auth_manager.cpp
         api_server/auth_middleware.cpp
         api_server/auth_routes.cpp
+        api_server/analytics_manager.cpp
+        api_server/analytics_routes.cpp
     )
     target_include_directories(api_server PUBLIC
         ${PROJECT_SOURCE_DIR}/include
