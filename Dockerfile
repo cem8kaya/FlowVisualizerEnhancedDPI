@@ -1,7 +1,7 @@
-# Multi-stage Dockerfile for Callflow Visualizer
+# Multi-stage Dockerfile for nDPI Callflow Visualizer (M5 Production-Ready)
 
-# Stage 1: Builder
-FROM ubuntu:22.04 AS builder
+# Build stage
+FROM ubuntu:24.04 AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -9,40 +9,86 @@ RUN apt-get update && apt-get install -y \
     cmake \
     git \
     libpcap-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    pkg-config \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /build
 
-# Copy source code
-COPY . .
+# Copy source files
+COPY CMakeLists.txt ./
+COPY src/ ./src/
+COPY include/ ./include/
+COPY ui/ ./ui/
 
-# Create build directory and build
-RUN mkdir -p build && cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j$(nproc)
+# Build
+RUN mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_TESTS=OFF \
+          -DBUILD_API_SERVER=ON \
+          -DCMAKE_CXX_FLAGS="-O3 -march=native -flto" \
+          .. && \
+    make -j$(nproc) && \
+    strip src/callflowd
 
-# Stage 2: Runtime
-FROM ubuntu:22.04
+# Runtime stage
+FROM ubuntu:24.04
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
     libpcap0.8 \
+    libsqlite3-0 \
+    libssl3 \
+    ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user
-RUN useradd -m -u 1000 callflow
+# Create non-root user and group
+RUN groupadd -r -g 1000 callflowd && \
+    useradd -r -u 1000 -g callflowd -m -d /home/callflowd -s /bin/bash callflowd
 
-# Copy binary from builder
-COPY --from=builder /build/build/src/callflowd /usr/local/bin/
-
-# Create directories
-RUN mkdir -p /app/output && chown -R callflow:callflow /app
-
-# Switch to app user
-USER callflow
 WORKDIR /app
 
-# Default command
-ENTRYPOINT ["/usr/local/bin/callflowd"]
-CMD ["--help"]
+# Copy binary and static files from builder
+COPY --from=builder /build/build/src/callflowd /app/
+COPY --from=builder /build/ui/static /app/ui/static/
+
+# Copy default configuration
+COPY config.example.json /app/config.json
+
+# Create directories with proper permissions
+RUN mkdir -p /app/data /app/output /app/db /app/logs /app/certs && \
+    chown -R callflowd:callflowd /app && \
+    chmod 700 /app/db /app/logs /app/certs && \
+    chmod 755 /app/data /app/output
+
+# Switch to non-root user
+USER callflowd
+
+# Expose ports
+EXPOSE 8080 8081
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Environment variables with secure defaults
+ENV API_PORT=8080 \
+    WS_PORT=8081 \
+    WORKERS=4 \
+    LOG_LEVEL=INFO \
+    DATABASE_ENABLED=true \
+    DATABASE_PATH=/app/db/callflowd.db \
+    CONFIG_PATH=/app/config.json \
+    TZ=UTC
+
+# Add labels for metadata
+LABEL maintainer="Callflow Visualizer Team" \
+      version="1.0.0-m5" \
+      description="Production-ready nDPI Callflow Visualizer with authentication, rate limiting, and database persistence" \
+      org.opencontainers.image.source="https://github.com/cem8kaya/FlowVisualizerEnhancedDPI"
+
+# Run the application
+CMD ["./callflowd", "--api-server", "--config", "/app/config.json"]

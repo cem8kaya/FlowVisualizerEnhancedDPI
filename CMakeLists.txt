@@ -28,6 +28,9 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_API_SERVER "Build REST API server" ON)
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
+option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
+option(ENABLE_TLS "Enable TLS/HTTPS support" ON)
 
 # Include paths
 include_directories(${PROJECT_SOURCE_DIR}/include)
@@ -92,6 +95,26 @@ if(BUILD_API_SERVER)
     )
     FetchContent_MakeAvailable(httplib)
     message(STATUS "cpp-httplib fetched for API server")
+
+    # OpenSSL for HTTPS/TLS support and JWT signing
+    if(ENABLE_TLS)
+        find_package(OpenSSL REQUIRED)
+        if(OpenSSL_FOUND)
+            message(STATUS "Found OpenSSL: ${OPENSSL_VERSION}")
+            message(STATUS "  Include: ${OPENSSL_INCLUDE_DIR}")
+            message(STATUS "  Libraries: ${OPENSSL_LIBRARIES}")
+        endif()
+    endif()
+
+    # jwt-cpp for JWT token handling
+    FetchContent_Declare(
+        jwt-cpp
+        GIT_REPOSITORY https://github.com/Thalhammer/jwt-cpp.git
+        GIT_TAG v0.7.0
+    )
+    set(JWT_DISABLE_PICOJSON ON CACHE BOOL "")
+    FetchContent_MakeAvailable(jwt-cpp)
+    message(STATUS "jwt-cpp fetched for authentication")
 endif()
 
 # Add subdirectories
@@ -106,6 +129,25 @@ endif()
 install(TARGETS callflowd DESTINATION bin)
 install(DIRECTORY ui/static DESTINATION share/callflow-visualizer/ui)
 
+# Sanitizers
+if(ENABLE_ASAN)
+    message(STATUS "AddressSanitizer enabled")
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+endif()
+
+if(ENABLE_UBSAN)
+    message(STATUS "UndefinedBehaviorSanitizer enabled")
+    add_compile_options(-fsanitize=undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=undefined)
+endif()
+
+if(ENABLE_COVERAGE)
+    message(STATUS "Code coverage enabled")
+    add_compile_options(--coverage -O0 -g)
+    add_link_options(--coverage)
+endif()
+
 # Print configuration summary
 message(STATUS "")
 message(STATUS "Configuration Summary:")
@@ -113,5 +155,8 @@ message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build tests: ${BUILD_TESTS}")
 message(STATUS "  Build API server: ${BUILD_API_SERVER}")
+message(STATUS "  Enable TLS/HTTPS: ${ENABLE_TLS}")
+message(STATUS "  Enable sanitizers: ASAN=${ENABLE_ASAN} UBSAN=${ENABLE_UBSAN}")
+message(STATUS "  Enable coverage: ${ENABLE_COVERAGE}")
 message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "")

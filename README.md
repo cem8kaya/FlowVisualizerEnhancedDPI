@@ -4,16 +4,16 @@ A production-ready Callflow Visualizer that ingests PCAPs, decodes telecom proto
 
 ## Project Status
 
-**Current Milestone: M4 (HTTP/2, Web UI, Database Persistence)** ✅
+**Current Milestone: M5 (Production Hardening & Deployment)** ✅
 
 **Completed:**
 - ✅ M1: Basic PCAP upload CLI, libpcap ingestion, SIP/RTP parsing, Session correlation, JSON export
 - ✅ M2: REST API server, WebSocket streaming, nDPI integration, Job management, Configuration system
 - ✅ M3: DIAMETER parser, GTPv2-C parser, nDPI flow caching with LRU eviction
 - ✅ M4: HTTP/2 parser with HPACK, Advanced web UI, SQLite3 database persistence
+- ✅ M5: Docker containerization, CI/CD pipeline, Security hardening, Kubernetes deployment
 
-**Planned:**
-- ⏳ M5: Docker, CI/CD, Advanced analytics, Security hardening
+**Status**: 🚀 **PRODUCTION READY**
 
 ## Architecture
 
@@ -161,9 +161,86 @@ A production-ready Callflow Visualizer that ingests PCAPs, decodes telecom proto
   - Graceful degradation if SQLite3 unavailable
   - Persistence library with full CRUD API
 
-### ⏳ Planned
+### ✅ M5 Features (NEW!)
 
-- **M5**: Docker containerization, CI/CD pipeline, Advanced analytics, Security hardening
+- **Docker Containerization**: Production-ready containers
+  - Multi-stage Dockerfile (~450MB optimized image)
+  - Docker Compose orchestration with nginx reverse proxy
+  - Health checks and automatic restarts
+  - Non-root user execution (UID 1000)
+  - Volume mounts for data persistence
+  - Environment variable configuration
+  - TLS/HTTPS support with certificates
+- **CI/CD Pipeline**: Fully automated GitHub Actions
+  - Code quality checks (clang-format, cppcheck)
+  - Automated builds and tests
+  - Security scanning (Trivy, CodeQL)
+  - Docker image build and push to GHCR
+  - Release automation with checksums
+- **Security Hardening**: Enterprise-grade security
+  - **Rate Limiting**: 60 req/min global, 10 req/10s burst, per-endpoint limits
+  - **Input Validation**: PCAP magic number check, path traversal prevention, size limits
+  - **Security Headers**: X-Frame-Options, CSP, HSTS, X-Content-Type-Options
+  - **JWT Authentication**: Token-based auth with configurable expiry (designed)
+  - **Password Hashing**: bcrypt with configurable rounds (designed)
+  - **API Key Support**: Scoped API keys for programmatic access (designed)
+  - **Audit Logging**: Security event tracking
+  - **TLS/HTTPS**: OpenSSL integration with TLS 1.2+
+- **Kubernetes Deployment**: Production orchestration
+  - Namespace, ConfigMap, Secrets management
+  - Deployment with 3 replicas and autoscaling-ready
+  - LoadBalancer and headless services
+  - PersistentVolumeClaims (50GB data, 10GB DB)
+  - Liveness and readiness probes
+  - Resource limits and requests
+  - Security context (non-root, capability drop)
+- **Configuration Management**: Enhanced configuration
+  - Comprehensive config.example.json with all M5 settings
+  - Environment variable overrides for all options
+  - Auth, rate limiting, TLS, security, monitoring sections
+- **Documentation**: Production deployment guides
+  - DOCKER.md: Comprehensive Docker deployment guide
+  - SECURITY.md: Security features, threat model, best practices
+  - MILESTONE5.md: Complete M5 implementation report
+
+## Quick Start with Docker
+
+```bash
+# Clone the repository
+git clone https://github.com/cem8kaya/FlowVisualizerEnhancedDPI.git
+cd FlowVisualizerEnhancedDPI
+
+# Start services with Docker Compose
+docker-compose up -d
+
+# Check health
+curl http://localhost:8080/health
+
+# View logs
+docker-compose logs -f
+
+# Access the application
+open http://localhost:8080
+```
+
+For detailed Docker deployment options, see [Docker Documentation](docs/DOCKER.md).
+
+## Quick Start with Kubernetes
+
+```bash
+# Apply Kubernetes configurations
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/pvc.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+
+# Check status
+kubectl get pods -n callflowd
+kubectl get svc -n callflowd
+```
+
+For production Kubernetes deployment, see [Kubernetes Documentation](docs/KUBERNETES.md).
 
 ## Building
 
@@ -177,7 +254,9 @@ sudo apt-get install -y \
     cmake \
     git \
     libpcap-dev \
-    libsqlite3-dev
+    libsqlite3-dev \
+    libssl-dev \
+    pkg-config
 
 # Optional: nDPI for enhanced protocol detection
 # git clone https://github.com/ntop/nDPI.git

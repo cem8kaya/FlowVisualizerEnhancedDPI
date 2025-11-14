@@ -106,6 +106,8 @@ if(BUILD_API_SERVER)
         api_server/websocket_handler.cpp
         api_server/routes.cpp
         api_server/job_manager.cpp
+        api_server/rate_limiter.cpp
+        api_server/input_validator.cpp
     )
     target_include_directories(api_server PUBLIC
         ${PROJECT_SOURCE_DIR}/include
@@ -121,11 +123,16 @@ if(BUILD_API_SERVER)
     target_compile_definitions(api_server PRIVATE
         CPPHTTPLIB_OPENSSL_SUPPORT
     )
-    # Link OpenSSL for HTTPS support (optional)
-    find_package(OpenSSL)
-    if(OPENSSL_FOUND)
-        target_link_libraries(api_server PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+    # Link OpenSSL for HTTPS support and JWT signing
+    if(ENABLE_TLS)
+        target_link_libraries(api_server PUBLIC
+            OpenSSL::SSL
+            OpenSSL::Crypto
+        )
     endif()
+
+    # Link jwt-cpp for JWT authentication
+    target_link_libraries(api_server PUBLIC jwt-cpp::jwt-cpp)
 endif()
 
 # Main CLI executable

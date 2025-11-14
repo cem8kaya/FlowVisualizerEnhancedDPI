@@ -1,0 +1,86 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+*.sublime-*
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# GitHub
+.github/
+
+# Documentation
+docs/
+*.md
+!README.md
+LICENSE
+
+# Test files and data
+tests/
+bench/
+samples/
+
+# Data directories (don't include in image)
+data/
+output/
+db/
+logs/
+*.pcap
+*.pcapng
+*.cap
+
+# Temporary files
+*.tmp
+*.log
+*.pid
+core
+*.core
+
+# Certificates (security - never include in image)
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+certs/
+
+# Configuration overrides (use config.example.json instead)
+config.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+venv/
+env/
+
+# Docker
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+.env
+
+# CI/CD
+.travis.yml
+.circleci/
+azure-pipelines.yml
+
+# Other
+*.bak
+*.orig
+*.rej
+.cache/
