@@ -84,6 +84,21 @@ target_link_libraries(event_extractor PUBLIC
     protocol_parsers
 )
 
+# Persistence library (SQLite3)
+if(SQLite3_FOUND)
+    add_library(persistence STATIC
+        persistence/database.cpp
+    )
+    target_include_directories(persistence PUBLIC
+        ${PROJECT_SOURCE_DIR}/include
+        ${SQLite3_INCLUDE_DIRS}
+    )
+    target_link_libraries(persistence PUBLIC
+        callflow_common
+        ${SQLite3_LIBRARIES}
+    )
+endif()
+
 # API server library (optional)
 if(BUILD_API_SERVER)
     add_library(api_server STATIC
@@ -133,4 +148,9 @@ endif()
 
 if(BUILD_API_SERVER)
     target_link_libraries(callflowd PRIVATE api_server)
+endif()
+
+if(SQLite3_FOUND)
+    target_link_libraries(callflowd PRIVATE persistence)
+    target_compile_definitions(callflowd PRIVATE ENABLE_DATABASE_PERSISTENCE)
 endif()

@@ -43,6 +43,16 @@ if(NOT PCAP_INCLUDE_DIR OR NOT PCAP_LIBRARY)
 endif()
 message(STATUS "Found libpcap: ${PCAP_LIBRARY}")
 
+# Find SQLite3
+find_package(SQLite3)
+if(NOT SQLite3_FOUND)
+    message(WARNING "SQLite3 not found. Database persistence will be disabled.")
+    message(STATUS "To install SQLite3:")
+    message(STATUS "  sudo apt-get install libsqlite3-dev")
+else()
+    message(STATUS "Found SQLite3: ${SQLite3_LIBRARIES}")
+endif()
+
 # Find nDPI (check common locations)
 find_path(NDPI_INCLUDE_DIR
     NAMES ndpi_api.h
