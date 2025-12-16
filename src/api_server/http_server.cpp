@@ -1,4 +1,5 @@
 #include "api_server/http_server.h"
+
 #include "api_server/routes.h"
 #include "common/logger.h"
 #include "common/utils.h"
@@ -7,13 +8,12 @@
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #include <httplib.h>
 
-#include <fstream>
 #include <filesystem>
+#include <fstream>
 
 namespace callflow {
 
-HttpServer::HttpServer(const Config& config,
-                       std::shared_ptr<JobManager> job_manager,
+HttpServer::HttpServer(const Config& config, std::shared_ptr<JobManager> job_manager,
                        std::shared_ptr<WebSocketHandler> ws_handler)
     : config_(config),
       job_manager_(job_manager),
@@ -31,8 +31,7 @@ bool HttpServer::start() {
         return false;
     }
 
-    LOG_INFO("Starting HTTP server on " << config_.api_bind_address
-             << ":" << config_.api_port);
+    LOG_INFO("Starting HTTP server on " << config_.api_bind_address << ":" << config_.api_port);
 
     // Create httplib server
     server_impl_ = new httplib::Server();
@@ -97,10 +96,8 @@ void HttpServer::setupRoutes() {
 
     // Health check
     server->Get("/health", [](const httplib::Request&, httplib::Response& res) {
-        nlohmann::json response = {
-            {"status", "healthy"},
-            {"timestamp", utils::formatTimestamp(utils::now())}
-        };
+        nlohmann::json response = {{"status", "healthy"},
+                                   {"timestamp", utils::timestampToIso8601(utils::now())}};
         res.set_content(response.dump(), "application/json");
     });
 
@@ -110,25 +107,21 @@ void HttpServer::setupRoutes() {
             // Check if file was uploaded
             auto file_it = req.files.find("file");
             if (file_it == req.files.end()) {
-                nlohmann::json error = {
-                    {"error", "No file uploaded"},
-                    {"code", "NO_FILE"}
-                };
+                nlohmann::json error = {{"error", "No file uploaded"}, {"code", "NO_FILE"}};
                 res.status = 400;
                 res.set_content(error.dump(), "application/json");
                 return;
             }
 
             const auto& file = file_it->second;
-            LOG_INFO("Received upload: " << file.filename << " (" << file.content.size() << " bytes)");
+            LOG_INFO("Received upload: " << file.filename << " (" << file.content.size()
+                                         << " bytes)");
 
             // Check file size
             if (file.content.size() > config_.max_upload_size_mb * 1024 * 1024) {
-                nlohmann::json error = {
-                    {"error", "File too large"},
-                    {"code", "FILE_TOO_LARGE"},
-                    {"max_size_mb", config_.max_upload_size_mb}
-                };
+                nlohmann::json error = {{"error", "File too large"},
+                                        {"code", "FILE_TOO_LARGE"},
+                                        {"max_size_mb", config_.max_upload_size_mb}};
                 res.status = 413;
                 res.set_content(error.dump(), "application/json");
                 return;
@@ -151,35 +144,27 @@ void HttpServer::setupRoutes() {
                 throw std::runtime_error("Failed to submit job");
             }
 
-            nlohmann::json response = {
-                {"job_id", job_id},
-                {"status", "queued"}
-            };
+            nlohmann::json response = {{"job_id", job_id}, {"status", "queued"}};
             res.status = 201;
             res.set_content(response.dump(), "application/json");
 
         } catch (const std::exception& e) {
             LOG_ERROR("Upload failed: " << e.what());
-            nlohmann::json error = {
-                {"error", e.what()},
-                {"code", "INTERNAL_ERROR"}
-            };
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
             res.status = 500;
             res.set_content(error.dump(), "application/json");
         }
     });
 
     // GET /api/v1/jobs/{job_id}/status - Get job status
-    server->Get("/api/v1/jobs/:job_id/status", [this](const httplib::Request& req, httplib::Response& res) {
+    server->Get("/api/v1/jobs/:job_id/status", [this](const httplib::Request& req,
+                                                      httplib::Response& res) {
         try {
             std::string job_id = req.path_params.at("job_id");
             auto job_info = job_manager_->getJobInfo(job_id);
 
             if (!job_info) {
-                nlohmann::json error = {
-                    {"error", "Job not found"},
-                    {"code", "JOB_NOT_FOUND"}
-                };
+                nlohmann::json error = {{"error", "Job not found"}, {"code", "JOB_NOT_FOUND"}};
                 res.status = 404;
                 res.set_content(error.dump(), "application/json");
                 return;
@@ -189,15 +174,14 @@ void HttpServer::setupRoutes() {
                 {"job_id", job_info->job_id},
                 {"status", jobStatusToString(job_info->status)},
                 {"progress", job_info->progress},
-                {"created_at", utils::formatTimestamp(job_info->created_at)}
-            };
+                {"created_at", utils::timestampToIso8601(job_info->created_at)}};
 
             if (job_info->status == JobStatus::RUNNING) {
-                response["started_at"] = utils::formatTimestamp(job_info->started_at);
+                response["started_at"] = utils::timestampToIso8601(job_info->started_at);
             }
 
             if (job_info->status == JobStatus::COMPLETED || job_info->status == JobStatus::FAILED) {
-                response["completed_at"] = utils::formatTimestamp(job_info->completed_at);
+                response["completed_at"] = utils::timestampToIso8601(job_info->completed_at);
             }
 
             if (job_info->status == JobStatus::FAILED) {
@@ -214,37 +198,30 @@ void HttpServer::setupRoutes() {
 
         } catch (const std::exception& e) {
             LOG_ERROR("Get status failed: " << e.what());
-            nlohmann::json error = {
-                {"error", e.what()},
-                {"code", "INTERNAL_ERROR"}
-            };
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
             res.status = 500;
             res.set_content(error.dump(), "application/json");
         }
     });
 
     // GET /api/v1/jobs/{job_id}/sessions - Get job sessions (paginated)
-    server->Get("/api/v1/jobs/:job_id/sessions", [this](const httplib::Request& req, httplib::Response& res) {
+    server->Get("/api/v1/jobs/:job_id/sessions", [this](const httplib::Request& req,
+                                                        httplib::Response& res) {
         try {
             std::string job_id = req.path_params.at("job_id");
             auto job_info = job_manager_->getJobInfo(job_id);
 
             if (!job_info) {
-                nlohmann::json error = {
-                    {"error", "Job not found"},
-                    {"code", "JOB_NOT_FOUND"}
-                };
+                nlohmann::json error = {{"error", "Job not found"}, {"code", "JOB_NOT_FOUND"}};
                 res.status = 404;
                 res.set_content(error.dump(), "application/json");
                 return;
             }
 
             if (job_info->status != JobStatus::COMPLETED) {
-                nlohmann::json error = {
-                    {"error", "Job not completed yet"},
-                    {"code", "JOB_NOT_COMPLETED"},
-                    {"current_status", jobStatusToString(job_info->status)}
-                };
+                nlohmann::json error = {{"error", "Job not completed yet"},
+                                        {"code", "JOB_NOT_COMPLETED"},
+                                        {"current_status", jobStatusToString(job_info->status)}};
                 res.status = 400;
                 res.set_content(error.dump(), "application/json");
                 return;
@@ -286,29 +263,25 @@ void HttpServer::setupRoutes() {
                 paginated_sessions.push_back(sessions[i]);
             }
 
-            nlohmann::json response = {
-                {"job_id", job_id},
-                {"page", page},
-                {"limit", limit},
-                {"total", total_count},
-                {"sessions", paginated_sessions}
-            };
+            nlohmann::json response = {{"job_id", job_id},
+                                       {"page", page},
+                                       {"limit", limit},
+                                       {"total", total_count},
+                                       {"sessions", paginated_sessions}};
 
             res.set_content(response.dump(), "application/json");
 
         } catch (const std::exception& e) {
             LOG_ERROR("Get sessions failed: " << e.what());
-            nlohmann::json error = {
-                {"error", e.what()},
-                {"code", "INTERNAL_ERROR"}
-            };
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
             res.status = 500;
             res.set_content(error.dump(), "application/json");
         }
     });
 
     // GET /api/v1/sessions/{session_id} - Get session detail
-    server->Get("/api/v1/sessions/:session_id", [this](const httplib::Request& req, httplib::Response& res) {
+    server->Get("/api/v1/sessions/:session_id", [this](const httplib::Request& req,
+                                                       httplib::Response& res) {
         try {
             std::string session_id = req.path_params.at("session_id");
 
@@ -346,54 +319,42 @@ void HttpServer::setupRoutes() {
             }
 
             // Session not found
-            nlohmann::json error = {
-                {"error", "Session not found"},
-                {"code", "SESSION_NOT_FOUND"}
-            };
+            nlohmann::json error = {{"error", "Session not found"}, {"code", "SESSION_NOT_FOUND"}};
             res.status = 404;
             res.set_content(error.dump(), "application/json");
 
         } catch (const std::exception& e) {
             LOG_ERROR("Get session failed: " << e.what());
-            nlohmann::json error = {
-                {"error", e.what()},
-                {"code", "INTERNAL_ERROR"}
-            };
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
             res.status = 500;
             res.set_content(error.dump(), "application/json");
         }
     });
 
     // DELETE /api/v1/jobs/{job_id} - Delete job
-    server->Delete("/api/v1/jobs/:job_id", [this](const httplib::Request& req, httplib::Response& res) {
-        try {
-            std::string job_id = req.path_params.at("job_id");
+    server->Delete("/api/v1/jobs/:job_id",
+                   [this](const httplib::Request& req, httplib::Response& res) {
+                       try {
+                           std::string job_id = req.path_params.at("job_id");
 
-            if (job_manager_->deleteJob(job_id)) {
-                nlohmann::json response = {
-                    {"message", "Job deleted successfully"},
-                    {"job_id", job_id}
-                };
-                res.set_content(response.dump(), "application/json");
-            } else {
-                nlohmann::json error = {
-                    {"error", "Job not found or still running"},
-                    {"code", "CANNOT_DELETE_JOB"}
-                };
-                res.status = 400;
-                res.set_content(error.dump(), "application/json");
-            }
+                           if (job_manager_->deleteJob(job_id)) {
+                               nlohmann::json response = {{"message", "Job deleted successfully"},
+                                                          {"job_id", job_id}};
+                               res.set_content(response.dump(), "application/json");
+                           } else {
+                               nlohmann::json error = {{"error", "Job not found or still running"},
+                                                       {"code", "CANNOT_DELETE_JOB"}};
+                               res.status = 400;
+                               res.set_content(error.dump(), "application/json");
+                           }
 
-        } catch (const std::exception& e) {
-            LOG_ERROR("Delete job failed: " << e.what());
-            nlohmann::json error = {
-                {"error", e.what()},
-                {"code", "INTERNAL_ERROR"}
-            };
-            res.status = 500;
-            res.set_content(error.dump(), "application/json");
-        }
-    });
+                       } catch (const std::exception& e) {
+                           LOG_ERROR("Delete job failed: " << e.what());
+                           nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
+                           res.status = 500;
+                           res.set_content(error.dump(), "application/json");
+                       }
+                   });
 
     // GET /api/v1/jobs - Get all jobs
     server->Get("/api/v1/jobs", [this](const httplib::Request&, httplib::Response& res) {
@@ -406,8 +367,7 @@ void HttpServer::setupRoutes() {
                     {"job_id", job->job_id},
                     {"status", jobStatusToString(job->status)},
                     {"progress", job->progress},
-                    {"created_at", utils::formatTimestamp(job->created_at)}
-                };
+                    {"created_at", utils::timestampToIso8601(job->created_at)}};
 
                 if (job->status == JobStatus::COMPLETED) {
                     job_summary["session_count"] = job->session_ids.size();
@@ -417,19 +377,13 @@ void HttpServer::setupRoutes() {
                 jobs_array.push_back(job_summary);
             }
 
-            nlohmann::json response = {
-                {"jobs", jobs_array},
-                {"total", all_jobs.size()}
-            };
+            nlohmann::json response = {{"jobs", jobs_array}, {"total", all_jobs.size()}};
 
             res.set_content(response.dump(), "application/json");
 
         } catch (const std::exception& e) {
             LOG_ERROR("Get all jobs failed: " << e.what());
-            nlohmann::json error = {
-                {"error", e.what()},
-                {"code", "INTERNAL_ERROR"}
-            };
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
             res.status = 500;
             res.set_content(error.dump(), "application/json");
         }
@@ -443,8 +397,8 @@ void HttpServer::serverThread() {
 
     try {
         if (!server->listen(config_.api_bind_address.c_str(), config_.api_port)) {
-            LOG_ERROR("Failed to start HTTP server on "
-                     << config_.api_bind_address << ":" << config_.api_port);
+            LOG_ERROR("Failed to start HTTP server on " << config_.api_bind_address << ":"
+                                                        << config_.api_port);
             running_.store(false);
         }
     } catch (const std::exception& e) {

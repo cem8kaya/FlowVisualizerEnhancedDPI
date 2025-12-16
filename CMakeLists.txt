@@ -82,17 +82,32 @@ endif()
 include(FetchContent)
 
 # JSON library (nlohmann/json - header only)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install OFF CACHE INTERNAL "")
+
 FetchContent_Declare(
     json
-    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+    URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(json)
+message(STATUS "nlohmann/json fetched successfully")
+
+# fmt library for logging
+FetchContent_Declare(
+    fmt
+    URL https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(fmt)
+message(STATUS "fmt fetched for logging")
 
 # cpp-httplib (header only HTTP server/client library)
 if(BUILD_API_SERVER)
     FetchContent_Declare(
         httplib
         URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.14.3.tar.gz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     FetchContent_MakeAvailable(httplib)
     message(STATUS "cpp-httplib fetched for API server")
@@ -108,12 +123,20 @@ if(BUILD_API_SERVER)
     endif()
 
     # jwt-cpp for JWT token handling
+    set(JWT_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+    set(JWT_BUILD_TESTS OFF CACHE INTERNAL "")
+    set(JWT_DISABLE_PICOJSON ON CACHE INTERNAL "")
+    
     FetchContent_Declare(
         jwt-cpp
         GIT_REPOSITORY https://github.com/Thalhammer/jwt-cpp.git
         GIT_TAG v0.7.0
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
-    set(JWT_DISABLE_PICOJSON ON CACHE BOOL "")
+    
+    # Make nlohmann_json available to jwt-cpp
+    set(nlohmann_json_DIR "${json_BINARY_DIR}")
+    
     FetchContent_MakeAvailable(jwt-cpp)
     message(STATUS "jwt-cpp fetched for authentication")
 endif()
@@ -124,6 +147,7 @@ if(BUILD_TESTS)
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG v1.14.0
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     # Prevent GoogleTest from overriding compiler/linker options
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -137,6 +161,7 @@ if(BUILD_BENCHMARKS)
         benchmark
         GIT_REPOSITORY https://github.com/google/benchmark.git
         GIT_TAG v1.8.3
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
     set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
@@ -153,7 +178,11 @@ if(BUILD_TESTS)
 endif()
 
 if(BUILD_BENCHMARKS)
-    add_subdirectory(bench)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bench)
+        add_subdirectory(bench)
+    else()
+        message(WARNING "Benchmarks enabled but bench/ directory not found. Skipping benchmarks.")
+    endif()
 endif()
 
 # Installation

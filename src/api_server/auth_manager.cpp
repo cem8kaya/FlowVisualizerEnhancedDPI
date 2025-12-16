@@ -1,14 +1,19 @@
 #include "api_server/auth_manager.h"
-#include "common/logger.h"
+
 #include <jwt-cpp/jwt.h>
+#include <jwt-cpp/traits/nlohmann-json/defaults.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-#include <nlohmann/json.hpp>
-#include <sstream>
-#include <iomanip>
-#include <regex>
+
 #include <chrono>
+#include <iomanip>
+#include <nlohmann/json.hpp>
+#include <regex>
+#include <sstream>
+
+#include "common/logger.h"
+#include "common/utils.h"
 
 namespace callflow {
 
@@ -16,14 +21,12 @@ namespace callflow {
 // Constructor / Destructor
 // ============================================================================
 
-AuthManager::AuthManager(DatabaseManager* db, const AuthConfig& config)
-    : db_(db), config_(config) {
+AuthManager::AuthManager(DatabaseManager* db, const AuthConfig& config) : db_(db), config_(config) {
     if (!db_) {
         throw std::runtime_error("DatabaseManager cannot be null");
     }
 
-    LOG_INFO("AuthManager initialized with JWT expiry: {} hours",
-             config_.jwt_expiry_hours);
+    LOG_INFO("AuthManager initialized with JWT expiry: {} hours", config_.jwt_expiry_hours);
 }
 
 AuthManager::~AuthManager() = default;
@@ -32,12 +35,9 @@ AuthManager::~AuthManager() = default;
 // User Management
 // ============================================================================
 
-std::optional<User> AuthManager::createUser(
-    const std::string& username,
-    const std::string& password,
-    const std::string& email,
-    const std::vector<std::string>& roles
-) {
+std::optional<User> AuthManager::createUser(const std::string& username,
+                                            const std::string& password, const std::string& email,
+                                            const std::vector<std::string>& roles) {
     // Validate username
     if (username.empty() || username.length() > 50) {
         LOG_ERROR("Invalid username length: {}", username.length());
@@ -67,14 +67,13 @@ std::optional<User> AuthManager::createUser(
     std::vector<std::string> user_roles = roles.empty() ? config_.default_roles : roles;
 
     // Create user object
-    User user{
-        .user_id = user_id,
-        .username = username,
-        .email = email,
-        .roles = user_roles,
-        .is_active = true,
-        .created_at = getCurrentTimestamp()
-    };
+    User user;
+    user.user_id = user_id;
+    user.username = username;
+    user.email = email;
+    user.roles = user_roles;
+    user.is_active = true;
+    user.created_at = utils::now();
 
     // Store in database
     nlohmann::json roles_json = user_roles;
@@ -87,9 +86,8 @@ std::optional<User> AuthManager::createUser(
         db_->execute("BEGIN TRANSACTION");
 
         sqlite3_stmt* stmt;
-        if (sqlite3_prepare_v2(
-                static_cast<sqlite3*>(db_->getHandle()),
-                sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                               nullptr) != SQLITE_OK) {
             db_->execute("ROLLBACK");
             return std::nullopt;
         }
@@ -100,15 +98,18 @@ std::optional<User> AuthManager::createUser(
         sqlite3_bind_text(stmt, 4, email.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_text(stmt, 5, roles_json.dump().c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_int(stmt, 6, user.is_active ? 1 : 0);
-        sqlite3_bind_int64(stmt, 7, user.created_at.seconds);
+        sqlite3_bind_int64(
+            stmt, 7,
+            std::chrono::duration_cast<std::chrono::seconds>(user.created_at.time_since_epoch())
+                .count());
 
         int rc = sqlite3_step(stmt);
         sqlite3_finalize(stmt);
 
         if (rc != SQLITE_DONE) {
             db_->execute("ROLLBACK");
-            LOG_ERROR("Failed to insert user: {}", sqlite3_errmsg(
-                static_cast<sqlite3*>(db_->getHandle())));
+            LOG_ERROR("Failed to insert user: {}",
+                      sqlite3_errmsg(static_cast<sqlite3*>(db_->getHandle())));
             return std::nullopt;
         }
 
@@ -125,13 +126,13 @@ std::optional<User> AuthManager::createUser(
 }
 
 std::optional<User> AuthManager::getUser(const std::string& user_id) {
-    std::string sql = "SELECT user_id, username, email, roles, is_active, created_at, last_login "
-                      "FROM users WHERE user_id = ?";
+    std::string sql =
+        "SELECT user_id, username, email, roles, is_active, created_at, last_login "
+        "FROM users WHERE user_id = ?";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return std::nullopt;
     }
 
@@ -143,7 +144,8 @@ std::optional<User> AuthManager::getUser(const std::string& user_id) {
         user.username = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
 
         const char* email_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-        if (email_str) user.email = email_str;
+        if (email_str)
+            user.email = email_str;
 
         // Parse roles JSON
         const char* roles_json = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
@@ -156,10 +158,10 @@ std::optional<User> AuthManager::getUser(const std::string& user_id) {
         }
 
         user.is_active = sqlite3_column_int(stmt, 4) != 0;
-        user.created_at.seconds = sqlite3_column_int64(stmt, 5);
+        user.created_at = std::chrono::system_clock::from_time_t(sqlite3_column_int64(stmt, 5));
 
         if (sqlite3_column_type(stmt, 6) != SQLITE_NULL) {
-            user.last_login = Timestamp{sqlite3_column_int64(stmt, 6), 0};
+            user.last_login = std::chrono::system_clock::from_time_t(sqlite3_column_int64(stmt, 6));
         }
 
         sqlite3_finalize(stmt);
@@ -174,9 +176,8 @@ std::optional<User> AuthManager::getUserByUsername(const std::string& username) 
     std::string sql = "SELECT user_id FROM users WHERE username = ?";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return std::nullopt;
     }
 
@@ -202,9 +203,8 @@ bool AuthManager::updateUser(const std::string& user_id, const User& user) {
     )";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -223,9 +223,8 @@ bool AuthManager::deleteUser(const std::string& user_id) {
     std::string sql = "DELETE FROM users WHERE user_id = ?";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -253,9 +252,8 @@ std::vector<User> AuthManager::listUsers(int page, int limit) {
     )";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return users;
     }
 
@@ -278,9 +276,8 @@ int AuthManager::getUserCount() {
     std::string sql = "SELECT COUNT(*) FROM users";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return 0;
     }
 
@@ -297,10 +294,8 @@ int AuthManager::getUserCount() {
 // Authentication
 // ============================================================================
 
-std::optional<JwtToken> AuthManager::login(
-    const std::string& username,
-    const std::string& password
-) {
+std::optional<JwtToken> AuthManager::login(const std::string& username,
+                                           const std::string& password) {
     // Get user by username
     auto user = getUserByUsername(username);
     if (!user) {
@@ -317,9 +312,8 @@ std::optional<JwtToken> AuthManager::login(
     // Get password hash from database
     std::string sql = "SELECT password_hash FROM users WHERE user_id = ?";
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return std::nullopt;
     }
 
@@ -350,12 +344,8 @@ std::optional<JwtToken> AuthManager::login(
 
     LOG_INFO("User logged in: {}", username);
 
-    return JwtToken{
-        .token = access_token,
-        .refresh_token = refresh_token,
-        .expires_in = config_.jwt_expiry_hours * 3600,
-        .user = *user
-    };
+    return JwtToken{access_token, refresh_token,
+                    static_cast<int64_t>(config_.jwt_expiry_hours * 3600), *user};
 }
 
 std::optional<JwtToken> AuthManager::refreshToken(const std::string& refresh_token) {
@@ -369,12 +359,8 @@ std::optional<JwtToken> AuthManager::refreshToken(const std::string& refresh_tok
     std::string new_access_token = generateJwt(*user, config_.jwt_expiry_hours);
     std::string new_refresh_token = generateJwt(*user, config_.refresh_token_expiry_days * 24);
 
-    return JwtToken{
-        .token = new_access_token,
-        .refresh_token = new_refresh_token,
-        .expires_in = config_.jwt_expiry_hours * 3600,
-        .user = *user
-    };
+    return JwtToken{new_access_token, new_refresh_token,
+                    static_cast<int64_t>(config_.jwt_expiry_hours * 3600), *user};
 }
 
 bool AuthManager::logout(const std::string& token) {
@@ -388,14 +374,14 @@ bool AuthManager::logout(const std::string& token) {
     )";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
     std::string session_id = "sess_" + generateSecureToken(16);
-    int64_t now = getCurrentTimestamp().seconds;
+    int64_t now =
+        std::chrono::duration_cast<std::chrono::seconds>(utils::now().time_since_epoch()).count();
     int64_t expires = now + (config_.jwt_expiry_hours * 3600);
 
     sqlite3_bind_text(stmt, 1, session_id.c_str(), -1, SQLITE_TRANSIENT);
@@ -417,11 +403,11 @@ std::optional<User> AuthManager::validateToken(const std::string& token) {
         }
 
         // Verify JWT signature and decode
-        auto verifier = jwt::verify()
-            .allow_algorithm(jwt::algorithm::hs256{config_.jwt_secret})
-            .with_issuer("callflowd");
+        auto verifier = jwt::verify<jwt::traits::nlohmann_json>()
+                            .allow_algorithm(jwt::algorithm::hs256{config_.jwt_secret})
+                            .with_issuer("callflowd");
 
-        auto decoded = jwt::decode(token);
+        auto decoded = jwt::decode<jwt::traits::nlohmann_json>(token);
         verifier.verify(decoded);
 
         // Get user ID from subject claim
@@ -440,9 +426,8 @@ bool AuthManager::isTokenBlacklisted(const std::string& token_hash) {
     std::string sql = "SELECT 1 FROM auth_sessions WHERE token_hash = ? AND revoked = 1";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -467,11 +452,8 @@ bool AuthManager::hasRole(const std::string& user_id, const std::string& role) {
     return std::find(user->roles.begin(), user->roles.end(), role) != user->roles.end();
 }
 
-bool AuthManager::hasPermission(
-    const std::string& user_id,
-    const std::string& resource,
-    const std::string& action
-) {
+bool AuthManager::hasPermission(const std::string& user_id, const std::string& resource,
+                                const std::string& action) {
     auto user = getUser(user_id);
     if (!user) {
         return false;
@@ -526,19 +508,16 @@ bool AuthManager::removeRole(const std::string& user_id, const std::string& role
 // API Keys
 // ============================================================================
 
-ApiKeyResult AuthManager::createApiKey(
-    const std::string& user_id,
-    const std::string& description,
-    const std::vector<std::string>& scopes,
-    int ttl_days
-) {
+ApiKeyResult AuthManager::createApiKey(const std::string& user_id, const std::string& description,
+                                       const std::vector<std::string>& scopes, int ttl_days) {
     // Generate API key
     std::string api_key = "cfv_" + generateSecureToken(32);
     std::string key_hash = hashToken(api_key);
     std::string key_id = generateKeyId();
 
     // Calculate expiry
-    int64_t now = getCurrentTimestamp().seconds;
+    int64_t now =
+        std::chrono::duration_cast<std::chrono::seconds>(utils::now().time_since_epoch()).count();
     int64_t expires = now + (ttl_days * 24 * 3600);
 
     // Store in database
@@ -549,9 +528,8 @@ ApiKeyResult AuthManager::createApiKey(
     )";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return {"", ""};
     }
 
@@ -577,7 +555,7 @@ ApiKeyResult AuthManager::createApiKey(
 
 std::optional<User> AuthManager::validateApiKey(const std::string& api_key) {
     // Check format
-    if (!api_key.starts_with("cfv_")) {
+    if (api_key.rfind("cfv_", 0) != 0) {
         return std::nullopt;
     }
 
@@ -590,9 +568,8 @@ std::optional<User> AuthManager::validateApiKey(const std::string& api_key) {
     )";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return std::nullopt;
     }
 
@@ -607,7 +584,9 @@ std::optional<User> AuthManager::validateApiKey(const std::string& api_key) {
         sqlite3_finalize(stmt);
 
         // Check if expired
-        int64_t now = getCurrentTimestamp().seconds;
+        int64_t now =
+            std::chrono::duration_cast<std::chrono::seconds>(utils::now().time_since_epoch())
+                .count();
         if (now > expires_at) {
             LOG_WARN("API key expired: {}", key_id);
             return std::nullopt;
@@ -634,9 +613,8 @@ bool AuthManager::revokeApiKey(const std::string& key_id) {
     std::string sql = "UPDATE api_keys SET is_active = 0 WHERE key_id = ?";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -664,9 +642,8 @@ std::vector<ApiKey> AuthManager::listApiKeys(const std::string& user_id) {
     )";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return keys;
     }
 
@@ -678,20 +655,22 @@ std::vector<ApiKey> AuthManager::listApiKeys(const std::string& user_id) {
         key.user_id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
 
         const char* desc = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-        if (desc) key.description = desc;
+        if (desc)
+            key.description = desc;
 
         const char* scopes_json = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
         if (scopes_json) {
             try {
                 key.scopes = nlohmann::json::parse(scopes_json).get<std::vector<std::string>>();
-            } catch (...) {}
+            } catch (...) {
+            }
         }
 
-        key.created_at.seconds = sqlite3_column_int64(stmt, 4);
-        key.expires_at.seconds = sqlite3_column_int64(stmt, 5);
+        key.created_at = std::chrono::system_clock::from_time_t(sqlite3_column_int64(stmt, 4));
+        key.expires_at = std::chrono::system_clock::from_time_t(sqlite3_column_int64(stmt, 5));
 
         if (sqlite3_column_type(stmt, 6) != SQLITE_NULL) {
-            key.last_used = Timestamp{sqlite3_column_int64(stmt, 6), 0};
+            key.last_used = std::chrono::system_clock::from_time_t(sqlite3_column_int64(stmt, 6));
         }
 
         key.is_active = sqlite3_column_int(stmt, 7) != 0;
@@ -707,13 +686,13 @@ void AuthManager::updateApiKeyLastUsed(const std::string& key_id) {
     std::string sql = "UPDATE api_keys SET last_used = ? WHERE key_id = ?";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return;
     }
 
-    int64_t now = getCurrentTimestamp().seconds;
+    int64_t now =
+        std::chrono::duration_cast<std::chrono::seconds>(utils::now().time_since_epoch()).count();
     sqlite3_bind_int64(stmt, 1, now);
     sqlite3_bind_text(stmt, 2, key_id.c_str(), -1, SQLITE_TRANSIENT);
 
@@ -725,17 +704,13 @@ void AuthManager::updateApiKeyLastUsed(const std::string& key_id) {
 // Password Management
 // ============================================================================
 
-bool AuthManager::changePassword(
-    const std::string& user_id,
-    const std::string& old_password,
-    const std::string& new_password
-) {
+bool AuthManager::changePassword(const std::string& user_id, const std::string& old_password,
+                                 const std::string& new_password) {
     // Get current password hash
     std::string sql = "SELECT password_hash FROM users WHERE user_id = ?";
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -768,9 +743,8 @@ bool AuthManager::changePassword(
     std::string new_hash = hashPassword(new_password);
     sql = "UPDATE users SET password_hash = ? WHERE user_id = ?";
 
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -792,9 +766,8 @@ std::string AuthManager::createPasswordResetToken(const std::string& email) {
     // Get user by email
     std::string sql = "SELECT user_id FROM users WHERE email = ?";
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return "";
     }
 
@@ -816,7 +789,8 @@ std::string AuthManager::createPasswordResetToken(const std::string& email) {
     std::string token_id = "rst_" + generateSecureToken(16);
 
     // Store in database (expires in 1 hour)
-    int64_t now = getCurrentTimestamp().seconds;
+    int64_t now =
+        std::chrono::duration_cast<std::chrono::seconds>(utils::now().time_since_epoch()).count();
     int64_t expires = now + 3600;
 
     sql = R"(
@@ -824,9 +798,8 @@ std::string AuthManager::createPasswordResetToken(const std::string& email) {
         VALUES (?, ?, ?, ?, ?)
     )";
 
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return "";
     }
 
@@ -847,10 +820,7 @@ std::string AuthManager::createPasswordResetToken(const std::string& email) {
     return "";
 }
 
-bool AuthManager::resetPassword(
-    const std::string& token,
-    const std::string& new_password
-) {
+bool AuthManager::resetPassword(const std::string& token, const std::string& new_password) {
     std::string token_hash = hashToken(token);
 
     // Get reset token record
@@ -861,9 +831,8 @@ bool AuthManager::resetPassword(
     )";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -886,7 +855,8 @@ bool AuthManager::resetPassword(
     }
 
     // Check if expired
-    int64_t now = getCurrentTimestamp().seconds;
+    int64_t now =
+        std::chrono::duration_cast<std::chrono::seconds>(utils::now().time_since_epoch()).count();
     if (now > expires_at) {
         LOG_WARN("Password reset failed: token expired");
         return false;
@@ -909,9 +879,8 @@ bool AuthManager::resetPassword(
     std::string new_hash = hashPassword(new_password);
     sql = "UPDATE users SET password_hash = ? WHERE user_id = ?";
 
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -928,9 +897,8 @@ bool AuthManager::resetPassword(
     // Mark token as used
     sql = "UPDATE password_reset_tokens SET used = 1 WHERE token_hash = ?";
 
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -997,12 +965,8 @@ std::string AuthManager::hashPassword(const std::string& password) {
 
     // Derive key using PBKDF2
     int iterations = 1 << config_.bcrypt_rounds;  // 2^bcrypt_rounds iterations
-    if (PKCS5_PBKDF2_HMAC(
-            password.c_str(), password.length(),
-            salt, sizeof(salt),
-            iterations,
-            EVP_sha256(),
-            sizeof(hash), hash) != 1) {
+    if (PKCS5_PBKDF2_HMAC(password.c_str(), password.length(), salt, sizeof(salt), iterations,
+                          EVP_sha256(), sizeof(hash), hash) != 1) {
         throw std::runtime_error("Failed to hash password");
     }
 
@@ -1025,7 +989,7 @@ std::string AuthManager::hashPassword(const std::string& password) {
 
 bool AuthManager::verifyPassword(const std::string& password, const std::string& stored_hash) {
     // Parse stored hash: $pbkdf2$rounds$salt$hash
-    if (!stored_hash.starts_with("$pbkdf2$")) {
+    if (stored_hash.rfind("$pbkdf2$", 0) != 0) {
         return false;
     }
 
@@ -1047,12 +1011,8 @@ bool AuthManager::verifyPassword(const std::string& password, const std::string&
 
     // Compute hash with same parameters
     unsigned char hash[32];
-    if (PKCS5_PBKDF2_HMAC(
-            password.c_str(), password.length(),
-            salt, sizeof(salt),
-            iterations,
-            EVP_sha256(),
-            sizeof(hash), hash) != 1) {
+    if (PKCS5_PBKDF2_HMAC(password.c_str(), password.length(), salt, sizeof(salt), iterations,
+                          EVP_sha256(), sizeof(hash), hash) != 1) {
         return false;
     }
 
@@ -1073,14 +1033,14 @@ std::string AuthManager::generateJwt(const User& user, int expiry_hours) {
     // Convert roles to JSON array
     nlohmann::json roles_json = user.roles;
 
-    return jwt::create()
+    return jwt::create<jwt::traits::nlohmann_json>()
         .set_issuer("callflowd")
-        .set_type("JWT")
-        .set_issued_at(now)
-        .set_expires_at(expiry)
+        .set_type("JWS")
+        .set_issued_at(std::chrono::system_clock::now())
+        .set_expires_at(std::chrono::system_clock::now() + std::chrono::hours(expiry_hours))
         .set_subject(user.user_id)
-        .set_payload_claim("username", jwt::claim(user.username))
-        .set_payload_claim("roles", jwt::claim(roles_json.dump()))
+        .set_payload_claim("username", user.username)
+        .set_payload_claim("roles", roles_json.dump())
         .sign(jwt::algorithm::hs256{config_.jwt_secret});
 }
 
@@ -1106,8 +1066,7 @@ std::string AuthManager::generateSecureToken(size_t length) {
 std::string AuthManager::hashToken(const std::string& token) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
 
-    SHA256(reinterpret_cast<const unsigned char*>(token.c_str()),
-           token.length(), hash);
+    SHA256(reinterpret_cast<const unsigned char*>(token.c_str()), token.length(), hash);
 
     // Encode as hex
     std::ostringstream oss;
@@ -1130,9 +1089,8 @@ bool AuthManager::usernameExists(const std::string& username) {
     std::string sql = "SELECT 1 FROM users WHERE username = ?";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return false;
     }
 
@@ -1148,13 +1106,13 @@ void AuthManager::updateLastLogin(const std::string& user_id) {
     std::string sql = "UPDATE users SET last_login = ? WHERE user_id = ?";
 
     sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(
-            static_cast<sqlite3*>(db_->getHandle()),
-            sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(static_cast<sqlite3*>(db_->getHandle()), sql.c_str(), -1, &stmt,
+                           nullptr) != SQLITE_OK) {
         return;
     }
 
-    int64_t now = getCurrentTimestamp().seconds;
+    int64_t now =
+        std::chrono::duration_cast<std::chrono::seconds>(utils::now().time_since_epoch()).count();
     sqlite3_bind_int64(stmt, 1, now);
     sqlite3_bind_text(stmt, 2, user_id.c_str(), -1, SQLITE_TRANSIENT);
 

@@ -1,6 +1,8 @@
 #include "api_server/auth_middleware.h"
-#include "common/logger.h"
+
 #include <nlohmann/json.hpp>
+
+#include "common/logger.h"
 
 namespace callflow {
 
@@ -11,8 +13,7 @@ static const char* REQUEST_USER_KEY = "_auth_user";
 // Constructor / Destructor
 // ============================================================================
 
-AuthMiddleware::AuthMiddleware(AuthManager* auth_manager)
-    : auth_manager_(auth_manager) {
+AuthMiddleware::AuthMiddleware(AuthManager* auth_manager) : auth_manager_(auth_manager) {
     if (!auth_manager_) {
         throw std::runtime_error("AuthManager cannot be null");
     }
@@ -34,11 +35,8 @@ bool AuthMiddleware::requireAuth(const httplib::Request& req, httplib::Response&
     return true;
 }
 
-bool AuthMiddleware::requireRole(
-    const httplib::Request& req,
-    httplib::Response& res,
-    const std::string& role
-) {
+bool AuthMiddleware::requireRole(const httplib::Request& req, httplib::Response& res,
+                                 const std::string& role) {
     auto user = getRequestUser(req);
     if (!user) {
         sendError(res, 401, "Authentication required");
@@ -54,12 +52,8 @@ bool AuthMiddleware::requireRole(
     return true;
 }
 
-bool AuthMiddleware::requirePermission(
-    const httplib::Request& req,
-    httplib::Response& res,
-    const std::string& resource,
-    const std::string& action
-) {
+bool AuthMiddleware::requirePermission(const httplib::Request& req, httplib::Response& res,
+                                       const std::string& resource, const std::string& action) {
     auto user = getRequestUser(req);
     if (!user) {
         sendError(res, 401, "Authentication required");
@@ -67,8 +61,7 @@ bool AuthMiddleware::requirePermission(
     }
 
     if (!auth_manager_->hasPermission(user->user_id, resource, action)) {
-        LOG_WARN("User {} lacks permission: {} on {}",
-                 user->username, action, resource);
+        LOG_WARN("User {} lacks permission: {} on {}", user->username, action, resource);
         sendError(res, 403, "Insufficient permissions");
         return false;
     }
@@ -94,7 +87,7 @@ std::optional<User> AuthMiddleware::getRequestUser(const httplib::Request& req) 
     std::optional<User> user;
 
     // Check if it's an API key (starts with "cfv_")
-    if (token->starts_with("cfv_")) {
+    if (token->rfind("cfv_", 0) == 0) {
         user = auth_manager_->validateApiKey(*token);
         if (user) {
             LOG_DEBUG("Authenticated via API key: {}", user->username);
@@ -116,12 +109,12 @@ std::optional<std::string> AuthMiddleware::extractToken(const httplib::Request& 
         std::string auth = req.get_header_value("Authorization");
 
         // Handle "Bearer <token>" format
-        if (auth.starts_with("Bearer ") && auth.length() > 7) {
+        if (auth.rfind("Bearer ", 0) == 0 && auth.length() > 7) {
             return auth.substr(7);
         }
 
         // Handle "Basic <token>" (for API keys encoded in Basic auth)
-        if (auth.starts_with("Basic ") && auth.length() > 6) {
+        if (auth.rfind("Basic ", 0) == 0 && auth.length() > 6) {
             // In a full implementation, you would decode the Base64
             // For now, we'll skip Basic auth support
         }
@@ -168,14 +161,10 @@ httplib::Server::Handler AuthMiddleware::createPreRoutingHandler() {
         std::string path = req.path;
 
         // Public endpoints that don't require authentication
-        if (path == "/api/v1/auth/login" ||
-            path == "/api/v1/auth/register" ||
-            path == "/api/v1/auth/forgot-password" ||
-            path == "/api/v1/auth/reset-password" ||
+        if (path == "/api/v1/auth/login" || path == "/api/v1/auth/register" ||
+            path == "/api/v1/auth/forgot-password" || path == "/api/v1/auth/reset-password" ||
             path == "/metrics" ||  // Prometheus endpoint
-            path == "/" ||
-            path.starts_with("/static/") ||
-            path.starts_with("/ui/")) {
+            path == "/" || path.rfind("/static/", 0) == 0 || path.rfind("/ui/", 0) == 0) {
             return httplib::Server::HandlerResponse::Unhandled;
         }
 
@@ -184,8 +173,7 @@ httplib::Server::Handler AuthMiddleware::createPreRoutingHandler() {
         auto user = getRequestUser(req);
         if (user) {
             // User is authenticated, log it
-            LOG_DEBUG("Authenticated request: {} {} (user: {})",
-                     req.method, path, user->username);
+            LOG_DEBUG("Authenticated request: {} {} (user: {})", req.method, path, user->username);
         }
 
         // Continue processing
@@ -198,10 +186,7 @@ httplib::Server::Handler AuthMiddleware::createPreRoutingHandler() {
 // ============================================================================
 
 void AuthMiddleware::sendError(httplib::Response& res, int status, const std::string& message) {
-    nlohmann::json error_json = {
-        {"error", message},
-        {"status", status}
-    };
+    nlohmann::json error_json = {{"error", message}, {"status", status}};
 
     res.status = status;
     res.set_content(error_json.dump(), "application/json");

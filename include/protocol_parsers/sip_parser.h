@@ -1,10 +1,11 @@
 #pragma once
 
-#include "common/types.h"
-#include <string>
 #include <map>
-#include <optional>
 #include <nlohmann/json.hpp>
+#include <optional>
+#include <string>
+
+#include "common/types.h"
 
 namespace callflow {
 
@@ -92,7 +93,7 @@ private:
 
     std::vector<std::string> splitLines(const std::string& text);
     std::pair<std::string, std::string> parseHeader(const std::string& line);
-    std::string trim(const std::string& str);
+    static std::string trim(const std::string& str);
 };
 
 }  // namespace callflow

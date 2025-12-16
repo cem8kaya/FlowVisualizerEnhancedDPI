@@ -1,20 +1,16 @@
 #pragma once
 
-#include <string>
+#include <fmt/core.h>
+#include <fmt/ostream.h>
+
 #include <memory>
-#include <sstream>
 #include <mutex>
+#include <sstream>
+#include <string>
 
 namespace callflow {
 
-enum class LogLevel {
-    TRACE = 0,
-    DEBUG = 1,
-    INFO = 2,
-    WARN = 3,
-    ERROR = 4,
-    FATAL = 5
-};
+enum class LogLevel { TRACE = 0, DEBUG = 1, INFO = 2, WARN = 3, ERROR = 4, FATAL = 5 };
 
 /**
  * Simple thread-safe logger
@@ -44,40 +40,38 @@ private:
 };
 
 // Helper macros for logging
-#define LOG_TRACE(msg) do { \
-    std::ostringstream oss; \
-    oss << msg; \
-    callflow::Logger::getInstance().log(callflow::LogLevel::TRACE, __FILE__, __LINE__, oss.str()); \
-} while(0)
+#define LOG_MACRO_CHOOSER(_1, _2, _3, _4, _5, _6, _7, _8, NAME, ...) NAME
 
-#define LOG_DEBUG(msg) do { \
-    std::ostringstream oss; \
-    oss << msg; \
-    callflow::Logger::getInstance().log(callflow::LogLevel::DEBUG, __FILE__, __LINE__, oss.str()); \
-} while(0)
+#define LOG_STREAM(level, msg)                                                     \
+    do {                                                                           \
+        std::ostringstream oss;                                                    \
+        oss << msg;                                                                \
+        callflow::Logger::getInstance().log(level, __FILE__, __LINE__, oss.str()); \
+    } while (0)
 
-#define LOG_INFO(msg) do { \
-    std::ostringstream oss; \
-    oss << msg; \
-    callflow::Logger::getInstance().log(callflow::LogLevel::INFO, __FILE__, __LINE__, oss.str()); \
-} while(0)
+#define LOG_FMT(level, msg, ...)                                              \
+    do {                                                                      \
+        callflow::Logger::getInstance().log(level, __FILE__, __LINE__,        \
+                                            fmt::format(msg, ##__VA_ARGS__)); \
+    } while (0)
 
-#define LOG_WARN(msg) do { \
-    std::ostringstream oss; \
-    oss << msg; \
-    callflow::Logger::getInstance().log(callflow::LogLevel::WARN, __FILE__, __LINE__, oss.str()); \
-} while(0)
-
-#define LOG_ERROR(msg) do { \
-    std::ostringstream oss; \
-    oss << msg; \
-    callflow::Logger::getInstance().log(callflow::LogLevel::ERROR, __FILE__, __LINE__, oss.str()); \
-} while(0)
-
-#define LOG_FATAL(msg) do { \
-    std::ostringstream oss; \
-    oss << msg; \
-    callflow::Logger::getInstance().log(callflow::LogLevel::FATAL, __FILE__, __LINE__, oss.str()); \
-} while(0)
+#define LOG_TRACE(...)                                                                            \
+    LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
+                      LOG_STREAM)(callflow::LogLevel::TRACE, __VA_ARGS__)
+#define LOG_DEBUG(...)                                                                            \
+    LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
+                      LOG_STREAM)(callflow::LogLevel::DEBUG, __VA_ARGS__)
+#define LOG_INFO(...)                                                                             \
+    LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
+                      LOG_STREAM)(callflow::LogLevel::INFO, __VA_ARGS__)
+#define LOG_WARN(...)                                                                             \
+    LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
+                      LOG_STREAM)(callflow::LogLevel::WARN, __VA_ARGS__)
+#define LOG_ERROR(...)                                                                            \
+    LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
+                      LOG_STREAM)(callflow::LogLevel::ERROR, __VA_ARGS__)
+#define LOG_FATAL(...)                                                                            \
+    LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
+                      LOG_STREAM)(callflow::LogLevel::FATAL, __VA_ARGS__)
 
 }  // namespace callflow

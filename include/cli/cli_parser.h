@@ -1,8 +1,10 @@
 #pragma once
 
-#include "common/types.h"
 #include <string>
 #include <vector>
+
+#include "common/logger.h"
+#include "common/types.h"
 
 namespace callflow {
 

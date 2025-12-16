@@ -46,9 +46,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and group
-RUN groupadd -r -g 1000 callflowd && \
-    useradd -r -u 1000 -g callflowd -m -d /home/callflowd -s /bin/bash callflowd
-
+RUN groupadd -r -g 1000 callflowd 2>/dev/null || groupmod -n callflowd $(getent group 1000 | cut -d: -f1) && \
+    useradd -r -u 1000 -g callflowd -m -d /home/callflowd -s /bin/bash callflowd 2>/dev/null || \
+    usermod -l callflowd -d /home/callflowd -m $(getent passwd 1000 | cut -d: -f1)
+    
 WORKDIR /app
 
 # Copy binary and static files from builder

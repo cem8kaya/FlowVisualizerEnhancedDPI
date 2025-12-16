@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <nlohmann/json.hpp>  // ADD THIS LINE
 #include <mutex>
 #include <sqlite3.h>
 

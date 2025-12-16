@@ -2,6 +2,7 @@
 
 #include "common/types.h"
 #include <string>
+#include <nlohmann/json.hpp>  // ADD THIS LINE
 
 namespace callflow {
 

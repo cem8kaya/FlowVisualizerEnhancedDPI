@@ -1,8 +1,9 @@
 #include "api_server/websocket_handler.h"
-#include "common/logger.h"
-#include "common/utils.h"
 
 #include <chrono>
+
+#include "common/logger.h"
+#include "common/utils.h"
 
 namespace callflow {
 
@@ -44,8 +45,7 @@ void WebSocketHandler::stop() {
     LOG_INFO("WebSocket handler stopped");
 }
 
-void WebSocketHandler::broadcastEvent(const JobId& job_id,
-                                      const std::string& event_type,
+void WebSocketHandler::broadcastEvent(const JobId& job_id, const std::string& event_type,
                                       const nlohmann::json& data) {
     if (!running_.load()) {
         return;
@@ -59,7 +59,7 @@ void WebSocketHandler::broadcastEvent(const JobId& job_id,
 
     // Add timestamp to data
     nlohmann::json enriched_data = data;
-    enriched_data["timestamp"] = utils::formatTimestamp(event.timestamp);
+    enriched_data["timestamp"] = utils::timestampToIso8601(event.timestamp);
 
     // Store in event queue (with max size limit)
     {
@@ -133,8 +133,7 @@ void WebSocketHandler::heartbeatThread() {
 
     while (running_.load()) {
         // Sleep for heartbeat interval
-        std::this_thread::sleep_for(
-            std::chrono::seconds(config_.ws_heartbeat_interval_sec));
+        std::this_thread::sleep_for(std::chrono::seconds(config_.ws_heartbeat_interval_sec));
 
         if (!running_.load()) {
             break;

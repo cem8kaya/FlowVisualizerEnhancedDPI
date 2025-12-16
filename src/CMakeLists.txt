@@ -11,6 +11,7 @@ target_include_directories(callflow_common PUBLIC
 target_link_libraries(callflow_common PUBLIC
     nlohmann_json::nlohmann_json
     Threads::Threads
+    fmt::fmt
 )
 
 # PCAP ingestion library
@@ -165,6 +166,7 @@ endif()
 
 if(BUILD_API_SERVER)
     target_link_libraries(callflowd PRIVATE api_server)
+    target_compile_definitions(callflowd PRIVATE BUILD_API_SERVER)
 endif()
 
 if(SQLite3_FOUND)

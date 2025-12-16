@@ -1,14 +1,16 @@
 #pragma once
 
-#include "common/types.h"
-#include <string>
-#include <memory>
-#include <unordered_map>
-#include <deque>
-#include <mutex>
-#include <set>
-#include <thread>
 #include <atomic>
+#include <deque>
+#include <memory>
+#include <mutex>
+#include <nlohmann/json.hpp>
+#include <set>
+#include <string>
+#include <thread>
+#include <unordered_map>
+
+#include "common/types.h"
 
 namespace callflow {
 
@@ -55,7 +57,7 @@ public:
      * @param data Event data
      */
     void broadcastEvent(const JobId& job_id, const std::string& event_type,
-                       const nlohmann::json& data);
+                        const nlohmann::json& data);
 
     /**
      * Get connection count for a job

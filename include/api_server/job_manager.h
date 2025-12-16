@@ -1,15 +1,17 @@
 #pragma once
 
-#include "common/types.h"
-#include "common/logger.h"
-#include <memory>
-#include <unordered_map>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
-#include <thread>
-#include <functional>
 #include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <nlohmann/json.hpp>
+#include <queue>
+#include <thread>
+#include <unordered_map>
+
+#include "common/logger.h"
+#include "common/types.h"
 
 namespace callflow {
 
@@ -77,16 +79,12 @@ public:
     /**
      * Set progress callback
      */
-    void setProgressCallback(ProgressCallback callback) {
-        progress_callback_ = callback;
-    }
+    void setProgressCallback(ProgressCallback callback) { progress_callback_ = callback; }
 
     /**
      * Set event callback for WebSocket streaming
      */
-    void setEventCallback(EventCallback callback) {
-        event_callback_ = callback;
-    }
+    void setEventCallback(EventCallback callback) { event_callback_ = callback; }
 
     /**
      * Get session IDs for a job

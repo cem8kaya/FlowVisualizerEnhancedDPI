@@ -1,20 +1,23 @@
-#include "persistence/database.h"
+#include <fstream>
+#include <iostream>
+
 #include "api_server/auth_manager.h"
 #include "common/logger.h"
-#include <iostream>
-#include <fstream>
+#include "persistence/database.h"
 
 using namespace callflow;
 
 void printUsage(const char* program_name) {
-    std::cerr << "Usage: " << program_name << " <db_path> <username> <password> [email]" << std::endl;
+    std::cerr << "Usage: " << program_name << " <db_path> <username> <password> [email]"
+              << std::endl;
     std::cerr << std::endl;
     std::cerr << "Creates an admin user for the CallFlow Visualizer." << std::endl;
     std::cerr << std::endl;
     std::cerr << "Arguments:" << std::endl;
     std::cerr << "  db_path   Path to SQLite database file" << std::endl;
     std::cerr << "  username  Admin username" << std::endl;
-    std::cerr << "  password  Admin password (min 8 chars, must meet policy requirements)" << std::endl;
+    std::cerr << "  password  Admin password (min 8 chars, must meet policy requirements)"
+              << std::endl;
     std::cerr << "  email     Admin email address (optional)" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Password Policy:" << std::endl;
@@ -24,7 +27,8 @@ void printUsage(const char* program_name) {
     std::cerr << "  - At least one digit" << std::endl;
     std::cerr << std::endl;
     std::cerr << "Example:" << std::endl;
-    std::cerr << "  " << program_name << " ./callflowd.db admin SecurePass123! admin@example.com" << std::endl;
+    std::cerr << "  " << program_name << " ./callflowd.db admin SecurePass123! admin@example.com"
+              << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -40,7 +44,7 @@ int main(int argc, char* argv[]) {
     std::string email = (argc == 5) ? argv[4] : "";
 
     // Initialize logger
-    initLogger(LogLevel::INFO, true, false, "");
+    Logger::getInstance().setLevel(LogLevel::INFO);
 
     std::cout << "==================================================" << std::endl;
     std::cout << "  CallFlow Visualizer - Admin User Creator" << std::endl;
@@ -72,13 +76,11 @@ int main(int argc, char* argv[]) {
     AuthConfig auth_config;
     auth_config.jwt_secret = "admin_tool_temp_secret";  // Not used for user creation
     auth_config.bcrypt_rounds = 12;
-    auth_config.password_policy = {
-        .min_length = 8,
-        .require_uppercase = true,
-        .require_lowercase = true,
-        .require_digit = true,
-        .require_special = false
-    };
+    auth_config.password_policy = {.min_length = 8,
+                                   .require_uppercase = true,
+                                   .require_lowercase = true,
+                                   .require_digit = true,
+                                   .require_special = false};
 
     AuthManager auth(&db, auth_config);
 
@@ -93,10 +95,15 @@ int main(int argc, char* argv[]) {
     if (existing_user) {
         std::cerr << "ERROR: Username '" << username << "' already exists" << std::endl;
         std::cerr << "       User ID: " << existing_user->user_id << std::endl;
-        std::cerr << "       Created: " << existing_user->created_at.seconds << std::endl;
+        std::cerr << "       Created: "
+                  << std::chrono::duration_cast<std::chrono::seconds>(
+                         existing_user->created_at.time_since_epoch())
+                         .count()
+                  << std::endl;
         std::cerr << "       Roles: ";
         for (size_t i = 0; i < existing_user->roles.size(); ++i) {
-            if (i > 0) std::cerr << ", ";
+            if (i > 0)
+                std::cerr << ", ";
             std::cerr << existing_user->roles[i];
         }
         std::cerr << std::endl;
@@ -121,12 +128,9 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "  Roles:    admin, user" << std::endl;
 
-    auto user = auth.createUser(
-        username,
-        password,
-        email,
-        {"admin", "user"}  // Admin role + user role
-    );
+    auto user =
+        auth.createUser(username, password, email, {"admin", "user"}  // Admin role + user role
+        );
 
     if (!user) {
         std::cerr << std::endl;
@@ -148,17 +152,23 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "  Roles:     ";
     for (size_t i = 0; i < user->roles.size(); ++i) {
-        if (i > 0) std::cout << ", ";
+        if (i > 0)
+            std::cout << ", ";
         std::cout << user->roles[i];
     }
     std::cout << std::endl;
     std::cout << "  Active:    " << (user->is_active ? "Yes" : "No") << std::endl;
-    std::cout << "  Created:   " << user->created_at.seconds << std::endl;
+    std::cout << "  Created:   "
+              << std::chrono::duration_cast<std::chrono::seconds>(
+                     user->created_at.time_since_epoch())
+                     .count()
+              << std::endl;
     std::cout << std::endl;
     std::cout << "You can now login with these credentials:" << std::endl;
     std::cout << "  curl -X POST http://localhost:8080/api/v1/auth/login \\" << std::endl;
     std::cout << "    -H \"Content-Type: application/json\" \\" << std::endl;
-    std::cout << "    -d '{\"username\":\"" << username << "\",\"password\":\"YOUR_PASSWORD\"}'" << std::endl;
+    std::cout << "    -d '{\"username\":\"" << username << "\",\"password\":\"YOUR_PASSWORD\"}'"
+              << std::endl;
     std::cout << std::endl;
 
     return 0;

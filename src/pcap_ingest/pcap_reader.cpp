@@ -75,7 +75,8 @@ bool PcapReader::readNextPacket(struct pcap_pkthdr& header, const uint8_t*& data
         return false;
     }
 
-    int result = pcap_next_ex(pcap_handle_, &header, &data);
+    pcap_pkthdr* header_ptr = &header;
+int result = pcap_next_ex(pcap_handle_, &header_ptr, &data);
 
     if (result == 1) {
         // Packet read successfully
