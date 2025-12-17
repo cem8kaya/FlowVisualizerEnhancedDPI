@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
+#include <cstdint>
 #include <optional>
+#include <string>
 
 namespace callflow {
 
@@ -10,13 +11,13 @@ namespace callflow {
  */
 enum class PcapFormat {
     UNKNOWN = 0,
-    PCAP_CLASSIC,         // Classic libpcap format (.pcap)
-    PCAPNG,               // PCAPNG format (.pcapng)
-    PCAP_GZIP,            // Gzip compressed PCAP (.pcap.gz)
-    PCAPNG_GZIP,          // Gzip compressed PCAPNG (.pcapng.gz)
-    ERF,                  // Endace ERF format
-    SNOOP,                // Sun Snoop format
-    NTAR                  // Network Trace Archival format
+    PCAP_CLASSIC,  // Classic libpcap format (.pcap)
+    PCAPNG,        // PCAPNG format (.pcapng)
+    PCAP_GZIP,     // Gzip compressed PCAP (.pcap.gz)
+    PCAPNG_GZIP,   // Gzip compressed PCAPNG (.pcapng.gz)
+    ERF,           // Endace ERF format
+    SNOOP,         // Sun Snoop format
+    NTAR           // Network Trace Archival format
 };
 
 /**
@@ -34,9 +35,7 @@ struct FormatDetectionResult {
     std::optional<uint32_t> snaplen;
     std::optional<uint32_t> linktype;
 
-    bool isValid() const {
-        return format != PcapFormat::UNKNOWN && !error_message.has_value();
-    }
+    bool isValid() const { return format != PcapFormat::UNKNOWN && !error_message.has_value(); }
 };
 
 /**

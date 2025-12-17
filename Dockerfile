@@ -8,9 +8,11 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
+
     libpcap-dev \
     libsqlite3-dev \
     libssl-dev \
+    libndpi-dev \
     pkg-config \
     wget \
     && rm -rf /var/lib/apt/lists/*
@@ -26,11 +28,11 @@ COPY ui/ ./ui/
 # Build
 RUN mkdir build && cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release \
-          -DBUILD_TESTS=OFF \
-          -DBUILD_API_SERVER=ON \
-          -DCMAKE_CXX_FLAGS="-O3 -march=native -flto" \
-          .. && \
-    make -j$(nproc) && \
+    -DBUILD_TESTS=OFF \
+    -DBUILD_API_SERVER=ON \
+    -DCMAKE_CXX_FLAGS="-O3 -march=native -flto" \
+    .. && \
+    make -j2 VERBOSE=1 && \
     strip src/callflowd
 
 # Runtime stage
@@ -49,7 +51,7 @@ RUN apt-get update && apt-get install -y \
 RUN groupadd -r -g 1000 callflowd 2>/dev/null || groupmod -n callflowd $(getent group 1000 | cut -d: -f1) && \
     useradd -r -u 1000 -g callflowd -m -d /home/callflowd -s /bin/bash callflowd 2>/dev/null || \
     usermod -l callflowd -d /home/callflowd -m $(getent passwd 1000 | cut -d: -f1)
-    
+
 WORKDIR /app
 
 # Copy binary and static files from builder
@@ -88,9 +90,9 @@ ENV API_PORT=8080 \
 
 # Add labels for metadata
 LABEL maintainer="Callflow Visualizer Team" \
-      version="1.0.0-m5" \
-      description="Production-ready nDPI Callflow Visualizer with authentication, rate limiting, and database persistence" \
-      org.opencontainers.image.source="https://github.com/cem8kaya/FlowVisualizerEnhancedDPI"
+    version="1.0.0-m5" \
+    description="Production-ready nDPI Callflow Visualizer with authentication, rate limiting, and database persistence" \
+    org.opencontainers.image.source="https://github.com/cem8kaya/FlowVisualizerEnhancedDPI"
 
 # Run the application
 CMD ["./callflowd", "--api-server", "--config", "/app/config.json"]
