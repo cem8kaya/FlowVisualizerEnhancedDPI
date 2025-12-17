@@ -60,11 +60,24 @@ target_link_libraries(flow_manager PUBLIC
     callflow_common
 )
 
+# Transport layer library
+add_library(transport STATIC
+    transport/sctp_reassembler.cpp
+    transport/sctp_parser.cpp
+)
+target_include_directories(transport PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(transport PUBLIC
+    callflow_common
+)
+
 # Protocol parsers library
 add_library(protocol_parsers STATIC
     protocol_parsers/sip_parser.cpp
     protocol_parsers/rtp_parser.cpp
     protocol_parsers/gtp_parser.cpp
+    protocol_parsers/gtpv1_parser.cpp
     protocol_parsers/diameter_parser.cpp
     protocol_parsers/http2_parser.cpp
 )
@@ -73,6 +86,7 @@ target_include_directories(protocol_parsers PUBLIC
 )
 target_link_libraries(protocol_parsers PUBLIC
     callflow_common
+    transport
 )
 
 # Event extractor library
