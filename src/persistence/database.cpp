@@ -1,8 +1,10 @@
 #include "persistence/database.h"
-#include "common/logger.h"
+
 #include <chrono>
-#include <sstream>
 #include <nlohmann/json.hpp>
+#include <sstream>
+
+#include "common/logger.h"
 
 namespace callflow {
 
@@ -125,9 +127,7 @@ CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_hash ON password_reset_toke
 // Constructor / Destructor
 // ============================================================================
 
-DatabaseManager::DatabaseManager(const DatabaseConfig& config)
-    : config_(config), db_(nullptr) {
-}
+DatabaseManager::DatabaseManager(const DatabaseConfig& config) : config_(config), db_(nullptr) {}
 
 DatabaseManager::~DatabaseManager() {
     close();
@@ -198,7 +198,8 @@ void DatabaseManager::close() {
 bool DatabaseManager::insertJob(const JobInfo& job) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return false;
+    if (!db_)
+        return false;
 
     const char* sql = R"(
         INSERT INTO jobs (
@@ -241,7 +242,8 @@ bool DatabaseManager::insertJob(const JobInfo& job) {
 bool DatabaseManager::updateJob(const std::string& job_id, const JobInfo& job) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return false;
+    if (!db_)
+        return false;
 
     const char* sql = R"(
         UPDATE jobs SET
@@ -280,7 +282,8 @@ bool DatabaseManager::updateJob(const std::string& job_id, const JobInfo& job) {
 std::optional<JobInfo> DatabaseManager::getJob(const std::string& job_id) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return std::nullopt;
+    if (!db_)
+        return std::nullopt;
 
     const char* sql = R"(
         SELECT job_id, input_file, output_file, status, progress,
@@ -313,6 +316,7 @@ std::optional<JobInfo> DatabaseManager::getJob(const std::string& job_id) {
     job.completed_at = unixToTimestamp(sqlite3_column_int64(stmt, 7));
     job.total_packets = sqlite3_column_int64(stmt, 8);
     job.total_bytes = sqlite3_column_int64(stmt, 9);
+    job.session_count = sqlite3_column_int(stmt, 10);
     const char* error_msg = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 11));
     if (error_msg) {
         job.error_message = error_msg;
@@ -326,7 +330,8 @@ std::vector<JobInfo> DatabaseManager::getAllJobs(const std::string& status_filte
     std::lock_guard<std::mutex> lock(db_mutex_);
 
     std::vector<JobInfo> jobs;
-    if (!db_) return jobs;
+    if (!db_)
+        return jobs;
 
     std::string sql = R"(
         SELECT job_id, input_file, output_file, status, progress,
@@ -361,6 +366,7 @@ std::vector<JobInfo> DatabaseManager::getAllJobs(const std::string& status_filte
         job.completed_at = unixToTimestamp(sqlite3_column_int64(stmt, 7));
         job.total_packets = sqlite3_column_int64(stmt, 8);
         job.total_bytes = sqlite3_column_int64(stmt, 9);
+        job.session_count = sqlite3_column_int(stmt, 10);
         const char* error_msg = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 11));
         if (error_msg) {
             job.error_message = error_msg;
@@ -375,7 +381,8 @@ std::vector<JobInfo> DatabaseManager::getAllJobs(const std::string& status_filte
 bool DatabaseManager::deleteJob(const std::string& job_id) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return false;
+    if (!db_)
+        return false;
 
     const char* sql = "DELETE FROM jobs WHERE job_id = ?";
 
@@ -401,7 +408,8 @@ bool DatabaseManager::deleteJob(const std::string& job_id) {
 int DatabaseManager::deleteOldJobs(int retention_days) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return 0;
+    if (!db_)
+        return 0;
 
     auto now = std::chrono::system_clock::now();
     auto cutoff = now - std::chrono::hours(24 * retention_days);
@@ -436,7 +444,8 @@ int DatabaseManager::deleteOldJobs(int retention_days) {
 bool DatabaseManager::insertSession(const SessionRecord& session) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return false;
+    if (!db_)
+        return false;
 
     const char* sql = R"(
         INSERT INTO sessions (
@@ -478,7 +487,8 @@ bool DatabaseManager::insertSession(const SessionRecord& session) {
 bool DatabaseManager::updateSession(const std::string& session_id, const SessionRecord& session) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return false;
+    if (!db_)
+        return false;
 
     const char* sql = R"(
         UPDATE sessions SET
@@ -512,7 +522,8 @@ bool DatabaseManager::updateSession(const std::string& session_id, const Session
 std::optional<SessionRecord> DatabaseManager::getSession(const std::string& session_id) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return std::nullopt;
+    if (!db_)
+        return std::nullopt;
 
     const char* sql = R"(
         SELECT session_id, job_id, session_type, session_key,
@@ -546,8 +557,10 @@ std::optional<SessionRecord> DatabaseManager::getSession(const std::string& sess
     session.byte_count = sqlite3_column_int64(stmt, 8);
     const char* ips = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 9));
     const char* meta = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 10));
-    if (ips) session.participant_ips = ips;
-    if (meta) session.metadata = meta;
+    if (ips)
+        session.participant_ips = ips;
+    if (meta)
+        session.metadata = meta;
 
     finalizeStatement(stmt);
     return session;
@@ -557,7 +570,8 @@ std::vector<SessionRecord> DatabaseManager::getSessions(const SessionFilter& fil
     std::lock_guard<std::mutex> lock(db_mutex_);
 
     std::vector<SessionRecord> sessions;
-    if (!db_) return sessions;
+    if (!db_)
+        return sessions;
 
     std::vector<std::string> params;
     std::string where_clause = buildSessionWhereClause(filter, params);
@@ -601,8 +615,10 @@ std::vector<SessionRecord> DatabaseManager::getSessions(const SessionFilter& fil
         session.byte_count = sqlite3_column_int64(stmt, 8);
         const char* ips = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 9));
         const char* meta = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 10));
-        if (ips) session.participant_ips = ips;
-        if (meta) session.metadata = meta;
+        if (ips)
+            session.participant_ips = ips;
+        if (meta)
+            session.metadata = meta;
         sessions.push_back(session);
     }
 
@@ -613,7 +629,8 @@ std::vector<SessionRecord> DatabaseManager::getSessions(const SessionFilter& fil
 int DatabaseManager::getSessionCount(const SessionFilter& filter) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return 0;
+    if (!db_)
+        return 0;
 
     std::vector<std::string> params;
     std::string where_clause = buildSessionWhereClause(filter, params);
@@ -638,12 +655,9 @@ int DatabaseManager::getSessionCount(const SessionFilter& filter) {
     return count;
 }
 
-std::vector<SessionRecord> DatabaseManager::getSessionsByJob(
-    const std::string& job_id,
-    int page,
-    int limit,
-    const std::string& protocol_filter) {
-
+std::vector<SessionRecord> DatabaseManager::getSessionsByJob(const std::string& job_id, int page,
+                                                             int limit,
+                                                             const std::string& protocol_filter) {
     SessionFilter filter;
     filter.job_id = job_id;
     if (!protocol_filter.empty()) {
@@ -662,7 +676,8 @@ std::vector<SessionRecord> DatabaseManager::getSessionsByJob(
 bool DatabaseManager::insertEvent(EventRecord& event) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return false;
+    if (!db_)
+        return false;
 
     const char* sql = R"(
         INSERT INTO events (
@@ -706,7 +721,8 @@ std::vector<EventRecord> DatabaseManager::getEventsBySession(const std::string& 
     std::lock_guard<std::mutex> lock(db_mutex_);
 
     std::vector<EventRecord> events;
-    if (!db_) return events;
+    if (!db_)
+        return events;
 
     const char* sql = R"(
         SELECT event_id, session_id, timestamp, event_type, protocol,
@@ -734,8 +750,10 @@ std::vector<EventRecord> DatabaseManager::getEventsBySession(const std::string& 
         event.dst_port = sqlite3_column_int(stmt, 8);
         const char* msg_type = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 9));
         const char* payload = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 10));
-        if (msg_type) event.message_type = msg_type;
-        if (payload) event.payload = payload;
+        if (msg_type)
+            event.message_type = msg_type;
+        if (payload)
+            event.payload = payload;
         events.push_back(event);
     }
 
@@ -746,7 +764,8 @@ std::vector<EventRecord> DatabaseManager::getEventsBySession(const std::string& 
 int DatabaseManager::getEventCount(const std::string& session_id) {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return 0;
+    if (!db_)
+        return 0;
 
     const char* sql = "SELECT COUNT(*) FROM events WHERE session_id = ?";
 
@@ -771,7 +790,8 @@ int DatabaseManager::getEventCount(const std::string& session_id) {
 // ============================================================================
 
 bool DatabaseManager::execute(const std::string& sql) {
-    if (!db_) return false;
+    if (!db_)
+        return false;
 
     char* err_msg = nullptr;
     int rc = sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err_msg);
@@ -828,7 +848,8 @@ nlohmann::json DatabaseManager::getStatistics() {
 bool DatabaseManager::vacuum() {
     std::lock_guard<std::mutex> lock(db_mutex_);
 
-    if (!db_) return false;
+    if (!db_)
+        return false;
 
     LOG_INFO("Running VACUUM on database...");
     return execute("VACUUM");
@@ -862,10 +883,8 @@ Timestamp DatabaseManager::unixToTimestamp(int64_t unix_ms) {
     return Timestamp(std::chrono::milliseconds(unix_ms));
 }
 
-std::string DatabaseManager::buildSessionWhereClause(
-    const SessionFilter& filter,
-    std::vector<std::string>& params) {
-
+std::string DatabaseManager::buildSessionWhereClause(const SessionFilter& filter,
+                                                     std::vector<std::string>& params) {
     std::vector<std::string> conditions;
 
     if (filter.job_id) {
@@ -894,7 +913,8 @@ std::string DatabaseManager::buildSessionWhereClause(
 
     std::ostringstream oss;
     for (size_t i = 0; i < conditions.size(); ++i) {
-        if (i > 0) oss << " AND ";
+        if (i > 0)
+            oss << " AND ";
         oss << conditions[i];
     }
 

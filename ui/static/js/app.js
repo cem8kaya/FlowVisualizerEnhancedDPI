@@ -195,8 +195,8 @@ const jobsTable = {
 
     async loadJobs() {
         try {
-            const jobs = await app.getJobs(this.statusFilter);
-            this.currentJobs = jobs;
+            const response = await app.getJobs(this.statusFilter);
+            this.currentJobs = response.jobs || [];
             this.render();
         } catch (error) {
             console.error('Failed to load jobs:', error);

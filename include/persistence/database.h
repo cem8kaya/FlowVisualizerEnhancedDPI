@@ -1,25 +1,21 @@
 #pragma once
 
-#include "common/types.h"
+#include <sqlite3.h>
+
+#include <mutex>
+#include <nlohmann/json.hpp>  // ADD THIS LINE
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
-#include <nlohmann/json.hpp>  // ADD THIS LINE
-#include <mutex>
-#include <sqlite3.h>
+
+#include "common/types.h"
 
 namespace callflow {
 
 /**
  * Database configuration
  */
-struct DatabaseConfig {
-    bool enabled = true;
-    std::string path = "./callflowd.db";
-    int retention_days = 7;
-    bool auto_vacuum = true;
-    int busy_timeout_ms = 5000;
-};
+// DatabaseConfig is defined in common/types.h
 
 /**
  * Session record for database storage
@@ -27,24 +23,24 @@ struct DatabaseConfig {
 struct SessionRecord {
     SessionId session_id;
     JobId job_id;
-    std::string session_type;      // SIP, DIAMETER, GTP, HTTP2
-    std::string session_key;       // Call-ID, Session-ID, TEID, etc.
-    int64_t start_time;            // Unix timestamp (milliseconds)
-    int64_t end_time = 0;          // Unix timestamp (milliseconds)
+    std::string session_type;  // SIP, DIAMETER, GTP, HTTP2
+    std::string session_key;   // Call-ID, Session-ID, TEID, etc.
+    int64_t start_time;        // Unix timestamp (milliseconds)
+    int64_t end_time = 0;      // Unix timestamp (milliseconds)
     int64_t duration_ms = 0;
     uint64_t packet_count = 0;
     uint64_t byte_count = 0;
     std::string participant_ips;  // JSON array string
-    std::string metadata;          // JSON object string
+    std::string metadata;         // JSON object string
 };
 
 /**
  * Event record for database storage
  */
 struct EventRecord {
-    int64_t event_id = 0;          // Auto-increment
+    int64_t event_id = 0;  // Auto-increment
     SessionId session_id;
-    int64_t timestamp;             // Unix timestamp (milliseconds)
+    int64_t timestamp;  // Unix timestamp (milliseconds)
     std::string event_type;
     std::string protocol;
     std::string src_ip;
@@ -52,7 +48,7 @@ struct EventRecord {
     uint16_t src_port = 0;
     uint16_t dst_port = 0;
     std::string message_type;
-    std::string payload;           // JSON object string
+    std::string payload;  // JSON object string
 };
 
 /**
@@ -192,12 +188,9 @@ public:
      * @param protocol_filter Protocol type filter (empty for all)
      * @return List of sessions
      */
-    std::vector<SessionRecord> getSessionsByJob(
-        const std::string& job_id,
-        int page = 1,
-        int limit = 20,
-        const std::string& protocol_filter = ""
-    );
+    std::vector<SessionRecord> getSessionsByJob(const std::string& job_id, int page = 1,
+                                                int limit = 20,
+                                                const std::string& protocol_filter = "");
 
     // ========================================================================
     // Event Operations

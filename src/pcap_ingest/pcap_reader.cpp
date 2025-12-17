@@ -75,11 +75,12 @@ bool PcapReader::readNextPacket(struct pcap_pkthdr& header, const uint8_t*& data
         return false;
     }
 
-    pcap_pkthdr* header_ptr = &header;
-int result = pcap_next_ex(pcap_handle_, &header_ptr, &data);
+    pcap_pkthdr* header_ptr = nullptr;
+    int result = pcap_next_ex(pcap_handle_, &header_ptr, &data);
 
     if (result == 1) {
         // Packet read successfully
+        header = *header_ptr;  // Copy the header data
         stats_.packets_processed++;
         stats_.bytes_processed += header.caplen;
 

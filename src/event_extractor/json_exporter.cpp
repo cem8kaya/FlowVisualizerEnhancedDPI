@@ -1,7 +1,9 @@
 #include "event_extractor/json_exporter.h"
+
+#include <fstream>
+
 #include "common/logger.h"
 #include "common/utils.h"
-#include <fstream>
 
 namespace callflow {
 
@@ -11,7 +13,7 @@ std::string JsonExporter::exportSession(const Session& session, bool include_eve
 }
 
 std::string JsonExporter::exportSessions(const std::vector<std::shared_ptr<Session>>& sessions,
-                                        bool include_events) {
+                                         bool include_events) {
     nlohmann::json j = nlohmann::json::array();
 
     for (const auto& session : sessions) {
@@ -29,8 +31,8 @@ std::string JsonExporter::exportSessionSummary(const Session& session) {
 }
 
 bool JsonExporter::exportToFile(const std::string& filename,
-                               const std::vector<std::shared_ptr<Session>>& sessions,
-                               bool pretty_print) {
+                                const std::vector<std::shared_ptr<Session>>& sessions,
+                                bool pretty_print) {
     try {
         nlohmann::json j = nlohmann::json::array();
 
@@ -46,10 +48,13 @@ bool JsonExporter::exportToFile(const std::string& filename,
             return false;
         }
 
+        nlohmann::json root;
+        root["sessions"] = j;
+
         if (pretty_print) {
-            file << j.dump(2);
+            file << root.dump(2);
         } else {
-            file << j.dump();
+            file << root.dump();
         }
 
         file.close();
@@ -64,8 +69,8 @@ bool JsonExporter::exportToFile(const std::string& filename,
 }
 
 std::string JsonExporter::exportJobResult(const JobId& job_id,
-                                         const std::vector<std::shared_ptr<Session>>& sessions,
-                                         const nlohmann::json& metadata) {
+                                          const std::vector<std::shared_ptr<Session>>& sessions,
+                                          const nlohmann::json& metadata) {
     nlohmann::json result;
 
     result["job_id"] = job_id;
@@ -84,11 +89,10 @@ std::string JsonExporter::exportJobResult(const JobId& job_id,
 
     result["summary"] = {
         {"total_sessions", sessions.size()},
-        {"total_events", std::accumulate(sessions.begin(), sessions.end(), 0ULL,
-                                        [](size_t sum, const auto& s) {
-                                            return sum + (s ? s->events.size() : 0);
-                                        })}
-    };
+        {"total_events",
+         std::accumulate(sessions.begin(), sessions.end(), 0ULL, [](size_t sum, const auto& s) {
+             return sum + (s ? s->events.size() : 0);
+         })}};
 
     return formatJson(result, true);
 }

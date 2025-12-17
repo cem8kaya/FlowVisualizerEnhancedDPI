@@ -105,7 +105,7 @@ const uploader = {
 
             // Upload complete
             xhr.addEventListener('load', () => {
-                if (xhr.status === 200) {
+                if (xhr.status >= 200 && xhr.status < 300) {
                     const response = JSON.parse(xhr.responseText);
                     this.onUploadSuccess(response);
                 } else {
@@ -166,9 +166,9 @@ const uploader = {
         // If job_id is returned, optionally navigate to it
         if (response.job_id) {
             // Connect to WebSocket for real-time updates
-            if (typeof wsHandler !== 'undefined') {
-                wsHandler.connect(response.job_id);
-            }
+            // if (typeof wsHandler !== 'undefined') {
+            //     wsHandler.connect(response.job_id);
+            // }
         }
     },
 

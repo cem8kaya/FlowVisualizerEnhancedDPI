@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   callflowd:
     build:
@@ -8,14 +6,15 @@ services:
     image: callflowd:latest
     container_name: callflowd-server
     ports:
-      - "8080:8080"  # REST API
-      - "8081:8081"  # WebSocket
+      - "8080:8080" # REST API
+      - "8081:8081" # WebSocket
     volumes:
-      - ./data:/app/data          # PCAP uploads
-      - ./output:/app/output      # JSON outputs
-      - ./db:/app/db              # SQLite database
-      - ./logs:/app/logs          # Application logs
-      - ./config.json:/app/config.json:ro  # Configuration (read-only)
+      - ./data:/app/data # PCAP uploads
+      - ./output:/app/output # JSON outputs
+      - ./db:/app/db # SQLite database
+      - ./logs:/app/logs # Application logs
+      - ./ui/static:/app/ui/static # Static files (for hot reloading)
+      - ./config.json:/app/config.json:ro # Configuration (read-only)
       # Uncomment for TLS/HTTPS:
       # - ./certs:/app/certs:ro
     environment:
@@ -40,7 +39,7 @@ services:
       # - TLS_KEY_FILE=/app/certs/server.key
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -74,8 +73,8 @@ services:
     networks:
       - callflowd-net
     # Only start if you have certs configured
-    profiles:
-      - with-proxy
+    # profiles:
+    #   - with-proxy
 
 networks:
   callflowd-net:

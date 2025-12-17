@@ -1,0 +1,123 @@
+{
+  "server": {
+    "bind_address": "0.0.0.0",
+    "port": 8080,
+    "workers": 4,
+    "max_upload_size_mb": 10240,
+    "websocket_port": 8081
+  },
+  "processing": {
+    "worker_threads": 8,
+    "packet_queue_size": 10000,
+    "flow_timeout_sec": 300
+  },
+  "storage": {
+    "upload_dir": "/tmp/callflow-uploads",
+    "output_dir": "/tmp/callflow-results",
+    "retention_hours": 24
+  },
+  "database": {
+    "enabled": true,
+    "path": "/app/db/callflowd.db",
+    "retention_days": 7,
+    "auto_vacuum": true,
+    "journal_mode": "WAL"
+  },
+  "ndpi": {
+    "enable": true,
+    "protocols": [
+      "SIP",
+      "RTP",
+      "HTTP",
+      "HTTP2",
+      "DNS",
+      "TLS",
+      "GTP",
+      "DIAMETER"
+    ],
+    "flow_cache": {
+      "enabled": true,
+      "max_entries": 100000,
+      "eviction_policy": "LRU"
+    }
+  },
+  "auth": {
+    "enabled": true,
+    "jwt_secret": "CHANGE_THIS_SECRET_IN_PRODUCTION_USE_ENV_VAR",
+    "jwt_expiry_hours": 24,
+    "refresh_token_expiry_days": 30,
+    "bcrypt_rounds": 12,
+    "require_email_verification": false,
+    "allow_registration": true,
+    "default_roles": ["user"],
+    "session_timeout_hours": 168
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "requests_per_minute": 60,
+    "burst_size": 10,
+    "cleanup_interval_sec": 300,
+    "per_endpoint": {
+      "upload": {
+        "requests_per_minute": 5,
+        "burst_size": 2
+      },
+      "auth_login": {
+        "requests_per_minute": 10,
+        "burst_size": 3
+      },
+      "auth_register": {
+        "requests_per_minute": 5,
+        "burst_size": 2
+      }
+    }
+  },
+  "tls": {
+    "enabled": false,
+    "cert_file": "/app/certs/server.crt",
+    "key_file": "/app/certs/server.key",
+    "ca_file": "",
+    "redirect_http": true,
+    "min_version": "TLSv1.2"
+  },
+  "security": {
+    "enable_cors": true,
+    "allowed_origins": ["*"],
+    "max_upload_size_gb": 10,
+    "enable_audit_log": true,
+    "audit_log_path": "/app/logs/audit.log",
+    "password_policy": {
+      "min_length": 8,
+      "require_uppercase": true,
+      "require_lowercase": true,
+      "require_digits": true,
+      "require_special_chars": false
+    },
+    "input_validation": {
+      "max_username_length": 50,
+      "max_password_length": 128,
+      "allowed_pcap_extensions": [".pcap", ".pcapng", ".cap"]
+    }
+  },
+  "monitoring": {
+    "enable_prometheus": true,
+    "prometheus_port": 9090,
+    "metrics_path": "/metrics",
+    "enable_analytics": true,
+    "analytics_retention_days": 30
+  },
+  "websocket": {
+    "heartbeat_interval_sec": 30,
+    "event_queue_max": 1000,
+    "ping_timeout_sec": 60
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "/app/logs/callflowd.log",
+    "max_size_mb": 100,
+    "max_files": 10,
+    "enable_console": true,
+    "enable_file": true,
+    "timestamp_format": "ISO8601"
+  }
+}

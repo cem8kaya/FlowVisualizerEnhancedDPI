@@ -54,6 +54,7 @@ WORKDIR /app
 
 # Copy binary and static files from builder
 COPY --from=builder /build/build/src/callflowd /app/
+COPY --from=builder /build/build/src/create_admin /app/
 COPY --from=builder /build/ui/static /app/ui/static/
 
 # Copy default configuration

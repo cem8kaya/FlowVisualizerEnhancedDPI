@@ -1,20 +1,23 @@
 #include "api_server/job_manager.h"
-#include "common/utils.h"
-#include "pcap_ingest/pcap_reader.h"
-#include "flow_manager/session_correlator.h"
-#include "protocol_parsers/sip_parser.h"
-#include "protocol_parsers/rtp_parser.h"
-#include "event_extractor/json_exporter.h"
 
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <arpa/inet.h>
+
 #include <filesystem>
+
+#include "common/utils.h"
+#include "event_extractor/json_exporter.h"
+#include "flow_manager/session_correlator.h"
+#include "pcap_ingest/pcap_reader.h"
+#include "persistence/database.h"
+#include "protocol_parsers/rtp_parser.h"
+#include "protocol_parsers/sip_parser.h"
 
 namespace callflow {
 
-JobManager::JobManager(const Config& config)
-    : config_(config), running_(false) {}
+JobManager::JobManager(const Config& config, std::shared_ptr<DatabaseManager> db)
+    : config_(config), db_(db), running_(false) {}
 
 JobManager::~JobManager() {
     stop();
@@ -83,9 +86,8 @@ JobId JobManager::submitJob(const std::string& input_file, const std::string& ou
     auto job_info = std::make_shared<JobInfo>();
     job_info->job_id = job_id;
     job_info->input_filename = input_file;
-    job_info->output_filename = output_file.empty()
-        ? config_.results_dir + "/job-" + job_id + ".json"
-        : output_file;
+    job_info->output_filename =
+        output_file.empty() ? config_.results_dir + "/job-" + job_id + ".json" : output_file;
     job_info->status = JobStatus::QUEUED;
     job_info->progress = 0;
     job_info->created_at = utils::now();
@@ -94,6 +96,11 @@ JobId JobManager::submitJob(const std::string& input_file, const std::string& ou
     {
         std::lock_guard<std::mutex> lock(jobs_mutex_);
         jobs_[job_id] = job_info;
+    }
+
+    // Persist job to database
+    if (db_) {
+        db_->insertJob(*job_info);
     }
 
     // Queue job task
@@ -119,6 +126,19 @@ std::shared_ptr<JobInfo> JobManager::getJobInfo(const JobId& job_id) {
 
 std::vector<std::shared_ptr<JobInfo>> JobManager::getAllJobs() {
     std::lock_guard<std::mutex> lock(jobs_mutex_);
+
+    // If we have DB, load from DB first
+    if (db_) {
+        auto db_jobs = db_->getAllJobs();
+        for (const auto& job : db_jobs) {
+            auto job_ptr = std::make_shared<JobInfo>(job);
+            // If not already in memory (or to update state), add/update it
+            if (jobs_.find(job.job_id) == jobs_.end()) {
+                jobs_[job.job_id] = job_ptr;
+            }
+        }
+    }
+
     std::vector<std::shared_ptr<JobInfo>> result;
     for (const auto& [job_id, job_info] : jobs_) {
         result.push_back(job_info);
@@ -149,6 +169,12 @@ bool JobManager::deleteJob(const JobId& job_id) {
     }
 
     jobs_.erase(it);
+
+    // Delete from database
+    if (db_) {
+        db_->deleteJob(job_id);
+    }
+
     LOG_INFO("Job " << job_id << " deleted");
     return true;
 }
@@ -205,9 +231,7 @@ void JobManager::workerThread() {
         // Wait for a job
         {
             std::unique_lock<std::mutex> lock(queue_mutex_);
-            queue_cv_.wait(lock, [this] {
-                return !running_.load() || !job_queue_.empty();
-            });
+            queue_cv_.wait(lock, [this] { return !running_.load() || !job_queue_.empty(); });
 
             if (!running_.load() && job_queue_.empty()) {
                 break;
@@ -235,13 +259,15 @@ void JobManager::workerThread() {
                     it->second->status = JobStatus::FAILED;
                     it->second->error_message = e.what();
                     it->second->completed_at = utils::now();
+
+                    // Update database
+                    if (db_) {
+                        db_->updateJob(task.job_id, *it->second);
+                    }
                 }
             }
 
-            sendEvent(task.job_id, "status", {
-                {"status", "failed"},
-                {"error", e.what()}
-            });
+            sendEvent(task.job_id, "status", {{"status", "failed"}, {"error", e.what()}});
         }
     }
 
@@ -258,6 +284,11 @@ void JobManager::processJob(const JobTask& task) {
         if (it != jobs_.end()) {
             it->second->status = JobStatus::RUNNING;
             it->second->started_at = utils::now();
+
+            // Update database
+            if (db_) {
+                db_->updateJob(task.job_id, *it->second);
+            }
         }
     }
 
@@ -283,14 +314,49 @@ void JobManager::processJob(const JobTask& task) {
         PacketMetadata packet;
         packet.packet_id = utils::generateUuid();
         packet.timestamp = std::chrono::system_clock::from_time_t(header->ts.tv_sec) +
-                          std::chrono::microseconds(header->ts.tv_usec);
+                           std::chrono::microseconds(header->ts.tv_usec);
         packet.frame_number = packet_count;
         packet.packet_length = header->caplen;
 
         // Parse packet (simplified version from main.cpp)
-        if (header->caplen >= 42) {  // Min: Ethernet(14) + IP(20) + UDP(8)
-            const uint8_t* ip_header = data + 14;
-            size_t ip_len = header->caplen - 14;
+        // Determine Link Header Length and Type
+        int link_header_len = 14;
+        uint16_t eth_type = 0;
+
+        // Check Datalink Type
+        if (pcap_reader.getDatalinkType() == 113) {  // DLT_LINUX_SLL
+            link_header_len = 16;
+            if (header->caplen >= 16) {
+                eth_type = ntohs(*reinterpret_cast<const uint16_t*>(&data[14]));
+            }
+        } else {  // Ethernet
+            if (header->caplen >= 14) {
+                eth_type = ntohs(*reinterpret_cast<const uint16_t*>(&data[12]));
+            }
+        }
+
+        // Handle VLAN (802.1Q)
+        if (eth_type == 0x8100 && header->caplen >= link_header_len + 4) {
+            link_header_len += 4;
+            // Read inner type (at offset 16 for Ethernet, 18 for SLL?? No, relative to new offset)
+            // VLAN tag is 4 bytes. Original type field was at link_header_len - 2.
+            // After VLAN, new type is at link_header_len - 2 + 4 = link_header_len + 2.
+            // Wait, for Ethernet:
+            // 0-11: MACs
+            // 12-13: 0x8100
+            // 14-15: VLAN ID
+            // 16-17: EtherType
+            // So new type is at 16. New header len is 18.
+            eth_type = ntohs(
+                *reinterpret_cast<const uint16_t*>(&data[link_header_len - 2]));  // Is this right?
+            // Before increment: len=14. Type at 12.
+            // VLAN: len becomes 18. Type at 16.
+            // So if I increment len by 4, type is at len-2. Yes.
+        }
+
+        if (header->caplen >= link_header_len + 20) {  // IP(20)
+            const uint8_t* ip_header = data + link_header_len;
+            size_t ip_len = header->caplen - link_header_len;
 
             if (ip_len >= 20) {
                 uint8_t version = (ip_header[0] >> 4) & 0x0F;
@@ -308,8 +374,10 @@ void JobManager::processJob(const JobTask& task) {
                     size_t transport_len = ip_len - ihl;
 
                     if (protocol == 17 && transport_len >= 8) {  // UDP
-                        packet.five_tuple.src_port = ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[0]));
-                        packet.five_tuple.dst_port = ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[2]));
+                        packet.five_tuple.src_port =
+                            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[0]));
+                        packet.five_tuple.dst_port =
+                            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[2]));
 
                         const uint8_t* payload = transport_header + 8;
                         size_t payload_len = transport_len - 8;
@@ -318,20 +386,27 @@ void JobManager::processJob(const JobTask& task) {
                             packet.raw_data.assign(payload, payload + payload_len);
 
                             // Try SIP parsing
-                            if (packet.five_tuple.src_port == 5060 || packet.five_tuple.dst_port == 5060) {
+                            if (packet.five_tuple.src_port == 5060 ||
+                                packet.five_tuple.dst_port == 5060) {
                                 SipParser sip_parser;
-                                auto sip_msg = sip_parser.parse(packet.raw_data.data(), packet.raw_data.size());
+                                auto sip_msg = sip_parser.parse(packet.raw_data.data(),
+                                                                packet.raw_data.size());
                                 if (sip_msg.has_value()) {
-                                    correlator.processPacket(packet, ProtocolType::SIP, sip_msg->toJson());
+                                    correlator.processPacket(packet, ProtocolType::SIP,
+                                                             sip_msg->toJson());
                                 }
                             }
                             // Try RTP parsing
-                            else if ((packet.five_tuple.src_port >= 10000 && packet.five_tuple.src_port % 2 == 0) ||
-                                     (packet.five_tuple.dst_port >= 10000 && packet.five_tuple.dst_port % 2 == 0)) {
+                            else if ((packet.five_tuple.src_port >= 10000 &&
+                                      packet.five_tuple.src_port % 2 == 0) ||
+                                     (packet.five_tuple.dst_port >= 10000 &&
+                                      packet.five_tuple.dst_port % 2 == 0)) {
                                 RtpParser rtp_parser;
-                                auto rtp_header = rtp_parser.parseRtp(packet.raw_data.data(), packet.raw_data.size());
+                                auto rtp_header = rtp_parser.parseRtp(packet.raw_data.data(),
+                                                                      packet.raw_data.size());
                                 if (rtp_header.has_value()) {
-                                    correlator.processPacket(packet, ProtocolType::RTP, rtp_header->toJson());
+                                    correlator.processPacket(packet, ProtocolType::RTP,
+                                                             rtp_header->toJson());
                                 }
                             }
                         }
@@ -347,15 +422,12 @@ void JobManager::processJob(const JobTask& task) {
         if (packet_count % 1000 == 0) {
             int progress = 10 + (packet_count % 10000) * 60 / 10000;  // 10-70%
             updateProgress(task.job_id, progress,
-                          "Processed " + std::to_string(packet_count) + " packets");
+                           "Processed " + std::to_string(packet_count) + " packets");
         }
 
         // Send event every 100 packets
         if (packet_count % 100 == 0) {
-            sendEvent(task.job_id, "progress", {
-                {"packets", packet_count},
-                {"bytes", total_bytes}
-            });
+            sendEvent(task.job_id, "progress", {{"packets", packet_count}, {"bytes", total_bytes}});
         }
     };
 
@@ -388,24 +460,60 @@ void JobManager::processJob(const JobTask& task) {
             it->second->completed_at = utils::now();
             it->second->total_packets = packet_count;
             it->second->total_bytes = total_bytes;
+            it->second->session_count = sessions.size();
 
             // Store session IDs
-            for (const auto& session : sessions) {
-                it->second->session_ids.push_back(session->session_id);
+            // Update database
+            if (db_) {
+                db_->updateJob(task.job_id, *it->second);
+
+                // Also insert sessions
+                for (const auto& session : sessions) {
+                    SessionRecord record;
+                    record.session_id = session->session_id;
+                    record.job_id = task.job_id;
+                    record.session_type = sessionTypeToString(session->type);
+                    record.session_key = session->session_key;
+
+                    // Convert Timestamps
+                    record.start_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                            session->start_time.time_since_epoch())
+                                            .count();
+                    record.end_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                          session->end_time.time_since_epoch())
+                                          .count();
+                    record.duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                             session->end_time - session->start_time)
+                                             .count();
+
+                    // Metrics
+                    record.packet_count = session->metrics.total_packets;
+                    record.byte_count = session->metrics.total_bytes;
+
+                    // Convert participants
+                    nlohmann::json participants_json = nlohmann::json::array();
+                    for (const auto& p : session->participants) {
+                        participants_json.push_back({{"ip", p.ip}, {"port", p.port}});
+                    }
+                    record.participant_ips = participants_json.dump();
+
+                    // Metadata
+                    record.metadata = session->toSummaryJson().dump();
+
+                    db_->insertSession(record);
+                }
             }
         }
     }
 
-    sendEvent(task.job_id, "status", {
-        {"status", "completed"},
-        {"sessions", sessions.size()},
-        {"packets", packet_count},
-        {"bytes", total_bytes}
-    });
+    sendEvent(task.job_id, "status",
+              {{"status", "completed"},
+               {"sessions", sessions.size()},
+               {"packets", packet_count},
+               {"bytes", total_bytes}});
 
-    LOG_INFO("Job " << task.job_id << " completed: "
-             << packet_count << " packets, "
-             << sessions.size() << " sessions");
+    LOG_INFO("Job " << task.job_id << " completed: " << packet_count << " packets, "
+                    << sessions.size() << " sessions");
 }
 
 void JobManager::updateProgress(const JobId& job_id, int progress, const std::string& message) {
@@ -414,6 +522,10 @@ void JobManager::updateProgress(const JobId& job_id, int progress, const std::st
         auto it = jobs_.find(job_id);
         if (it != jobs_.end()) {
             it->second->progress = progress;
+
+            if (db_ && (progress % 10 == 0 || progress == 100)) {  // Don't update DB too often
+                db_->updateJob(job_id, *it->second);
+            }
         }
     }
 
@@ -422,7 +534,8 @@ void JobManager::updateProgress(const JobId& job_id, int progress, const std::st
     }
 }
 
-void JobManager::sendEvent(const JobId& job_id, const std::string& event_type, const nlohmann::json& data) {
+void JobManager::sendEvent(const JobId& job_id, const std::string& event_type,
+                           const nlohmann::json& data) {
     if (event_callback_) {
         event_callback_(job_id, event_type, data);
     }

@@ -1,33 +1,35 @@
+#include "cli/cli_parser.h"
+#include "common/config_loader.h"
 #include "common/logger.h"
 #include "common/types.h"
 #include "common/utils.h"
-#include "common/config_loader.h"
-#include "cli/cli_parser.h"
-#include "pcap_ingest/pcap_reader.h"
-#include "pcap_ingest/packet_queue.h"
-#include "protocol_parsers/sip_parser.h"
-#include "protocol_parsers/rtp_parser.h"
-#include "protocol_parsers/diameter_parser.h"
-#include "protocol_parsers/gtp_parser.h"
+#include "event_extractor/json_exporter.h"
 #include "flow_manager/flow_tracker.h"
 #include "flow_manager/session_correlator.h"
-#include "event_extractor/json_exporter.h"
+#include "pcap_ingest/packet_queue.h"
+#include "pcap_ingest/pcap_reader.h"
+#include "protocol_parsers/diameter_parser.h"
+#include "protocol_parsers/gtp_parser.h"
+#include "protocol_parsers/rtp_parser.h"
+#include "protocol_parsers/sip_parser.h"
 
 #ifdef BUILD_API_SERVER
 #include "api_server/http_server.h"
 #include "api_server/job_manager.h"
 #include "api_server/websocket_handler.h"
+#include "persistence/database.h"
 #endif
 
-#include <iostream>
-#include <thread>
-#include <vector>
-#include <atomic>
-#include <csignal>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-#include <arpa/inet.h>
+
+#include <atomic>
+#include <csignal>
+#include <iostream>
+#include <thread>
+#include <vector>
 
 using namespace callflow;
 
@@ -45,12 +47,13 @@ public:
             // Check for DIAMETER (port 3868, but can also run on TCP)
             if (packet.five_tuple.src_port == 3868 || packet.five_tuple.dst_port == 3868) {
                 DiameterParser diameter_parser;
-                auto diameter_msg = diameter_parser.parse(packet.raw_data.data(),
-                                                         packet.raw_data.size());
+                auto diameter_msg =
+                    diameter_parser.parse(packet.raw_data.data(), packet.raw_data.size());
 
                 if (diameter_msg.has_value()) {
                     LOG_DEBUG("Parsed DIAMETER message: " << diameter_msg->getCommandName());
-                    correlator_.processPacket(packet, ProtocolType::DIAMETER, diameter_msg->toJson());
+                    correlator_.processPacket(packet, ProtocolType::DIAMETER,
+                                              diameter_msg->toJson());
                     return;
                 }
             }
@@ -95,12 +98,12 @@ public:
             if ((packet.five_tuple.src_port >= 10000 && packet.five_tuple.src_port % 2 == 0) ||
                 (packet.five_tuple.dst_port >= 10000 && packet.five_tuple.dst_port % 2 == 0)) {
                 RtpParser rtp_parser;
-                auto rtp_header = rtp_parser.parseRtp(packet.raw_data.data(),
-                                                      packet.raw_data.size());
+                auto rtp_header =
+                    rtp_parser.parseRtp(packet.raw_data.data(), packet.raw_data.size());
 
                 if (rtp_header.has_value()) {
                     LOG_TRACE("Parsed RTP packet: SSRC=" << rtp_header->ssrc
-                              << " seq=" << rtp_header->sequence_number);
+                                                         << " seq=" << rtp_header->sequence_number);
                     correlator_.processPacket(packet, ProtocolType::RTP, rtp_header->toJson());
                     return;
                 }
@@ -109,12 +112,13 @@ public:
             // DIAMETER can also run on TCP (port 3868)
             if (packet.five_tuple.src_port == 3868 || packet.five_tuple.dst_port == 3868) {
                 DiameterParser diameter_parser;
-                auto diameter_msg = diameter_parser.parse(packet.raw_data.data(),
-                                                         packet.raw_data.size());
+                auto diameter_msg =
+                    diameter_parser.parse(packet.raw_data.data(), packet.raw_data.size());
 
                 if (diameter_msg.has_value()) {
                     LOG_DEBUG("Parsed DIAMETER message (TCP): " << diameter_msg->getCommandName());
-                    correlator_.processPacket(packet, ProtocolType::DIAMETER, diameter_msg->toJson());
+                    correlator_.processPacket(packet, ProtocolType::DIAMETER,
+                                              diameter_msg->toJson());
                     return;
                 }
             }
@@ -165,8 +169,10 @@ bool parsePacket(const uint8_t* data, size_t len, PacketMetadata& packet) {
     size_t transport_len = ip_len - ihl;
 
     if (protocol == 17 && transport_len >= 8) {  // UDP
-        packet.five_tuple.src_port = ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[0]));
-        packet.five_tuple.dst_port = ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[2]));
+        packet.five_tuple.src_port =
+            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[0]));
+        packet.five_tuple.dst_port =
+            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[2]));
 
         // Copy payload
         const uint8_t* payload = transport_header + 8;
@@ -178,8 +184,10 @@ bool parsePacket(const uint8_t* data, size_t len, PacketMetadata& packet) {
 
         return true;
     } else if (protocol == 6 && transport_len >= 20) {  // TCP
-        packet.five_tuple.src_port = ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[0]));
-        packet.five_tuple.dst_port = ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[2]));
+        packet.five_tuple.src_port =
+            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[0]));
+        packet.five_tuple.dst_port =
+            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[2]));
 
         uint8_t data_offset = (transport_header[12] >> 4) * 4;
         const uint8_t* payload = transport_header + data_offset;
@@ -233,7 +241,7 @@ int processPcap(const CliArgs& args) {
         PacketMetadata packet;
         packet.packet_id = utils::generateUuid();
         packet.timestamp = std::chrono::system_clock::from_time_t(header->ts.tv_sec) +
-                          std::chrono::microseconds(header->ts.tv_usec);
+                           std::chrono::microseconds(header->ts.tv_usec);
         packet.frame_number = packet_count;
         packet.packet_length = header->caplen;
 
@@ -245,8 +253,8 @@ int processPcap(const CliArgs& args) {
         packet_count++;
 
         if (packet_count % 10000 == 0) {
-            LOG_INFO("Processed " << packet_count << " packets, "
-                     << correlator.getSessionCount() << " sessions...");
+            LOG_INFO("Processed " << packet_count << " packets, " << correlator.getSessionCount()
+                                  << " sessions...");
         }
     };
 
@@ -256,8 +264,8 @@ int processPcap(const CliArgs& args) {
     auto process_end = utils::now();
     auto duration_ms = utils::timeDiffMs(process_start, process_end);
 
-    LOG_INFO("Processed " << packet_count << " packets in "
-             << duration_ms << "ms (" << (packet_count * 1000.0 / duration_ms) << " pps)");
+    LOG_INFO("Processed " << packet_count << " packets in " << duration_ms << "ms ("
+                          << (packet_count * 1000.0 / duration_ms) << " pps)");
 
     // Finalize sessions
     LOG_INFO("Finalizing sessions...");
@@ -337,20 +345,28 @@ int runApiServer(const CliArgs& args) {
     LOG_INFO("Upload directory: " << config.upload_dir);
     LOG_INFO("Results directory: " << config.results_dir);
 
+    LOG_INFO("Results directory: " << config.results_dir);
+
+    // Initialize database
+    auto db_manager = std::make_shared<DatabaseManager>(config.database);
+    if (!db_manager->initialize()) {
+        LOG_WARN("Failed to initialize database, persistence will be disabled");
+        db_manager.reset();
+    }
+
     // Create components
-    auto job_manager = std::make_shared<JobManager>(config);
+    auto job_manager = std::make_shared<JobManager>(config, db_manager);
     auto ws_handler = std::make_shared<WebSocketHandler>(config);
     auto http_server = std::make_shared<HttpServer>(config, job_manager, ws_handler);
 
     // Set callbacks
-    job_manager->setProgressCallback([ws_handler](const JobId& job_id, int progress, const std::string& msg) {
-        ws_handler->broadcastEvent(job_id, "progress", {
-            {"progress", progress},
-            {"message", msg}
-        });
+    job_manager->setProgressCallback([ws_handler](const JobId& job_id, int progress,
+                                                  const std::string& msg) {
+        ws_handler->broadcastEvent(job_id, "progress", {{"progress", progress}, {"message", msg}});
     });
 
-    job_manager->setEventCallback([ws_handler](const JobId& job_id, const std::string& event_type, const nlohmann::json& data) {
+    job_manager->setEventCallback([ws_handler](const JobId& job_id, const std::string& event_type,
+                                               const nlohmann::json& data) {
         ws_handler->broadcastEvent(job_id, event_type, data);
     });
 
@@ -375,7 +391,8 @@ int runApiServer(const CliArgs& args) {
 
     LOG_INFO("API server started successfully");
     LOG_INFO("API endpoint: http://" << config.api_bind_address << ":" << config.api_port);
-    LOG_INFO("Health check: http://" << config.api_bind_address << ":" << config.api_port << "/health");
+    LOG_INFO("Health check: http://" << config.api_bind_address << ":" << config.api_port
+                                     << "/health");
     LOG_INFO("Press Ctrl+C to stop");
 
     // Wait for termination signal
@@ -398,6 +415,9 @@ int runApiServer(const CliArgs& args) {
     http_server->stop();
     ws_handler->stop();
     job_manager->stop();
+    if (db_manager) {
+        db_manager->close();
+    }
 
     LOG_INFO("API server stopped");
     return 0;

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <cstdint>
-#include <string>
-#include <vector>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace callflow {
 
@@ -17,12 +17,7 @@ using EventId = std::string;
 using JobId = std::string;
 
 // Packet direction
-enum class Direction {
-    UNKNOWN = 0,
-    CLIENT_TO_SERVER,
-    SERVER_TO_CLIENT,
-    BIDIRECTIONAL
-};
+enum class Direction { UNKNOWN = 0, CLIENT_TO_SERVER, SERVER_TO_CLIENT, BIDIRECTIONAL };
 
 std::string directionToString(Direction dir);
 Direction stringToDirection(const std::string& str);
@@ -51,11 +46,11 @@ ProtocolType stringToProtocolType(const std::string& str);
 // Session type
 enum class SessionType {
     UNKNOWN = 0,
-    VOLTE,         // VoLTE call (SIP + RTP)
-    GTP,           // GTP bearer session
-    DIAMETER,      // DIAMETER session
-    HTTP2,         // HTTP/2 session
-    MIXED          // Mixed/uncategorized
+    VOLTE,     // VoLTE call (SIP + RTP)
+    GTP,       // GTP bearer session
+    DIAMETER,  // DIAMETER session
+    HTTP2,     // HTTP/2 session
+    MIXED      // Mixed/uncategorized
 };
 
 std::string sessionTypeToString(SessionType type);
@@ -116,13 +111,9 @@ struct Participant {
     std::string ip;
     uint16_t port;
 
-    std::string toString() const {
-        return ip + ":" + std::to_string(port);
-    }
+    std::string toString() const { return ip + ":" + std::to_string(port); }
 
-    bool operator==(const Participant& other) const {
-        return ip == other.ip && port == other.port;
-    }
+    bool operator==(const Participant& other) const { return ip == other.ip && port == other.port; }
 };
 
 // Packet metadata
@@ -147,12 +138,7 @@ struct SessionMetrics {
 };
 
 // Job status enumeration
-enum class JobStatus {
-    QUEUED = 0,
-    RUNNING,
-    COMPLETED,
-    FAILED
-};
+enum class JobStatus { QUEUED = 0, RUNNING, COMPLETED, FAILED };
 
 std::string jobStatusToString(JobStatus status);
 JobStatus stringToJobStatus(const std::string& str);
@@ -169,8 +155,18 @@ struct JobInfo {
     Timestamp completed_at;
     std::string error_message;  // if failed
     std::vector<SessionId> session_ids;
+    size_t session_count = 0;
     size_t total_packets = 0;
     size_t total_bytes = 0;
+};
+
+// Database configuration
+struct DatabaseConfig {
+    bool enabled = true;
+    std::string path = "./callflowd.db";
+    int retention_days = 7;
+    bool auto_vacuum = true;
+    int busy_timeout_ms = 5000;
 };
 
 // Configuration
@@ -208,6 +204,9 @@ struct Config {
     // nDPI
     bool enable_ndpi = true;
     std::vector<std::string> ndpi_protocols = {"SIP", "RTP", "HTTP", "DNS", "TLS"};
+
+    // Database
+    DatabaseConfig database;
 };
 
 }  // namespace callflow
@@ -216,8 +215,6 @@ struct Config {
 namespace std {
 template <>
 struct hash<callflow::FiveTuple> {
-    size_t operator()(const callflow::FiveTuple& ft) const {
-        return ft.hash();
-    }
+    size_t operator()(const callflow::FiveTuple& ft) const { return ft.hash(); }
 };
 }  // namespace std

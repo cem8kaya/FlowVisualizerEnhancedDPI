@@ -17,6 +17,7 @@ namespace callflow {
 
 // Forward declarations
 class SessionCorrelator;
+class DatabaseManager;
 
 /**
  * Progress callback function
@@ -35,7 +36,7 @@ using EventCallback = std::function<void(const JobId&, const std::string&, const
  */
 class JobManager {
 public:
-    explicit JobManager(const Config& config);
+    explicit JobManager(const Config& config, std::shared_ptr<DatabaseManager> db = nullptr);
     ~JobManager();
 
     /**
@@ -126,6 +127,7 @@ private:
     void sendEvent(const JobId& job_id, const std::string& event_type, const nlohmann::json& data);
 
     Config config_;
+    std::shared_ptr<DatabaseManager> db_;
 
     // Job storage
     std::unordered_map<JobId, std::shared_ptr<JobInfo>> jobs_;

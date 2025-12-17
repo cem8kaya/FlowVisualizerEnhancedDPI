@@ -1,8 +1,9 @@
 #include "common/config_loader.h"
-#include "common/logger.h"
 
-#include <fstream>
 #include <cstdlib>
+#include <fstream>
+
+#include "common/logger.h"
 
 namespace callflow {
 
@@ -73,7 +74,8 @@ void ConfigLoader::applyEnvOverrides(Config& config) {
 
     const char* enable_ndpi = std::getenv("CALLFLOW_ENABLE_NDPI");
     if (enable_ndpi) {
-        config.enable_ndpi = (std::string(enable_ndpi) == "true" || std::string(enable_ndpi) == "1");
+        config.enable_ndpi =
+            (std::string(enable_ndpi) == "true" || std::string(enable_ndpi) == "1");
         LOG_INFO("Environment override: ENABLE_NDPI=" << (config.enable_ndpi ? "true" : "false"));
     }
 }
@@ -175,44 +177,52 @@ void ConfigLoader::parseConfig(const nlohmann::json& j, Config& config) {
             config.ws_event_queue_max = ws["event_queue_max"];
         }
     }
+
+    // Database settings
+    if (j.contains("database")) {
+        const auto& db = j["database"];
+        if (db.contains("enabled")) {
+            config.database.enabled = db["enabled"];
+        }
+        if (db.contains("path")) {
+            config.database.path = db["path"];
+        }
+        if (db.contains("retention_days")) {
+            config.database.retention_days = db["retention_days"];
+        }
+    }
 }
 
 nlohmann::json ConfigLoader::configToJson(const Config& config) {
     nlohmann::json j;
 
     // Server settings
-    j["server"] = {
-        {"bind_address", config.api_bind_address},
-        {"port", config.api_port},
-        {"workers", config.api_worker_threads},
-        {"max_upload_size_mb", config.max_upload_size_mb}
-    };
+    j["server"] = {{"bind_address", config.api_bind_address},
+                   {"port", config.api_port},
+                   {"workers", config.api_worker_threads},
+                   {"max_upload_size_mb", config.max_upload_size_mb}};
 
     // Processing settings
-    j["processing"] = {
-        {"worker_threads", config.worker_threads},
-        {"packet_queue_size", config.max_packet_queue_size},
-        {"flow_timeout_sec", config.flow_timeout_sec}
-    };
+    j["processing"] = {{"worker_threads", config.worker_threads},
+                       {"packet_queue_size", config.max_packet_queue_size},
+                       {"flow_timeout_sec", config.flow_timeout_sec}};
 
     // Storage settings
-    j["storage"] = {
-        {"upload_dir", config.upload_dir},
-        {"output_dir", config.results_dir},
-        {"retention_hours", config.retention_hours}
-    };
+    j["storage"] = {{"upload_dir", config.upload_dir},
+                    {"output_dir", config.results_dir},
+                    {"retention_hours", config.retention_hours}};
 
     // nDPI settings
-    j["ndpi"] = {
-        {"enable", config.enable_ndpi},
-        {"protocols", config.ndpi_protocols}
-    };
+    j["ndpi"] = {{"enable", config.enable_ndpi}, {"protocols", config.ndpi_protocols}};
 
     // WebSocket settings
-    j["websocket"] = {
-        {"heartbeat_interval_sec", config.ws_heartbeat_interval_sec},
-        {"event_queue_max", config.ws_event_queue_max}
-    };
+    j["websocket"] = {{"heartbeat_interval_sec", config.ws_heartbeat_interval_sec},
+                      {"event_queue_max", config.ws_event_queue_max}};
+
+    // Database settings
+    j["database"] = {{"enabled", config.database.enabled},
+                     {"path", config.database.path},
+                     {"retention_days", config.database.retention_days}};
 
     return j;
 }

@@ -94,6 +94,15 @@ void HttpServer::setupRoutes() {
         return httplib::Server::HandlerResponse::Unhandled;
     });
 
+    // Serve static files (Web UI)
+    // The Dockerfile copies ui/static to /app/ui/static
+    auto ret = server->set_mount_point("/", "/app/ui/static");
+    if (!ret) {
+        LOG_WARN("Failed to mount static files directory: /app/ui/static");
+    } else {
+        LOG_INFO("Serving static files from /app/ui/static");
+    }
+
     // Health check
     server->Get("/health", [](const httplib::Request&, httplib::Response& res) {
         nlohmann::json response = {{"status", "healthy"},
@@ -365,12 +374,13 @@ void HttpServer::setupRoutes() {
             for (const auto& job : all_jobs) {
                 nlohmann::json job_summary = {
                     {"job_id", job->job_id},
+                    {"input_filename", job->input_filename},
                     {"status", jobStatusToString(job->status)},
                     {"progress", job->progress},
                     {"created_at", utils::timestampToIso8601(job->created_at)}};
 
                 if (job->status == JobStatus::COMPLETED) {
-                    job_summary["session_count"] = job->session_ids.size();
+                    job_summary["session_count"] = job->session_count;
                     job_summary["total_packets"] = job->total_packets;
                 }
 
