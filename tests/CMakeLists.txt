@@ -1,25 +1,26 @@
-# Tests CMakeLists.txt (placeholder for M1)
+# Tests CMakeLists.txt
 
-# Note: Full unit tests will be implemented in later milestones
-# For now, we create a simple test structure
+message(STATUS "Configuring unit tests")
 
-message(STATUS "Test configuration (placeholder for M1)")
+# PCAPNG Reader Tests
+add_executable(test_pcapng_reader
+    unit/test_pcapng_reader.cpp
+)
 
-# In future milestones, we'll add:
-# - Google Test framework
-# - Unit tests for parsers
-# - Integration tests with sample PCAPs
-# - Benchmark tests
+target_link_libraries(test_pcapng_reader PRIVATE
+    callflow_common
+    pcap_ingest
+    GTest::gtest
+    GTest::gtest_main
+)
 
-# Placeholder test executable
-# add_executable(unit_tests
-#     unit/test_sip_parser.cpp
-#     unit/test_rtp_parser.cpp
-# )
-# target_link_libraries(unit_tests PRIVATE
-#     callflow_common
-#     protocol_parsers
-#     gtest
-#     gtest_main
-# )
-# add_test(NAME unit_tests COMMAND unit_tests)
+# Register tests with CTest
+add_test(NAME test_pcapng_reader COMMAND test_pcapng_reader)
+
+# Set test properties
+set_tests_properties(test_pcapng_reader PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+message(STATUS "Unit tests configured successfully")

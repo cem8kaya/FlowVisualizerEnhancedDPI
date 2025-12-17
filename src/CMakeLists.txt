@@ -17,6 +17,9 @@ target_link_libraries(callflow_common PUBLIC
 # PCAP ingestion library
 add_library(pcap_ingest STATIC
     pcap_ingest/pcap_reader.cpp
+    pcap_ingest/pcapng_reader.cpp
+    pcap_ingest/multi_interface_reader.cpp
+    pcap_ingest/format_detector.cpp
     pcap_ingest/packet_queue.cpp
 )
 target_include_directories(pcap_ingest PUBLIC
