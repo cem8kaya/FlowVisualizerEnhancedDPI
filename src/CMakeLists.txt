@@ -102,6 +102,7 @@ add_library(protocol_parsers STATIC
     protocol_parsers/rtp_parser.cpp
     protocol_parsers/gtp_parser.cpp
     protocol_parsers/gtpv1_parser.cpp
+    protocol_parsers/pfcp_parser.cpp
     protocol_parsers/diameter_parser.cpp
     protocol_parsers/http2_parser.cpp
     protocol_parsers/x2ap_parser.cpp
