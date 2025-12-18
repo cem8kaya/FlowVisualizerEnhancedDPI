@@ -1,9 +1,12 @@
 #include "session/session_correlator.h"
-#include "common/logger.h"
+
 #include <algorithm>
+#include <iomanip>
 #include <random>
 #include <sstream>
-#include <iomanip>
+#include <unordered_set>
+
+#include "common/logger.h"
 
 namespace callflow {
 
@@ -14,8 +17,8 @@ namespace callflow {
 void EnhancedSessionCorrelator::addMessage(const SessionMessageRef& msg) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    LOG_DEBUG("Adding message to correlator: " << protocolTypeToString(msg.protocol)
-              << " on " << interfaceTypeToString(msg.interface));
+    LOG_DEBUG("Adding message to correlator: " << protocolTypeToString(msg.protocol) << " on "
+                                               << interfaceTypeToString(msg.interface));
 
     // Try to find existing session that matches
     auto existing_session_id = findMatchingSession(msg.correlation_key);
@@ -116,7 +119,8 @@ std::vector<Session> EnhancedSessionCorrelator::correlateByUeIp(const std::strin
     return result;
 }
 
-std::vector<Session> EnhancedSessionCorrelator::correlateByKey(const SessionCorrelationKey& key) const {
+std::vector<Session> EnhancedSessionCorrelator::correlateByKey(
+    const SessionCorrelationKey& key) const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<Session> result;
     std::unordered_set<std::string> found_session_ids;
@@ -203,13 +207,14 @@ std::vector<Session> EnhancedSessionCorrelator::getSessionsByType(EnhancedSessio
     return result;
 }
 
-std::vector<Session> EnhancedSessionCorrelator::getSessionsByInterface(InterfaceType interface) const {
+std::vector<Session> EnhancedSessionCorrelator::getSessionsByInterface(
+    InterfaceType interface) const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<Session> result;
 
     for (const auto& [session_id, session] : sessions_) {
-        if (std::find(session.interfaces_involved.begin(), session.interfaces_involved.end(), interface) !=
-            session.interfaces_involved.end()) {
+        if (std::find(session.interfaces_involved.begin(), session.interfaces_involved.end(),
+                      interface) != session.interfaces_involved.end()) {
             result.push_back(session);
         }
     }
@@ -217,7 +222,8 @@ std::vector<Session> EnhancedSessionCorrelator::getSessionsByInterface(Interface
     return result;
 }
 
-std::vector<SessionMessageRef> EnhancedSessionCorrelator::getSessionLegs(const std::string& identifier) const {
+std::vector<SessionMessageRef> EnhancedSessionCorrelator::getSessionLegs(
+    const std::string& identifier) const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<SessionMessageRef> result;
 
@@ -389,7 +395,7 @@ std::string EnhancedSessionCorrelator::createNewSession(const SessionMessageRef&
 }
 
 void EnhancedSessionCorrelator::addMessageToSession(const std::string& session_id,
-                                                     const SessionMessageRef& msg) {
+                                                    const SessionMessageRef& msg) {
     auto it = sessions_.find(session_id);
     if (it == sessions_.end()) {
         LOG_ERROR("Session not found: " << session_id);
@@ -404,7 +410,7 @@ void EnhancedSessionCorrelator::addMessageToSession(const std::string& session_i
 }
 
 void EnhancedSessionCorrelator::updateIndices(const std::string& session_id,
-                                               const SessionCorrelationKey& key) {
+                                              const SessionCorrelationKey& key) {
     // Update IMSI index
     if (key.imsi.has_value()) {
         auto& sessions = imsi_index_[key.imsi.value()];
@@ -496,13 +502,20 @@ EnhancedSessionType EnhancedSessionCorrelator::detectSessionType(const Session& 
 
     for (const auto& msg : all_messages) {
         // Check protocols
-        if (msg.interface == InterfaceType::S1_MME) has_s1ap = true;
-        if (msg.interface == InterfaceType::N2) has_ngap = true;
-        if (msg.interface == InterfaceType::X2) has_x2ap = true;
-        if (msg.interface == InterfaceType::S1_U || msg.interface == InterfaceType::S11) has_gtp = true;
-        if (msg.interface == InterfaceType::N4) has_pfcp = true;
-        if (msg.interface == InterfaceType::IMS_SIP) has_sip = true;
-        if (msg.interface == InterfaceType::IMS_RTP) has_rtp = true;
+        if (msg.interface == InterfaceType::S1_MME)
+            has_s1ap = true;
+        if (msg.interface == InterfaceType::N2)
+            has_ngap = true;
+        if (msg.interface == InterfaceType::X2)
+            has_x2ap = true;
+        if (msg.interface == InterfaceType::S1_U || msg.interface == InterfaceType::S11)
+            has_gtp = true;
+        if (msg.interface == InterfaceType::N4)
+            has_pfcp = true;
+        if (msg.interface == InterfaceType::IMS_SIP)
+            has_sip = true;
+        if (msg.interface == InterfaceType::IMS_RTP)
+            has_rtp = true;
 
         // Check specific message types (would need proper message type enum extensions)
         // For now, use simplified detection
@@ -601,7 +614,7 @@ std::string EnhancedSessionCorrelator::generateSessionId() const {
 }
 
 void EnhancedSessionCorrelator::mergeSessions(const std::string& session_id1,
-                                               const std::string& session_id2) {
+                                              const std::string& session_id2) {
     auto it1 = sessions_.find(session_id1);
     auto it2 = sessions_.find(session_id2);
 
