@@ -127,6 +127,29 @@ std::string messageTypeToString(MessageType type) {
         case MessageType::HTTP2_SETTINGS: return "SETTINGS";
         case MessageType::HTTP2_PING: return "PING";
         case MessageType::HTTP2_GOAWAY: return "GOAWAY";
+        case MessageType::X2AP_HANDOVER_PREPARATION: return "X2AP Handover Preparation";
+        case MessageType::X2AP_HANDOVER_CANCEL: return "X2AP Handover Cancel";
+        case MessageType::X2AP_SN_STATUS_TRANSFER: return "X2AP SN Status Transfer";
+        case MessageType::X2AP_UE_CONTEXT_RELEASE: return "X2AP UE Context Release";
+        case MessageType::X2AP_SETUP: return "X2AP Setup";
+        case MessageType::X2AP_RESET: return "X2AP Reset";
+        case MessageType::X2AP_ENB_CONFIGURATION_UPDATE: return "X2AP eNB Configuration Update";
+        case MessageType::X2AP_RESOURCE_STATUS_REPORTING: return "X2AP Resource Status Reporting";
+        case MessageType::X2AP_CELL_ACTIVATION: return "X2AP Cell Activation";
+        case MessageType::NGAP_INITIAL_UE_MESSAGE: return "NGAP Initial UE Message";
+        case MessageType::NGAP_DOWNLINK_NAS_TRANSPORT: return "NGAP Downlink NAS Transport";
+        case MessageType::NGAP_UPLINK_NAS_TRANSPORT: return "NGAP Uplink NAS Transport";
+        case MessageType::NGAP_PDU_SESSION_RESOURCE_SETUP: return "NGAP PDU Session Resource Setup";
+        case MessageType::NGAP_PDU_SESSION_RESOURCE_RELEASE: return "NGAP PDU Session Resource Release";
+        case MessageType::NGAP_HANDOVER_PREPARATION: return "NGAP Handover Preparation";
+        case MessageType::NGAP_PATH_SWITCH_REQUEST: return "NGAP Path Switch Request";
+        case MessageType::NGAP_NG_SETUP: return "NGAP NG Setup";
+        case MessageType::NGAP_AMF_CONFIGURATION_UPDATE: return "NGAP AMF Configuration Update";
+        case MessageType::NAS5G_REGISTRATION_REQUEST: return "5G NAS Registration Request";
+        case MessageType::NAS5G_REGISTRATION_ACCEPT: return "5G NAS Registration Accept";
+        case MessageType::NAS5G_DEREGISTRATION_REQUEST: return "5G NAS Deregistration Request";
+        case MessageType::NAS5G_PDU_SESSION_ESTABLISHMENT_REQUEST: return "5G NAS PDU Session Establishment Request";
+        case MessageType::NAS5G_PDU_SESSION_MODIFICATION: return "5G NAS PDU Session Modification";
         default: return "UNKNOWN";
     }
 }
