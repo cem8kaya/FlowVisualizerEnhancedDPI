@@ -1,0 +1,159 @@
+# 3GPP Protocol Configuration
+# This file configures protocol-specific settings for the Flow Visualizer
+
+# GTPv1 (GPRS Tunneling Protocol version 1) - 3GPP TS 29.060
+gtpv1:
+  enabled: true
+  # UDP ports to detect GTP-C and GTP-U traffic
+  ports: [2123, 2152]
+  # Decode user plane data (GTP-U payload)
+  decode_user_plane: false
+  # Maximum number of tunnels to track
+  max_tunnels: 100000
+
+# GTPv2 (GPRS Tunneling Protocol version 2) - 3GPP TS 29.274
+gtpv2:
+  enabled: true
+  # UDP ports for GTP-C v2
+  ports: [2123]
+  # Decode Information Elements (IEs)
+  decode_ies: true
+  # Track session modifications
+  track_modifications: true
+  # Maximum sessions to track
+  max_sessions: 100000
+
+# S1AP (S1 Application Protocol) - 3GPP TS 36.413
+s1ap:
+  enabled: true
+  # SCTP ports for S1-MME interface
+  sctp_ports: [36412]
+  # Decode NAS messages embedded in S1AP
+  decode_nas: true
+  # Enable ASN.1 validation
+  asn1_validation: true
+  # Track UE contexts
+  track_ue_contexts: true
+  # Maximum UE contexts to track
+  max_ue_contexts: 50000
+
+# X2AP (X2 Application Protocol) - 3GPP TS 36.423
+x2ap:
+  enabled: true
+  # SCTP ports for X2 interface
+  sctp_ports: [36422]
+  # Track handover procedures
+  track_handovers: true
+  # Enable ASN.1 validation
+  asn1_validation: true
+  # Maximum handover contexts
+  max_handover_contexts: 10000
+
+# NGAP (NG Application Protocol) - 3GPP TS 38.413
+ngap:
+  enabled: true
+  # SCTP ports for NG interface (5G)
+  sctp_ports: [38412]
+  # Decode NAS messages embedded in NGAP
+  decode_nas: true
+  # Enable ASN.1 validation
+  asn1_validation: true
+  # Track UE contexts
+  track_ue_contexts: true
+  # Maximum UE contexts to track
+  max_ue_contexts: 100000
+
+# PFCP (Packet Forwarding Control Protocol) - 3GPP TS 29.244
+pfcp:
+  enabled: true
+  # UDP ports for PFCP
+  udp_ports: [8805]
+  # Track session establishment/modification/deletion
+  track_sessions: true
+  # Decode Packet Detection Rules (PDRs)
+  decode_pdrs: true
+  # Decode Forwarding Action Rules (FARs)
+  decode_fars: true
+  # Maximum PFCP sessions to track
+  max_sessions: 100000
+
+# SCTP (Stream Control Transmission Protocol)
+sctp:
+  # Enable SCTP stream reassembly
+  reassemble_streams: true
+  # Maximum number of SCTP associations to track
+  max_associations: 10000
+  # Association timeout in seconds
+  association_timeout_sec: 300
+  # Enable SCTP chunk validation
+  validate_chunks: true
+
+# PCAPNG file handling
+pcapng:
+  # Extract and preserve interface comments
+  extract_comments: true
+  # Extract interface statistics
+  extract_interface_stats: true
+  # Maximum number of interfaces to process
+  max_interfaces: 256
+  # Process custom blocks (non-standard PCAPNG blocks)
+  process_custom_blocks: false
+
+# Diameter (for LTE/5G authentication and charging) - 3GPP TS 29.272, 29.273
+diameter:
+  enabled: true
+  # TCP/SCTP ports for Diameter
+  ports: [3868]
+  # Decode AVPs (Attribute-Value Pairs)
+  decode_avps: true
+  # Track sessions
+  track_sessions: true
+  # Maximum sessions to track
+  max_sessions: 50000
+
+# NAS (Non-Access Stratum) - 3GPP TS 24.301 (LTE), 24.501 (5G)
+nas:
+  # Enable standalone NAS decoding (when not embedded in S1AP/NGAP)
+  enabled: true
+  # Decode security protected messages
+  decode_security: true
+  # Track EMM/ESM state machines
+  track_state_machines: false
+
+# Session Correlation
+correlation:
+  # Enable cross-interface session correlation
+  enabled: true
+  # Correlation timeout in seconds (how long to wait for related messages)
+  timeout_sec: 60
+  # Correlation strategies (in order of preference)
+  strategies:
+    - imsi
+    - supi
+    - teid
+    - seid
+    - ue_ip
+    - mme_ue_id
+    - amf_ue_id
+  # Maximum sessions to correlate
+  max_correlated_sessions: 100000
+
+# Performance tuning
+performance:
+  # Number of worker threads for packet processing
+  worker_threads: 4
+  # Packet batch size for processing
+  packet_batch_size: 1000
+  # Enable parallel processing
+  parallel_processing: true
+  # Memory pool size for packet buffers (MB)
+  packet_buffer_pool_mb: 512
+
+# Logging
+logging:
+  # Protocol-specific log levels: DEBUG, INFO, WARN, ERROR
+  protocol_parse_level: INFO
+  # Log correlation decisions
+  log_correlation: false
+  # Log session lifecycle events
+  log_sessions: true
