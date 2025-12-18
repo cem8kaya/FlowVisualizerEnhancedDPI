@@ -1,10 +1,11 @@
 #pragma once
 
-#include "common/types.h"
-#include "thirdparty/asn1c/ngap_asn1_wrapper.h"
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <vector>
-#include <nlohmann/json.hpp>
+
+#include "asn1c/ngap_asn1_wrapper.h"
+#include "common/types.h"
 
 namespace callflow {
 
@@ -12,9 +13,9 @@ namespace callflow {
  * NGAP Information Element structure
  */
 struct NgapInformationElement {
-    uint16_t id;                      // IE ID
+    uint16_t id;  // IE ID
     asn1::NgapCriticality criticality;
-    std::vector<uint8_t> value;       // IE value (encoded)
+    std::vector<uint8_t> value;  // IE value (encoded)
 
     nlohmann::json toJson() const;
     std::string getIeName() const;
@@ -34,8 +35,8 @@ struct NgapMessage {
     std::optional<uint64_t> amf_ue_ngap_id;
     std::optional<uint8_t> pdu_session_id;
     std::optional<std::vector<uint8_t>> nas_pdu;
-    std::optional<std::string> supi;  // 5G Subscription Permanent Identifier
-    std::optional<std::string> guami; // Globally Unique AMF Identifier
+    std::optional<std::string> supi;   // 5G Subscription Permanent Identifier
+    std::optional<std::string> guami;  // Globally Unique AMF Identifier
     std::optional<uint8_t> cause;
 
     nlohmann::json toJson() const;
@@ -94,8 +95,7 @@ private:
     /**
      * Parse single NGAP IE
      */
-    std::optional<NgapInformationElement> parseIe(const uint8_t* data, size_t len,
-                                                   size_t& offset);
+    std::optional<NgapInformationElement> parseIe(const uint8_t* data, size_t len, size_t& offset);
 
     /**
      * Extract common fields from IEs
@@ -125,8 +125,7 @@ private:
     /**
      * Decode length field (ASN.1 PER aligned)
      */
-    static std::optional<size_t> decodeLength(const uint8_t* data, size_t len,
-                                              size_t& offset);
+    static std::optional<size_t> decodeLength(const uint8_t* data, size_t len, size_t& offset);
 };
 
 }  // namespace callflow

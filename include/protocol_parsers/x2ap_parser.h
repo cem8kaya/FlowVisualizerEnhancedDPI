@@ -1,10 +1,11 @@
 #pragma once
 
-#include "common/types.h"
-#include "thirdparty/asn1c/x2ap_asn1_wrapper.h"
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <vector>
-#include <nlohmann/json.hpp>
+
+#include "asn1c/x2ap_asn1_wrapper.h"
+#include "common/types.h"
 
 namespace callflow {
 
@@ -12,9 +13,9 @@ namespace callflow {
  * X2AP Information Element structure
  */
 struct X2apInformationElement {
-    uint16_t id;                      // IE ID
+    uint16_t id;  // IE ID
     asn1::X2apCriticality criticality;
-    std::vector<uint8_t> value;       // IE value (encoded)
+    std::vector<uint8_t> value;  // IE value (encoded)
 
     nlohmann::json toJson() const;
     std::string getIeName() const;
@@ -92,8 +93,7 @@ private:
     /**
      * Parse single X2AP IE
      */
-    std::optional<X2apInformationElement> parseIe(const uint8_t* data, size_t len,
-                                                   size_t& offset);
+    std::optional<X2apInformationElement> parseIe(const uint8_t* data, size_t len, size_t& offset);
 
     /**
      * Extract common fields from IEs
@@ -118,8 +118,7 @@ private:
     /**
      * Decode length field (ASN.1 PER)
      */
-    static std::optional<size_t> decodeLength(const uint8_t* data, size_t len,
-                                              size_t& offset);
+    static std::optional<size_t> decodeLength(const uint8_t* data, size_t len, size_t& offset);
 };
 
 }  // namespace callflow
