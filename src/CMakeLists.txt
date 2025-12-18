@@ -14,6 +14,18 @@ target_link_libraries(callflow_common PUBLIC
     fmt::fmt
 )
 
+# Config manager library
+add_library(config_manager STATIC
+    config/config_manager.cpp
+)
+target_include_directories(config_manager PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(config_manager PUBLIC
+    callflow_common
+    yaml-cpp
+)
+
 # PCAP ingestion library
 add_library(pcap_ingest STATIC
     pcap_ingest/pcap_reader.cpp
@@ -168,6 +180,7 @@ if(BUILD_API_SERVER)
     )
     target_link_libraries(api_server PUBLIC
         callflow_common
+        config_manager
         pcap_ingest
         flow_manager
         protocol_parsers
@@ -202,6 +215,7 @@ add_executable(callflowd
 
 target_link_libraries(callflowd PRIVATE
     callflow_common
+    config_manager
     pcap_ingest
     flow_manager
     protocol_parsers

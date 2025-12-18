@@ -169,6 +169,20 @@ if(BUILD_BENCHMARKS)
     message(STATUS "Google Benchmark fetched for performance testing")
 endif()
 
+# yaml-cpp for configuration parsing
+FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG 0.8.0
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(yaml-cpp)
+message(STATUS "yaml-cpp fetched for configuration parsing")
+
 # Add subdirectories
 add_subdirectory(src)
 

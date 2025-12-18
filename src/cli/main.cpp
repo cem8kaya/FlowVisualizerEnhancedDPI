@@ -18,6 +18,7 @@
 #include "api_server/job_manager.h"
 #include "api_server/websocket_handler.h"
 #include "persistence/database.h"
+#include "config/config_manager.h"
 #endif
 
 #include <arpa/inet.h>
@@ -345,7 +346,19 @@ int runApiServer(const CliArgs& args) {
     LOG_INFO("Upload directory: " << config.upload_dir);
     LOG_INFO("Results directory: " << config.results_dir);
 
-    LOG_INFO("Results directory: " << config.results_dir);
+    // Load protocol configuration
+    auto& config_mgr = ConfigManager::getInstance();
+    std::string protocols_config = "config/protocols.yaml";
+    if (config_mgr.loadFromFile(protocols_config)) {
+        LOG_INFO("Loaded protocol configuration from: " << protocols_config);
+        auto enabled_protocols = config_mgr.getEnabledProtocols();
+        LOG_INFO("Enabled protocols (" << enabled_protocols.size() << "): ");
+        for (const auto& proto : enabled_protocols) {
+            LOG_INFO("  - " << proto);
+        }
+    } else {
+        LOG_WARN("Failed to load protocol configuration, using defaults");
+    }
 
     // Initialize database
     auto db_manager = std::make_shared<DatabaseManager>(config.database);
