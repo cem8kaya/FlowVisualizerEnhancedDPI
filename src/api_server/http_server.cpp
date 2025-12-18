@@ -4,6 +4,8 @@
 #include "common/logger.h"
 #include "common/utils.h"
 #include "event_extractor/json_exporter.h"
+#include "config/config_manager.h"
+#include "session/session_correlator.h"
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #include <httplib.h>
@@ -393,6 +395,422 @@ void HttpServer::setupRoutes() {
 
         } catch (const std::exception& e) {
             LOG_ERROR("Get all jobs failed: " << e.what());
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
+            res.status = 500;
+            res.set_content(error.dump(), "application/json");
+        }
+    });
+
+    // GET /api/v1/protocols/supported - Get supported protocols and versions
+    server->Get("/api/v1/protocols/supported", [](const httplib::Request&, httplib::Response& res) {
+        try {
+            auto& config_mgr = ConfigManager::getInstance();
+            nlohmann::json response = config_mgr.exportToJson();
+            res.set_content(response.dump(), "application/json");
+        } catch (const std::exception& e) {
+            LOG_ERROR("Get protocols failed: " << e.what());
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
+            res.status = 500;
+            res.set_content(error.dump(), "application/json");
+        }
+    });
+
+    // GET /api/v1/sessions/{session_id}/legs - Get all session legs across interfaces
+    server->Get("/api/v1/sessions/:session_id/legs", [this](const httplib::Request& req,
+                                                             httplib::Response& res) {
+        try {
+            std::string session_id = req.path_params.at("session_id");
+
+            // Search through all completed jobs for this session
+            auto all_jobs = job_manager_->getAllJobs();
+            for (const auto& job : all_jobs) {
+                if (job->status != JobStatus::COMPLETED) {
+                    continue;
+                }
+
+                // Check if session is in this job
+                auto it = std::find(job->session_ids.begin(), job->session_ids.end(), session_id);
+                if (it == job->session_ids.end()) {
+                    continue;
+                }
+
+                // Load sessions from output file
+                std::ifstream infile(job->output_filename);
+                if (!infile) {
+                    continue;
+                }
+
+                nlohmann::json full_results;
+                infile >> full_results;
+
+                // Find the session and extract legs
+                if (full_results.contains("sessions") && full_results["sessions"].is_array()) {
+                    for (const auto& session : full_results["sessions"]) {
+                        if (session["session_id"] == session_id) {
+                            nlohmann::json legs_response;
+                            legs_response["session_id"] = session_id;
+                            legs_response["legs"] = nlohmann::json::array();
+
+                            // Extract messages grouped by interface
+                            if (session.contains("messages") && session["messages"].is_array()) {
+                                std::map<std::string, nlohmann::json> interface_legs;
+
+                                for (const auto& msg : session["messages"]) {
+                                    std::string interface_type = msg.value("interface", "UNKNOWN");
+
+                                    if (interface_legs.find(interface_type) == interface_legs.end()) {
+                                        interface_legs[interface_type] = {
+                                            {"interface_type", interface_type},
+                                            {"protocol", msg.value("protocol", "UNKNOWN")},
+                                            {"message_count", 0},
+                                            {"first_timestamp", msg.value("timestamp", "")},
+                                            {"last_timestamp", msg.value("timestamp", "")}
+                                        };
+                                    }
+
+                                    interface_legs[interface_type]["message_count"] =
+                                        interface_legs[interface_type]["message_count"].get<int>() + 1;
+                                    interface_legs[interface_type]["last_timestamp"] = msg.value("timestamp", "");
+                                }
+
+                                for (const auto& [iface, leg] : interface_legs) {
+                                    legs_response["legs"].push_back(leg);
+                                }
+                            }
+
+                            res.set_content(legs_response.dump(), "application/json");
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Session not found
+            nlohmann::json error = {{"error", "Session not found"}, {"code", "SESSION_NOT_FOUND"}};
+            res.status = 404;
+            res.set_content(error.dump(), "application/json");
+
+        } catch (const std::exception& e) {
+            LOG_ERROR("Get session legs failed: " << e.what());
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
+            res.status = 500;
+            res.set_content(error.dump(), "application/json");
+        }
+    });
+
+    // GET /api/v1/sessions/search - Search sessions by correlation identifiers
+    server->Get("/api/v1/sessions/search", [this](const httplib::Request& req, httplib::Response& res) {
+        try {
+            nlohmann::json search_results = nlohmann::json::array();
+
+            // Extract query parameters
+            std::string imsi = req.has_param("imsi") ? req.get_param_value("imsi") : "";
+            std::string supi = req.has_param("supi") ? req.get_param_value("supi") : "";
+            std::string teid_str = req.has_param("teid") ? req.get_param_value("teid") : "";
+            std::string time_range = req.has_param("time_range") ? req.get_param_value("time_range") : "";
+
+            // Search through all completed jobs
+            auto all_jobs = job_manager_->getAllJobs();
+            for (const auto& job : all_jobs) {
+                if (job->status != JobStatus::COMPLETED) {
+                    continue;
+                }
+
+                // Load sessions from output file
+                std::ifstream infile(job->output_filename);
+                if (!infile) {
+                    continue;
+                }
+
+                nlohmann::json full_results;
+                infile >> full_results;
+
+                if (full_results.contains("sessions") && full_results["sessions"].is_array()) {
+                    for (const auto& session : full_results["sessions"]) {
+                        bool matches = false;
+
+                        // Match by IMSI
+                        if (!imsi.empty() && session.contains("correlation_keys")) {
+                            if (session["correlation_keys"].contains("imsi") &&
+                                session["correlation_keys"]["imsi"] == imsi) {
+                                matches = true;
+                            }
+                        }
+
+                        // Match by SUPI
+                        if (!supi.empty() && session.contains("correlation_keys")) {
+                            if (session["correlation_keys"].contains("supi") &&
+                                session["correlation_keys"]["supi"] == supi) {
+                                matches = true;
+                            }
+                        }
+
+                        // Match by TEID
+                        if (!teid_str.empty() && session.contains("correlation_keys")) {
+                            uint32_t teid = std::stoul(teid_str);
+                            if (session["correlation_keys"].contains("teid_s1u") &&
+                                session["correlation_keys"]["teid_s1u"] == teid) {
+                                matches = true;
+                            }
+                        }
+
+                        if (matches) {
+                            nlohmann::json summary = {
+                                {"session_id", session["session_id"]},
+                                {"job_id", job->job_id},
+                                {"session_type", session.value("session_type", "UNKNOWN")},
+                                {"correlation_keys", session.value("correlation_keys", nlohmann::json::object())}
+                            };
+                            search_results.push_back(summary);
+                        }
+                    }
+                }
+            }
+
+            nlohmann::json response = {
+                {"total", search_results.size()},
+                {"sessions", search_results}
+            };
+
+            res.set_content(response.dump(), "application/json");
+
+        } catch (const std::exception& e) {
+            LOG_ERROR("Search sessions failed: " << e.what());
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
+            res.status = 500;
+            res.set_content(error.dump(), "application/json");
+        }
+    });
+
+    // GET /api/v1/interfaces - List captured interfaces from PCAPNG file
+    server->Get("/api/v1/interfaces", [this](const httplib::Request& req, httplib::Response& res) {
+        try {
+            std::string job_id = req.has_param("job_id") ? req.get_param_value("job_id") : "";
+
+            if (job_id.empty()) {
+                nlohmann::json error = {{"error", "job_id parameter required"}, {"code", "MISSING_PARAMETER"}};
+                res.status = 400;
+                res.set_content(error.dump(), "application/json");
+                return;
+            }
+
+            auto job_info = job_manager_->getJobInfo(job_id);
+            if (!job_info) {
+                nlohmann::json error = {{"error", "Job not found"}, {"code", "JOB_NOT_FOUND"}};
+                res.status = 404;
+                res.set_content(error.dump(), "application/json");
+                return;
+            }
+
+            // For now, return a placeholder response
+            // In a full implementation, this would parse the PCAPNG file's interface blocks
+            nlohmann::json response = {
+                {"job_id", job_id},
+                {"interfaces", nlohmann::json::array({
+                    {
+                        {"interface_id", 0},
+                        {"name", "eth0"},
+                        {"description", "Ethernet adapter"},
+                        {"packet_count", job_info->total_packets}
+                    }
+                })}
+            };
+
+            res.set_content(response.dump(), "application/json");
+
+        } catch (const std::exception& e) {
+            LOG_ERROR("Get interfaces failed: " << e.what());
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
+            res.status = 500;
+            res.set_content(error.dump(), "application/json");
+        }
+    });
+
+    // POST /api/v1/jobs/{job_id}/filter - Apply post-capture filter
+    server->Post("/api/v1/jobs/:job_id/filter", [this](const httplib::Request& req,
+                                                        httplib::Response& res) {
+        try {
+            std::string job_id = req.path_params.at("job_id");
+            auto job_info = job_manager_->getJobInfo(job_id);
+
+            if (!job_info) {
+                nlohmann::json error = {{"error", "Job not found"}, {"code", "JOB_NOT_FOUND"}};
+                res.status = 404;
+                res.set_content(error.dump(), "application/json");
+                return;
+            }
+
+            if (job_info->status != JobStatus::COMPLETED) {
+                nlohmann::json error = {{"error", "Job not completed yet"},
+                                        {"code", "JOB_NOT_COMPLETED"}};
+                res.status = 400;
+                res.set_content(error.dump(), "application/json");
+                return;
+            }
+
+            // Parse filter criteria from request body
+            nlohmann::json filter_request = nlohmann::json::parse(req.body);
+
+            std::string imsi = filter_request.value("imsi", "");
+            std::string teid_str = filter_request.value("teid", "");
+            std::string ip = filter_request.value("ip", "");
+            std::string protocol = filter_request.value("protocol", "");
+
+            // Load sessions from output file
+            std::ifstream infile(job_info->output_filename);
+            if (!infile) {
+                throw std::runtime_error("Failed to read results file");
+            }
+
+            nlohmann::json full_results;
+            infile >> full_results;
+
+            // Apply filters
+            nlohmann::json filtered_sessions = nlohmann::json::array();
+
+            if (full_results.contains("sessions") && full_results["sessions"].is_array()) {
+                for (const auto& session : full_results["sessions"]) {
+                    bool include = true;
+
+                    // Filter by IMSI
+                    if (!imsi.empty() && session.contains("correlation_keys")) {
+                        if (!session["correlation_keys"].contains("imsi") ||
+                            session["correlation_keys"]["imsi"] != imsi) {
+                            include = false;
+                        }
+                    }
+
+                    // Filter by TEID
+                    if (!teid_str.empty() && session.contains("correlation_keys")) {
+                        uint32_t teid = std::stoul(teid_str);
+                        if (!session["correlation_keys"].contains("teid_s1u") ||
+                            session["correlation_keys"]["teid_s1u"] != teid) {
+                            include = false;
+                        }
+                    }
+
+                    // Filter by IP
+                    if (!ip.empty() && session.contains("correlation_keys")) {
+                        if ((!session["correlation_keys"].contains("ue_ipv4") ||
+                             session["correlation_keys"]["ue_ipv4"] != ip) &&
+                            (!session["correlation_keys"].contains("ue_ipv6") ||
+                             session["correlation_keys"]["ue_ipv6"] != ip)) {
+                            include = false;
+                        }
+                    }
+
+                    // Filter by protocol
+                    if (!protocol.empty() && session.contains("messages")) {
+                        bool has_protocol = false;
+                        for (const auto& msg : session["messages"]) {
+                            if (msg.value("protocol", "") == protocol) {
+                                has_protocol = true;
+                                break;
+                            }
+                        }
+                        if (!has_protocol) {
+                            include = false;
+                        }
+                    }
+
+                    if (include) {
+                        filtered_sessions.push_back(session);
+                    }
+                }
+            }
+
+            nlohmann::json response = {
+                {"job_id", job_id},
+                {"filter", filter_request},
+                {"total_sessions", filtered_sessions.size()},
+                {"sessions", filtered_sessions}
+            };
+
+            res.set_content(response.dump(), "application/json");
+
+        } catch (const std::exception& e) {
+            LOG_ERROR("Apply filter failed: " << e.what());
+            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
+            res.status = 500;
+            res.set_content(error.dump(), "application/json");
+        }
+    });
+
+    // GET /api/v1/statistics/protocols - Get protocol distribution statistics
+    server->Get("/api/v1/statistics/protocols", [this](const httplib::Request& req,
+                                                        httplib::Response& res) {
+        try {
+            std::string job_id = req.has_param("job_id") ? req.get_param_value("job_id") : "";
+
+            if (job_id.empty()) {
+                nlohmann::json error = {{"error", "job_id parameter required"}, {"code", "MISSING_PARAMETER"}};
+                res.status = 400;
+                res.set_content(error.dump(), "application/json");
+                return;
+            }
+
+            auto job_info = job_manager_->getJobInfo(job_id);
+            if (!job_info) {
+                nlohmann::json error = {{"error", "Job not found"}, {"code", "JOB_NOT_FOUND"}};
+                res.status = 404;
+                res.set_content(error.dump(), "application/json");
+                return;
+            }
+
+            if (job_info->status != JobStatus::COMPLETED) {
+                nlohmann::json error = {{"error", "Job not completed yet"},
+                                        {"code", "JOB_NOT_COMPLETED"}};
+                res.status = 400;
+                res.set_content(error.dump(), "application/json");
+                return;
+            }
+
+            // Load sessions from output file
+            std::ifstream infile(job_info->output_filename);
+            if (!infile) {
+                throw std::runtime_error("Failed to read results file");
+            }
+
+            nlohmann::json full_results;
+            infile >> full_results;
+
+            // Calculate protocol statistics
+            std::map<std::string, int> protocol_counts;
+            int total_messages = 0;
+
+            if (full_results.contains("sessions") && full_results["sessions"].is_array()) {
+                for (const auto& session : full_results["sessions"]) {
+                    if (session.contains("messages") && session["messages"].is_array()) {
+                        for (const auto& msg : session["messages"]) {
+                            std::string protocol = msg.value("protocol", "UNKNOWN");
+                            protocol_counts[protocol]++;
+                            total_messages++;
+                        }
+                    }
+                }
+            }
+
+            // Build response with percentages
+            nlohmann::json protocol_stats = nlohmann::json::array();
+            for (const auto& [protocol, count] : protocol_counts) {
+                double percentage = total_messages > 0 ? (count * 100.0 / total_messages) : 0.0;
+                protocol_stats.push_back({
+                    {"protocol", protocol},
+                    {"count", count},
+                    {"percentage", percentage}
+                });
+            }
+
+            nlohmann::json response = {
+                {"job_id", job_id},
+                {"total_messages", total_messages},
+                {"protocols", protocol_stats}
+            };
+
+            res.set_content(response.dump(), "application/json");
+
+        } catch (const std::exception& e) {
+            LOG_ERROR("Get protocol statistics failed: " << e.what());
             nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
             res.status = 500;
             res.set_content(error.dump(), "application/json");
