@@ -60,6 +60,18 @@ target_link_libraries(flow_manager PUBLIC
     callflow_common
 )
 
+# Session correlation library
+add_library(session_correlation STATIC
+    session/session_types.cpp
+    session/session_correlator.cpp
+)
+target_include_directories(session_correlation PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(session_correlation PUBLIC
+    callflow_common
+)
+
 # Transport layer library
 add_library(transport STATIC
     transport/sctp_reassembler.cpp
@@ -95,6 +107,7 @@ add_library(protocol_parsers STATIC
     protocol_parsers/x2ap_parser.cpp
     protocol_parsers/ngap_parser.cpp
     protocol_parsers/nas5g_parser.cpp
+    protocol_parsers/pfcp_parser.cpp
 )
 target_include_directories(protocol_parsers PUBLIC
     ${PROJECT_SOURCE_DIR}/include
@@ -192,6 +205,7 @@ target_link_libraries(callflowd PRIVATE
     flow_manager
     protocol_parsers
     event_extractor
+    session_correlation
 )
 
 if(NOT NEED_NDPI_BUILD)
