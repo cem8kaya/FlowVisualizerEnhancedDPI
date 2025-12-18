@@ -7,12 +7,12 @@
 
 namespace callflow {
 
-std::string JsonExporter::exportSession(const Session& session, bool include_events) {
+std::string JsonExporter::exportSession(const FlowSession& session, bool include_events) {
     nlohmann::json j = session.toJson(include_events);
     return formatJson(j, true);
 }
 
-std::string JsonExporter::exportSessions(const std::vector<std::shared_ptr<Session>>& sessions,
+std::string JsonExporter::exportSessions(const std::vector<std::shared_ptr<FlowSession>>& sessions,
                                          bool include_events) {
     nlohmann::json j = nlohmann::json::array();
 
@@ -25,13 +25,13 @@ std::string JsonExporter::exportSessions(const std::vector<std::shared_ptr<Sessi
     return formatJson(j, true);
 }
 
-std::string JsonExporter::exportSessionSummary(const Session& session) {
+std::string JsonExporter::exportSessionSummary(const FlowSession& session) {
     nlohmann::json j = session.toSummaryJson();
     return formatJson(j, true);
 }
 
 bool JsonExporter::exportToFile(const std::string& filename,
-                                const std::vector<std::shared_ptr<Session>>& sessions,
+                                const std::vector<std::shared_ptr<FlowSession>>& sessions,
                                 bool pretty_print) {
     try {
         nlohmann::json j = nlohmann::json::array();
@@ -69,7 +69,7 @@ bool JsonExporter::exportToFile(const std::string& filename,
 }
 
 std::string JsonExporter::exportJobResult(const JobId& job_id,
-                                          const std::vector<std::shared_ptr<Session>>& sessions,
+                                          const std::vector<std::shared_ptr<FlowSession>>& sessions,
                                           const nlohmann::json& metadata) {
     nlohmann::json result;
 

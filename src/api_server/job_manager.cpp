@@ -11,11 +11,11 @@
 #include "flow_manager/session_correlator.h"
 #include "pcap_ingest/pcap_reader.h"
 #include "persistence/database.h"
+#include "protocol_parsers/diameter_parser.h"
+#include "protocol_parsers/gtp_parser.h"
+#include "protocol_parsers/pfcp_parser.h"
 #include "protocol_parsers/rtp_parser.h"
 #include "protocol_parsers/sip_parser.h"
-#include "protocol_parsers/pfcp_parser.h"
-#include "protocol_parsers/gtp_parser.h"
-#include "protocol_parsers/diameter_parser.h"
 
 namespace callflow {
 
@@ -357,7 +357,7 @@ void JobManager::processJob(const JobTask& task) {
             // So if I increment len by 4, type is at len-2. Yes.
         }
 
-        if (header->caplen >= link_header_len + 20) {  // IP(20)
+        if (header->caplen >= static_cast<bpf_u_int32>(link_header_len + 20)) {  // IP(20)
             const uint8_t* ip_header = data + link_header_len;
             size_t ip_len = header->caplen - link_header_len;
 

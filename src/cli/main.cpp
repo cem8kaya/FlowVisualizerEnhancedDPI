@@ -17,8 +17,8 @@
 #include "api_server/http_server.h"
 #include "api_server/job_manager.h"
 #include "api_server/websocket_handler.h"
-#include "persistence/database.h"
 #include "config/config_manager.h"
+#include "persistence/database.h"
 #endif
 
 #include <arpa/inet.h>
@@ -408,7 +408,7 @@ int runApiServer(const CliArgs& args) {
                                      << "/health");
     LOG_INFO("Press Ctrl+C to stop");
 
-    // Wait for termination signal
+    // Placeholder - waiting for viewrmination signal
     std::signal(SIGINT, [](int) {
         LOG_INFO("Received SIGINT, shutting down...");
         exit(0);

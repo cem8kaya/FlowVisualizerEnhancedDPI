@@ -1,11 +1,12 @@
 #pragma once
 
+#include <map>
+#include <memory>
+#include <nlohmann/json.hpp>
+#include <vector>
+
 #include "common/types.h"
 #include "flow_manager/flow_tracker.h"
-#include <vector>
-#include <memory>
-#include <map>
-#include <nlohmann/json.hpp>
 
 namespace callflow {
 
@@ -26,7 +27,10 @@ struct SessionEvent {
 /**
  * Session information
  */
-struct Session {
+/**
+ * Session information (Flow-based)
+ */
+struct FlowSession {
     SessionId session_id;
     SessionType type;
     std::string session_key;  // Call-ID, DIAMETER Session-ID, GTP TEID, etc.
@@ -55,19 +59,18 @@ public:
     /**
      * Process a packet and correlate it to a session
      */
-    void processPacket(const PacketMetadata& packet,
-                      ProtocolType protocol,
-                      const nlohmann::json& parsed_data);
+    void processPacket(const PacketMetadata& packet, ProtocolType protocol,
+                       const nlohmann::json& parsed_data);
 
     /**
      * Get session by ID
      */
-    std::shared_ptr<Session> getSession(const SessionId& session_id);
+    std::shared_ptr<FlowSession> getSession(const SessionId& session_id);
 
     /**
      * Get all sessions
      */
-    std::vector<std::shared_ptr<Session>> getAllSessions() const;
+    std::vector<std::shared_ptr<FlowSession>> getAllSessions() const;
 
     /**
      * Finalize all sessions (calculate final metrics)
@@ -83,18 +86,15 @@ private:
     Config config_;
     mutable std::mutex mutex_;
 
-    std::map<std::string, std::shared_ptr<Session>> sessions_;  // Key: session_key
+    std::map<std::string, std::shared_ptr<FlowSession>> sessions_;  // Key: session_key
 
-    std::shared_ptr<Session> getOrCreateSession(const std::string& session_key,
-                                                SessionType type,
-                                                Timestamp ts);
+    std::shared_ptr<FlowSession> getOrCreateSession(const std::string& session_key,
+                                                    SessionType type, Timestamp ts);
 
     SessionType determineSessionType(ProtocolType protocol);
-    void addEventToSession(std::shared_ptr<Session> session,
-                          const PacketMetadata& packet,
-                          ProtocolType protocol,
-                          const nlohmann::json& parsed_data);
-    void updateMetrics(std::shared_ptr<Session> session, const PacketMetadata& packet);
+    void addEventToSession(std::shared_ptr<FlowSession> session, const PacketMetadata& packet,
+                           ProtocolType protocol, const nlohmann::json& parsed_data);
+    void updateMetrics(std::shared_ptr<FlowSession> session, const PacketMetadata& packet);
 };
 
 }  // namespace callflow
