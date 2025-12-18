@@ -33,6 +33,17 @@ nlohmann::json FlowSession::toJson(bool include_events) const {
     }
     j["metrics"] = metrics_json;
 
+    // Frontend compatibility fields (flattened metrics)
+    j["packet_count"] = metrics.total_packets;
+    j["byte_count"] = metrics.total_bytes;
+    j["session_type"] = sessionTypeToString(type);  // Ensure type is available as session_type
+
+    if (metrics.duration_ms.has_value()) {
+        j["duration_ms"] = metrics.duration_ms.value();
+    } else {
+        j["duration_ms"] = 0;
+    }
+
     j["events_count"] = events.size();
 
     // Include events if requested
