@@ -62,4 +62,43 @@ set_tests_properties(test_sctp_parser PROPERTIES
     LABELS "unit"
 )
 
+# S1AP Parser Tests
+add_executable(test_s1ap_parser
+    unit/test_s1ap_parser.cpp
+)
+
+target_link_libraries(test_s1ap_parser PRIVATE
+    callflow_common
+    protocol_parsers
+    asn1_wrapper
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_s1ap_parser COMMAND test_s1ap_parser)
+
+set_tests_properties(test_s1ap_parser PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# NAS Parser Tests
+add_executable(test_nas_parser
+    unit/test_nas_parser.cpp
+)
+
+target_link_libraries(test_nas_parser PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_nas_parser COMMAND test_nas_parser)
+
+set_tests_properties(test_nas_parser PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
