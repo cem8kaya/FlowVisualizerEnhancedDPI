@@ -29,6 +29,7 @@ std::string protocolTypeToString(ProtocolType proto) {
         case ProtocolType::RTCP: return "RTCP";
         case ProtocolType::GTP_C: return "GTP-C";
         case ProtocolType::GTP_U: return "GTP-U";
+        case ProtocolType::PFCP: return "PFCP";
         case ProtocolType::DIAMETER: return "DIAMETER";
         case ProtocolType::HTTP2: return "HTTP2";
         case ProtocolType::HTTP: return "HTTP";
@@ -47,6 +48,7 @@ ProtocolType stringToProtocolType(const std::string& str) {
     if (str == "RTCP") return ProtocolType::RTCP;
     if (str == "GTP-C") return ProtocolType::GTP_C;
     if (str == "GTP-U") return ProtocolType::GTP_U;
+    if (str == "PFCP") return ProtocolType::PFCP;
     if (str == "DIAMETER") return ProtocolType::DIAMETER;
     if (str == "HTTP2") return ProtocolType::HTTP2;
     if (str == "HTTP") return ProtocolType::HTTP;
@@ -63,6 +65,7 @@ std::string sessionTypeToString(SessionType type) {
     switch (type) {
         case SessionType::VOLTE: return "VoLTE";
         case SessionType::GTP: return "GTP";
+        case SessionType::PFCP: return "PFCP";
         case SessionType::DIAMETER: return "DIAMETER";
         case SessionType::HTTP2: return "HTTP2";
         case SessionType::MIXED: return "MIXED";
@@ -73,6 +76,7 @@ std::string sessionTypeToString(SessionType type) {
 SessionType stringToSessionType(const std::string& str) {
     if (str == "VoLTE") return SessionType::VOLTE;
     if (str == "GTP") return SessionType::GTP;
+    if (str == "PFCP") return SessionType::PFCP;
     if (str == "DIAMETER") return SessionType::DIAMETER;
     if (str == "HTTP2") return SessionType::HTTP2;
     if (str == "MIXED") return SessionType::MIXED;
@@ -122,6 +126,18 @@ std::string messageTypeToString(MessageType type) {
         case MessageType::GTP_DELETE_SESSION_RESP: return "Delete Session Response";
         case MessageType::GTP_ECHO_REQ: return "Echo Request";
         case MessageType::GTP_ECHO_RESP: return "Echo Response";
+        case MessageType::PFCP_HEARTBEAT_REQ: return "Heartbeat Request";
+        case MessageType::PFCP_HEARTBEAT_RESP: return "Heartbeat Response";
+        case MessageType::PFCP_ASSOCIATION_SETUP_REQ: return "Association Setup Request";
+        case MessageType::PFCP_ASSOCIATION_SETUP_RESP: return "Association Setup Response";
+        case MessageType::PFCP_SESSION_ESTABLISHMENT_REQ: return "Session Establishment Request";
+        case MessageType::PFCP_SESSION_ESTABLISHMENT_RESP: return "Session Establishment Response";
+        case MessageType::PFCP_SESSION_MODIFICATION_REQ: return "Session Modification Request";
+        case MessageType::PFCP_SESSION_MODIFICATION_RESP: return "Session Modification Response";
+        case MessageType::PFCP_SESSION_DELETION_REQ: return "Session Deletion Request";
+        case MessageType::PFCP_SESSION_DELETION_RESP: return "Session Deletion Response";
+        case MessageType::PFCP_SESSION_REPORT_REQ: return "Session Report Request";
+        case MessageType::PFCP_SESSION_REPORT_RESP: return "Session Report Response";
         case MessageType::HTTP2_HEADERS: return "HEADERS";
         case MessageType::HTTP2_DATA: return "DATA";
         case MessageType::HTTP2_SETTINGS: return "SETTINGS";

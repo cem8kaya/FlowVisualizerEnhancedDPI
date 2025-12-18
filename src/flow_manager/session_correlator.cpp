@@ -77,6 +77,16 @@ void SessionCorrelator::processPacket(const PacketMetadata& packet,
         session_key = parsed_data["session_id"].get<std::string>();
     } else if (protocol == ProtocolType::GTP_C && parsed_data.contains("teid")) {
         session_key = "GTP-" + std::to_string(parsed_data["teid"].get<uint32_t>());
+    } else if (protocol == ProtocolType::PFCP) {
+        // PFCP can use F-SEID or SEID from header
+        if (parsed_data.contains("f_seid")) {
+            session_key = "PFCP-" + std::to_string(parsed_data["f_seid"].get<uint64_t>());
+        } else if (parsed_data.contains("header") && parsed_data["header"].contains("seid")) {
+            session_key = "PFCP-" + std::to_string(parsed_data["header"]["seid"].get<uint64_t>());
+        } else {
+            // Fallback to 5-tuple for node management messages
+            session_key = "PFCP-" + packet.five_tuple.toString();
+        }
     } else if (protocol == ProtocolType::HTTP2 && parsed_data.contains("stream_id")) {
         session_key = "HTTP2-" + packet.five_tuple.toString() + "-" +
                      std::to_string(parsed_data["stream_id"].get<uint32_t>());
@@ -181,6 +191,8 @@ SessionType SessionCorrelator::determineSessionType(ProtocolType protocol) {
         case ProtocolType::GTP_C:
         case ProtocolType::GTP_U:
             return SessionType::GTP;
+        case ProtocolType::PFCP:
+            return SessionType::PFCP;
         case ProtocolType::DIAMETER:
             return SessionType::DIAMETER;
         case ProtocolType::HTTP2:
@@ -252,6 +264,30 @@ void SessionCorrelator::addEventToSession(std::shared_ptr<Session> session,
                 case 37: event.message_type = MessageType::GTP_DELETE_SESSION_RESP; break;
                 case 1: event.message_type = MessageType::GTP_ECHO_REQ; break;
                 case 2: event.message_type = MessageType::GTP_ECHO_RESP; break;
+                default: event.message_type = MessageType::UNKNOWN; break;
+            }
+        }
+    } else if (protocol == ProtocolType::PFCP) {
+        std::string msg_name = parsed_data.value("message_type_name", "PFCP");
+        event.short_description = "PFCP " + msg_name;
+
+        // Extract message type from header
+        if (parsed_data.contains("header") && parsed_data["header"].contains("message_type")) {
+            uint8_t msg_type = parsed_data["header"]["message_type"].get<uint8_t>();
+
+            switch (msg_type) {
+                case 1: event.message_type = MessageType::PFCP_HEARTBEAT_REQ; break;
+                case 2: event.message_type = MessageType::PFCP_HEARTBEAT_RESP; break;
+                case 5: event.message_type = MessageType::PFCP_ASSOCIATION_SETUP_REQ; break;
+                case 6: event.message_type = MessageType::PFCP_ASSOCIATION_SETUP_RESP; break;
+                case 50: event.message_type = MessageType::PFCP_SESSION_ESTABLISHMENT_REQ; break;
+                case 51: event.message_type = MessageType::PFCP_SESSION_ESTABLISHMENT_RESP; break;
+                case 52: event.message_type = MessageType::PFCP_SESSION_MODIFICATION_REQ; break;
+                case 53: event.message_type = MessageType::PFCP_SESSION_MODIFICATION_RESP; break;
+                case 54: event.message_type = MessageType::PFCP_SESSION_DELETION_REQ; break;
+                case 55: event.message_type = MessageType::PFCP_SESSION_DELETION_RESP; break;
+                case 56: event.message_type = MessageType::PFCP_SESSION_REPORT_REQ; break;
+                case 57: event.message_type = MessageType::PFCP_SESSION_REPORT_RESP; break;
                 default: event.message_type = MessageType::UNKNOWN; break;
             }
         }

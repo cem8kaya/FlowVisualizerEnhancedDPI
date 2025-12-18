@@ -13,6 +13,9 @@
 #include "persistence/database.h"
 #include "protocol_parsers/rtp_parser.h"
 #include "protocol_parsers/sip_parser.h"
+#include "protocol_parsers/pfcp_parser.h"
+#include "protocol_parsers/gtp_parser.h"
+#include "protocol_parsers/diameter_parser.h"
 
 namespace callflow {
 
@@ -385,9 +388,42 @@ void JobManager::processJob(const JobTask& task) {
                         if (payload_len > 0) {
                             packet.raw_data.assign(payload, payload + payload_len);
 
+                            // Try PFCP parsing (UDP port 8805)
+                            if (packet.five_tuple.src_port == 8805 ||
+                                packet.five_tuple.dst_port == 8805) {
+                                PfcpParser pfcp_parser;
+                                auto pfcp_msg = pfcp_parser.parse(packet.raw_data.data(),
+                                                                  packet.raw_data.size());
+                                if (pfcp_msg.has_value()) {
+                                    correlator.processPacket(packet, ProtocolType::PFCP,
+                                                             pfcp_msg->toJson());
+                                }
+                            }
+                            // Try GTP-C parsing (UDP port 2123)
+                            else if (packet.five_tuple.src_port == 2123 ||
+                                     packet.five_tuple.dst_port == 2123) {
+                                GtpParser gtp_parser;
+                                auto gtp_msg = gtp_parser.parse(packet.raw_data.data(),
+                                                                packet.raw_data.size());
+                                if (gtp_msg.has_value()) {
+                                    correlator.processPacket(packet, ProtocolType::GTP_C,
+                                                             gtp_msg->toJson());
+                                }
+                            }
+                            // Try DIAMETER parsing (TCP/UDP port 3868)
+                            else if (packet.five_tuple.src_port == 3868 ||
+                                     packet.five_tuple.dst_port == 3868) {
+                                DiameterParser diameter_parser;
+                                auto diameter_msg = diameter_parser.parse(packet.raw_data.data(),
+                                                                          packet.raw_data.size());
+                                if (diameter_msg.has_value()) {
+                                    correlator.processPacket(packet, ProtocolType::DIAMETER,
+                                                             diameter_msg->toJson());
+                                }
+                            }
                             // Try SIP parsing
-                            if (packet.five_tuple.src_port == 5060 ||
-                                packet.five_tuple.dst_port == 5060) {
+                            else if (packet.five_tuple.src_port == 5060 ||
+                                     packet.five_tuple.dst_port == 5060) {
                                 SipParser sip_parser;
                                 auto sip_msg = sip_parser.parse(packet.raw_data.data(),
                                                                 packet.raw_data.size());

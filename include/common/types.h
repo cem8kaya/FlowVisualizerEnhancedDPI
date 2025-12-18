@@ -30,6 +30,7 @@ enum class ProtocolType {
     RTCP,
     GTP_C,
     GTP_U,
+    PFCP,
     DIAMETER,
     HTTP2,
     HTTP,
@@ -48,6 +49,7 @@ enum class SessionType {
     UNKNOWN = 0,
     VOLTE,     // VoLTE call (SIP + RTP)
     GTP,       // GTP bearer session
+    PFCP,      // PFCP session (5G control plane)
     DIAMETER,  // DIAMETER session
     HTTP2,     // HTTP/2 session
     MIXED      // Mixed/uncategorized
@@ -83,6 +85,19 @@ enum class MessageType {
     GTP_DELETE_SESSION_RESP,
     GTP_ECHO_REQ,
     GTP_ECHO_RESP,
+    // PFCP (5G control plane)
+    PFCP_HEARTBEAT_REQ,
+    PFCP_HEARTBEAT_RESP,
+    PFCP_ASSOCIATION_SETUP_REQ,
+    PFCP_ASSOCIATION_SETUP_RESP,
+    PFCP_SESSION_ESTABLISHMENT_REQ,
+    PFCP_SESSION_ESTABLISHMENT_RESP,
+    PFCP_SESSION_MODIFICATION_REQ,
+    PFCP_SESSION_MODIFICATION_RESP,
+    PFCP_SESSION_DELETION_REQ,
+    PFCP_SESSION_DELETION_RESP,
+    PFCP_SESSION_REPORT_REQ,
+    PFCP_SESSION_REPORT_RESP,
     // HTTP/2
     HTTP2_HEADERS,
     HTTP2_DATA,
