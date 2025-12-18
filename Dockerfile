@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     libssl-dev \
     libndpi-dev \
+    libsctp-dev \
     pkg-config \
     wget \
     && rm -rf /var/lib/apt/lists/*
@@ -43,6 +44,7 @@ RUN apt-get update && apt-get install -y \
     libpcap0.8 \
     libsqlite3-0 \
     libssl3 \
+    lksctp-tools \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*

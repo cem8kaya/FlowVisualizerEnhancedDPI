@@ -23,4 +23,43 @@ set_tests_properties(test_pcapng_reader PROPERTIES
     LABELS "unit"
 )
 
+# GTPv1 Parser Tests
+add_executable(test_gtpv1_parser
+    unit/test_gtpv1_parser.cpp
+)
+
+target_link_libraries(test_gtpv1_parser PRIVATE
+    callflow_common
+    protocol_parsers
+    transport
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gtpv1_parser COMMAND test_gtpv1_parser)
+
+set_tests_properties(test_gtpv1_parser PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# SCTP Parser Tests
+add_executable(test_sctp_parser
+    unit/test_sctp_parser.cpp
+)
+
+target_link_libraries(test_sctp_parser PRIVATE
+    callflow_common
+    transport
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_sctp_parser COMMAND test_sctp_parser)
+
+set_tests_properties(test_sctp_parser PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
