@@ -80,9 +80,13 @@ add_library(protocol_parsers STATIC
     protocol_parsers/gtpv1_parser.cpp
     protocol_parsers/diameter_parser.cpp
     protocol_parsers/http2_parser.cpp
+    protocol_parsers/x2ap_parser.cpp
+    protocol_parsers/ngap_parser.cpp
+    protocol_parsers/nas5g_parser.cpp
 )
 target_include_directories(protocol_parsers PUBLIC
     ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/thirdparty
 )
 target_link_libraries(protocol_parsers PUBLIC
     callflow_common
