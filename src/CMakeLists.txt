@@ -72,6 +72,18 @@ target_link_libraries(transport PUBLIC
     callflow_common
 )
 
+# ASN.1 wrapper library for S1AP
+add_library(asn1_wrapper STATIC
+    ${PROJECT_SOURCE_DIR}/thirdparty/asn1c/s1ap_asn1_wrapper.cpp
+)
+target_include_directories(asn1_wrapper PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/thirdparty
+)
+target_link_libraries(asn1_wrapper PUBLIC
+    callflow_common
+)
+
 # Protocol parsers library
 add_library(protocol_parsers STATIC
     protocol_parsers/sip_parser.cpp
@@ -91,6 +103,7 @@ target_include_directories(protocol_parsers PUBLIC
 target_link_libraries(protocol_parsers PUBLIC
     callflow_common
     transport
+    asn1_wrapper
 )
 
 # Event extractor library

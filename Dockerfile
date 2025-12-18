@@ -24,6 +24,7 @@ WORKDIR /build
 COPY CMakeLists.txt ./
 COPY src/ ./src/
 COPY include/ ./include/
+COPY thirdparty/ ./thirdparty/
 COPY ui/ ./ui/
 
 # Build
