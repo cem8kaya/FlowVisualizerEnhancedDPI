@@ -22,7 +22,9 @@ const sessionView = {
             this.sessionData = await app.getSession(this.sessionId);
             this.renderSessionInfo();
             this.renderEvents();
+            this.renderEvents();
             this.renderTimeline();
+            this.renderFlowchart();
             this.renderMetrics();
         } catch (error) {
             console.error('Failed to load session:', error);
@@ -84,6 +86,11 @@ const sessionView = {
 
         // Initialize timeline
         timeline.init('timelineViz', this.sessionData.events, Array.from(participants));
+    },
+
+    renderFlowchart() {
+        if (!this.sessionData || !this.sessionData.events) return;
+        flowchart.init('flowchartViz', this.sessionData.events);
     },
 
     renderMetrics() {

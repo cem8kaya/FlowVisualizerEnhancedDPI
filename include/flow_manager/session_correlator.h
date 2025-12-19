@@ -22,6 +22,10 @@ struct SessionEvent {
     std::string short_description;
     nlohmann::json details;
     PacketId packet_ref;
+    std::string src_ip;
+    std::string dst_ip;
+    uint16_t src_port;
+    uint16_t dst_port;
 };
 
 /**

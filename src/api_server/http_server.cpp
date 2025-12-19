@@ -185,6 +185,7 @@ void HttpServer::setupRoutes() {
 
             nlohmann::json response = {
                 {"job_id", job_info->job_id},
+                {"input_filename", job_info->input_filename},
                 {"status", jobStatusToString(job_info->status)},
                 {"progress", job_info->progress},
                 {"created_at", utils::timestampToIso8601(job_info->created_at)}};

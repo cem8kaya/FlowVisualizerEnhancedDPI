@@ -1,8 +1,9 @@
 #include "session/session_types.h"
-#include <chrono>
+
 #include <algorithm>
-#include <sstream>
+#include <chrono>
 #include <iomanip>
+#include <sstream>
 
 namespace callflow {
 
@@ -30,15 +31,18 @@ bool SessionCorrelationKey::matches(const SessionCorrelationKey& other) const {
     }
 
     // Check TEIDs
-    if (teid_s1u.has_value() && other.teid_s1u.has_value() && teid_s1u.value() == other.teid_s1u.value()) {
+    if (teid_s1u.has_value() && other.teid_s1u.has_value() &&
+        teid_s1u.value() == other.teid_s1u.value()) {
         return true;
     }
-    if (teid_s5u.has_value() && other.teid_s5u.has_value() && teid_s5u.value() == other.teid_s5u.value()) {
+    if (teid_s5u.has_value() && other.teid_s5u.has_value() &&
+        teid_s5u.value() == other.teid_s5u.value()) {
         return true;
     }
 
     // Check SEID (PFCP)
-    if (seid_n4.has_value() && other.seid_n4.has_value() && seid_n4.value() == other.seid_n4.value()) {
+    if (seid_n4.has_value() && other.seid_n4.has_value() &&
+        seid_n4.value() == other.seid_n4.value()) {
         return true;
     }
 
@@ -62,10 +66,12 @@ bool SessionCorrelationKey::matches(const SessionCorrelationKey& other) const {
     }
 
     // Check UE IP addresses
-    if (ue_ipv4.has_value() && other.ue_ipv4.has_value() && ue_ipv4.value() == other.ue_ipv4.value()) {
+    if (ue_ipv4.has_value() && other.ue_ipv4.has_value() &&
+        ue_ipv4.value() == other.ue_ipv4.value()) {
         return true;
     }
-    if (ue_ipv6.has_value() && other.ue_ipv6.has_value() && ue_ipv6.value() == other.ue_ipv6.value()) {
+    if (ue_ipv6.has_value() && other.ue_ipv6.has_value() &&
+        ue_ipv6.value() == other.ue_ipv6.value()) {
         return true;
     }
 
@@ -79,63 +85,105 @@ bool SessionCorrelationKey::matches(const SessionCorrelationKey& other) const {
 }
 
 void SessionCorrelationKey::merge(const SessionCorrelationKey& other) {
-    if (!imsi.has_value() && other.imsi.has_value()) imsi = other.imsi;
-    if (!supi.has_value() && other.supi.has_value()) supi = other.supi;
-    if (!guti.has_value() && other.guti.has_value()) guti = other.guti;
-    if (!msisdn.has_value() && other.msisdn.has_value()) msisdn = other.msisdn;
+    if (!imsi.has_value() && other.imsi.has_value())
+        imsi = other.imsi;
+    if (!supi.has_value() && other.supi.has_value())
+        supi = other.supi;
+    if (!guti.has_value() && other.guti.has_value())
+        guti = other.guti;
+    if (!msisdn.has_value() && other.msisdn.has_value())
+        msisdn = other.msisdn;
 
-    if (!teid_s1u.has_value() && other.teid_s1u.has_value()) teid_s1u = other.teid_s1u;
-    if (!teid_s5u.has_value() && other.teid_s5u.has_value()) teid_s5u = other.teid_s5u;
-    if (!seid_n4.has_value() && other.seid_n4.has_value()) seid_n4 = other.seid_n4;
-    if (!pdu_session_id.has_value() && other.pdu_session_id.has_value()) pdu_session_id = other.pdu_session_id;
-    if (!eps_bearer_id.has_value() && other.eps_bearer_id.has_value()) eps_bearer_id = other.eps_bearer_id;
+    if (!teid_s1u.has_value() && other.teid_s1u.has_value())
+        teid_s1u = other.teid_s1u;
+    if (!teid_s5u.has_value() && other.teid_s5u.has_value())
+        teid_s5u = other.teid_s5u;
+    if (!seid_n4.has_value() && other.seid_n4.has_value())
+        seid_n4 = other.seid_n4;
+    if (!pdu_session_id.has_value() && other.pdu_session_id.has_value())
+        pdu_session_id = other.pdu_session_id;
+    if (!eps_bearer_id.has_value() && other.eps_bearer_id.has_value())
+        eps_bearer_id = other.eps_bearer_id;
 
-    if (!enb_ue_s1ap_id.has_value() && other.enb_ue_s1ap_id.has_value()) enb_ue_s1ap_id = other.enb_ue_s1ap_id;
-    if (!mme_ue_s1ap_id.has_value() && other.mme_ue_s1ap_id.has_value()) mme_ue_s1ap_id = other.mme_ue_s1ap_id;
-    if (!ran_ue_ngap_id.has_value() && other.ran_ue_ngap_id.has_value()) ran_ue_ngap_id = other.ran_ue_ngap_id;
-    if (!amf_ue_ngap_id.has_value() && other.amf_ue_ngap_id.has_value()) amf_ue_ngap_id = other.amf_ue_ngap_id;
+    if (!enb_ue_s1ap_id.has_value() && other.enb_ue_s1ap_id.has_value())
+        enb_ue_s1ap_id = other.enb_ue_s1ap_id;
+    if (!mme_ue_s1ap_id.has_value() && other.mme_ue_s1ap_id.has_value())
+        mme_ue_s1ap_id = other.mme_ue_s1ap_id;
+    if (!ran_ue_ngap_id.has_value() && other.ran_ue_ngap_id.has_value())
+        ran_ue_ngap_id = other.ran_ue_ngap_id;
+    if (!amf_ue_ngap_id.has_value() && other.amf_ue_ngap_id.has_value())
+        amf_ue_ngap_id = other.amf_ue_ngap_id;
 
-    if (!ue_ipv4.has_value() && other.ue_ipv4.has_value()) ue_ipv4 = other.ue_ipv4;
-    if (!ue_ipv6.has_value() && other.ue_ipv6.has_value()) ue_ipv6 = other.ue_ipv6;
-    if (!pgw_upf_ip.has_value() && other.pgw_upf_ip.has_value()) pgw_upf_ip = other.pgw_upf_ip;
+    if (!ue_ipv4.has_value() && other.ue_ipv4.has_value())
+        ue_ipv4 = other.ue_ipv4;
+    if (!ue_ipv6.has_value() && other.ue_ipv6.has_value())
+        ue_ipv6 = other.ue_ipv6;
+    if (!pgw_upf_ip.has_value() && other.pgw_upf_ip.has_value())
+        pgw_upf_ip = other.pgw_upf_ip;
 
-    if (!apn.has_value() && other.apn.has_value()) apn = other.apn;
-    if (!dnn.has_value() && other.dnn.has_value()) dnn = other.dnn;
-    if (!network_instance.has_value() && other.network_instance.has_value()) network_instance = other.network_instance;
+    if (!apn.has_value() && other.apn.has_value())
+        apn = other.apn;
+    if (!dnn.has_value() && other.dnn.has_value())
+        dnn = other.dnn;
+    if (!network_instance.has_value() && other.network_instance.has_value())
+        network_instance = other.network_instance;
 
-    if (!sip_call_id.has_value() && other.sip_call_id.has_value()) sip_call_id = other.sip_call_id;
-    if (!rtp_ssrc.has_value() && other.rtp_ssrc.has_value()) rtp_ssrc = other.rtp_ssrc;
+    if (!sip_call_id.has_value() && other.sip_call_id.has_value())
+        sip_call_id = other.sip_call_id;
+    if (!rtp_ssrc.has_value() && other.rtp_ssrc.has_value())
+        rtp_ssrc = other.rtp_ssrc;
 }
 
 nlohmann::json SessionCorrelationKey::toJson() const {
     nlohmann::json j;
 
-    if (imsi.has_value()) j["imsi"] = imsi.value();
-    if (supi.has_value()) j["supi"] = supi.value();
-    if (guti.has_value()) j["guti"] = guti.value();
-    if (msisdn.has_value()) j["msisdn"] = msisdn.value();
+    if (imsi.has_value())
+        j["imsi"] = imsi.value();
+    if (supi.has_value())
+        j["supi"] = supi.value();
+    if (guti.has_value())
+        j["guti"] = guti.value();
+    if (msisdn.has_value())
+        j["msisdn"] = msisdn.value();
 
-    if (teid_s1u.has_value()) j["teid_s1u"] = teid_s1u.value();
-    if (teid_s5u.has_value()) j["teid_s5u"] = teid_s5u.value();
-    if (seid_n4.has_value()) j["seid_n4"] = seid_n4.value();
-    if (pdu_session_id.has_value()) j["pdu_session_id"] = pdu_session_id.value();
-    if (eps_bearer_id.has_value()) j["eps_bearer_id"] = eps_bearer_id.value();
+    if (teid_s1u.has_value())
+        j["teid_s1u"] = teid_s1u.value();
+    if (teid_s5u.has_value())
+        j["teid_s5u"] = teid_s5u.value();
+    if (seid_n4.has_value())
+        j["seid_n4"] = seid_n4.value();
+    if (pdu_session_id.has_value())
+        j["pdu_session_id"] = pdu_session_id.value();
+    if (eps_bearer_id.has_value())
+        j["eps_bearer_id"] = eps_bearer_id.value();
 
-    if (enb_ue_s1ap_id.has_value()) j["enb_ue_s1ap_id"] = enb_ue_s1ap_id.value();
-    if (mme_ue_s1ap_id.has_value()) j["mme_ue_s1ap_id"] = mme_ue_s1ap_id.value();
-    if (ran_ue_ngap_id.has_value()) j["ran_ue_ngap_id"] = ran_ue_ngap_id.value();
-    if (amf_ue_ngap_id.has_value()) j["amf_ue_ngap_id"] = amf_ue_ngap_id.value();
+    if (enb_ue_s1ap_id.has_value())
+        j["enb_ue_s1ap_id"] = enb_ue_s1ap_id.value();
+    if (mme_ue_s1ap_id.has_value())
+        j["mme_ue_s1ap_id"] = mme_ue_s1ap_id.value();
+    if (ran_ue_ngap_id.has_value())
+        j["ran_ue_ngap_id"] = ran_ue_ngap_id.value();
+    if (amf_ue_ngap_id.has_value())
+        j["amf_ue_ngap_id"] = amf_ue_ngap_id.value();
 
-    if (ue_ipv4.has_value()) j["ue_ipv4"] = ue_ipv4.value();
-    if (ue_ipv6.has_value()) j["ue_ipv6"] = ue_ipv6.value();
-    if (pgw_upf_ip.has_value()) j["pgw_upf_ip"] = pgw_upf_ip.value();
+    if (ue_ipv4.has_value())
+        j["ue_ipv4"] = ue_ipv4.value();
+    if (ue_ipv6.has_value())
+        j["ue_ipv6"] = ue_ipv6.value();
+    if (pgw_upf_ip.has_value())
+        j["pgw_upf_ip"] = pgw_upf_ip.value();
 
-    if (apn.has_value()) j["apn"] = apn.value();
-    if (dnn.has_value()) j["dnn"] = dnn.value();
-    if (network_instance.has_value()) j["network_instance"] = network_instance.value();
+    if (apn.has_value())
+        j["apn"] = apn.value();
+    if (dnn.has_value())
+        j["dnn"] = dnn.value();
+    if (network_instance.has_value())
+        j["network_instance"] = network_instance.value();
 
-    if (sip_call_id.has_value()) j["sip_call_id"] = sip_call_id.value();
-    if (rtp_ssrc.has_value()) j["rtp_ssrc"] = rtp_ssrc.value();
+    if (sip_call_id.has_value())
+        j["sip_call_id"] = sip_call_id.value();
+    if (rtp_ssrc.has_value())
+        j["rtp_ssrc"] = rtp_ssrc.value();
 
     return j;
 }
@@ -146,22 +194,33 @@ size_t SessionCorrelationKey::hash() const {
     std::hash<uint32_t> uint32_hasher;
     std::hash<uint64_t> uint64_hasher;
 
-    if (imsi.has_value()) h ^= string_hasher(imsi.value());
-    if (supi.has_value()) h ^= string_hasher(supi.value()) << 1;
-    if (teid_s1u.has_value()) h ^= uint32_hasher(teid_s1u.value()) << 2;
-    if (seid_n4.has_value()) h ^= uint64_hasher(seid_n4.value()) << 3;
-    if (ue_ipv4.has_value()) h ^= string_hasher(ue_ipv4.value()) << 4;
+    if (imsi.has_value())
+        h ^= string_hasher(imsi.value());
+    if (supi.has_value())
+        h ^= string_hasher(supi.value()) << 1;
+    if (teid_s1u.has_value())
+        h ^= uint32_hasher(teid_s1u.value()) << 2;
+    if (seid_n4.has_value())
+        h ^= uint64_hasher(seid_n4.value()) << 3;
+    if (ue_ipv4.has_value())
+        h ^= string_hasher(ue_ipv4.value()) << 4;
 
     return h;
 }
 
 std::string SessionCorrelationKey::getPrimaryIdentifier() const {
-    if (imsi.has_value()) return imsi.value();
-    if (supi.has_value()) return supi.value();
-    if (guti.has_value()) return guti.value();
-    if (msisdn.has_value()) return msisdn.value();
-    if (ue_ipv4.has_value()) return ue_ipv4.value();
-    if (ue_ipv6.has_value()) return ue_ipv6.value();
+    if (imsi.has_value())
+        return imsi.value();
+    if (supi.has_value())
+        return supi.value();
+    if (guti.has_value())
+        return guti.value();
+    if (msisdn.has_value())
+        return msisdn.value();
+    if (ue_ipv4.has_value())
+        return ue_ipv4.value();
+    if (ue_ipv6.has_value())
+        return ue_ipv6.value();
     return "unknown";
 }
 
@@ -173,12 +232,26 @@ nlohmann::json SessionMessageRef::toJson() const {
     nlohmann::json j;
     j["message_id"] = message_id;
     j["packet_id"] = packet_id;
-    j["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-        timestamp.time_since_epoch()).count();
+    j["timestamp"] =
+        std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count();
     j["interface"] = interfaceTypeToString(interface);
+    j["protocol"] = protocolTypeToString(protocol);
     j["protocol"] = protocolTypeToString(protocol);
     j["message_type"] = messageTypeToString(message_type);
     j["sequence_in_session"] = sequence_in_session;
+
+    // Add flattened fields for UI compatibility
+    j["src_ip"] = src_ip;
+    j["dst_ip"] = dst_ip;
+    j["src_port"] = src_port;
+    j["dst_port"] = dst_port;
+
+    // Add short description and details for UI compatibility
+    // These might be computed or stored elsewhere, but for now we'll ensure basic fields exist
+    j["short"] = messageTypeToString(message_type);
+    // Ideally we would pass the full details json here, but SessionMessageRef doesn't store it.
+    // We might need to consider carrying a small JSON payload or description string.
+
     j["correlation_key"] = correlation_key.toJson();
     return j;
 }
@@ -192,10 +265,11 @@ nlohmann::json SessionLeg::toJson() const {
     j["interface"] = interfaceTypeToString(interface);
     j["message_count"] = messages.size();
     j["total_bytes"] = total_bytes;
-    j["start_time"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-        start_time.time_since_epoch()).count();
-    j["end_time"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-        end_time.time_since_epoch()).count();
+    j["start_time"] =
+        std::chrono::duration_cast<std::chrono::milliseconds>(start_time.time_since_epoch())
+            .count();
+    j["end_time"] =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_time.time_since_epoch()).count();
     j["duration_ms"] = getDurationMs();
 
     nlohmann::json msgs_json = nlohmann::json::array();
@@ -221,10 +295,11 @@ nlohmann::json Session::toJson() const {
     j["session_id"] = session_id;
     j["session_type"] = enhancedSessionTypeToString(session_type);
     j["correlation_key"] = correlation_key.toJson();
-    j["start_time"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-        start_time.time_since_epoch()).count();
-    j["end_time"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-        end_time.time_since_epoch()).count();
+    j["start_time"] =
+        std::chrono::duration_cast<std::chrono::milliseconds>(start_time.time_since_epoch())
+            .count();
+    j["end_time"] =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_time.time_since_epoch()).count();
     j["duration_ms"] = getDurationMs();
     j["total_packets"] = total_packets;
     j["total_bytes"] = total_bytes;
@@ -253,6 +328,15 @@ nlohmann::json Session::toJson() const {
     if (!metadata.empty()) {
         j["metadata"] = metadata;
     }
+
+    // Add flattened events array for frontend compatibility (merging all legs)
+    nlohmann::json events_json = nlohmann::json::array();
+    auto all_msgs = getAllMessages();
+    for (const auto& msg : all_msgs) {
+        events_json.push_back(msg.toJson());
+    }
+    j["events"] = events_json;
+    j["events_count"] = all_msgs.size();
 
     return j;
 }
@@ -308,7 +392,8 @@ void Session::addMessage(const SessionMessageRef& msg) {
         target_leg = &legs.back();
 
         // Add to interfaces_involved if not already there
-        if (std::find(interfaces_involved.begin(), interfaces_involved.end(), msg.interface) == interfaces_involved.end()) {
+        if (std::find(interfaces_involved.begin(), interfaces_involved.end(), msg.interface) ==
+            interfaces_involved.end()) {
             interfaces_involved.push_back(msg.interface);
         }
     }
@@ -395,89 +480,159 @@ nlohmann::json SessionStatistics::toJson() const {
 
 std::string enhancedSessionTypeToString(EnhancedSessionType type) {
     switch (type) {
-        case EnhancedSessionType::UNKNOWN: return "Unknown";
-        case EnhancedSessionType::LTE_ATTACH: return "LTE-Attach";
-        case EnhancedSessionType::LTE_PDN_CONNECT: return "LTE-PDN-Connect";
-        case EnhancedSessionType::LTE_HANDOVER_X2: return "LTE-Handover-X2";
-        case EnhancedSessionType::LTE_HANDOVER_S1: return "LTE-Handover-S1";
-        case EnhancedSessionType::LTE_SERVICE_REQUEST: return "LTE-Service-Request";
-        case EnhancedSessionType::LTE_DETACH: return "LTE-Detach";
-        case EnhancedSessionType::G5_REGISTRATION: return "5G-Registration";
-        case EnhancedSessionType::G5_PDU_SESSION: return "5G-PDU-Session";
-        case EnhancedSessionType::G5_HANDOVER: return "5G-Handover";
-        case EnhancedSessionType::G5_SERVICE_REQUEST: return "5G-Service-Request";
-        case EnhancedSessionType::G5_DEREGISTRATION: return "5G-Deregistration";
-        case EnhancedSessionType::VOLTE_CALL: return "VoLTE-Call";
-        case EnhancedSessionType::VIDEO_STREAMING: return "Video-Streaming";
-        case EnhancedSessionType::WEB_BROWSING: return "Web-Browsing";
-        case EnhancedSessionType::DATA_TRANSFER: return "Data-Transfer";
-        case EnhancedSessionType::MIXED: return "Mixed";
-        case EnhancedSessionType::INCOMPLETE: return "Incomplete";
-        default: return "Unknown";
+        case EnhancedSessionType::UNKNOWN:
+            return "Unknown";
+        case EnhancedSessionType::LTE_ATTACH:
+            return "LTE-Attach";
+        case EnhancedSessionType::LTE_PDN_CONNECT:
+            return "LTE-PDN-Connect";
+        case EnhancedSessionType::LTE_HANDOVER_X2:
+            return "LTE-Handover-X2";
+        case EnhancedSessionType::LTE_HANDOVER_S1:
+            return "LTE-Handover-S1";
+        case EnhancedSessionType::LTE_SERVICE_REQUEST:
+            return "LTE-Service-Request";
+        case EnhancedSessionType::LTE_DETACH:
+            return "LTE-Detach";
+        case EnhancedSessionType::G5_REGISTRATION:
+            return "5G-Registration";
+        case EnhancedSessionType::G5_PDU_SESSION:
+            return "5G-PDU-Session";
+        case EnhancedSessionType::G5_HANDOVER:
+            return "5G-Handover";
+        case EnhancedSessionType::G5_SERVICE_REQUEST:
+            return "5G-Service-Request";
+        case EnhancedSessionType::G5_DEREGISTRATION:
+            return "5G-Deregistration";
+        case EnhancedSessionType::VOLTE_CALL:
+            return "VoLTE-Call";
+        case EnhancedSessionType::VIDEO_STREAMING:
+            return "Video-Streaming";
+        case EnhancedSessionType::WEB_BROWSING:
+            return "Web-Browsing";
+        case EnhancedSessionType::DATA_TRANSFER:
+            return "Data-Transfer";
+        case EnhancedSessionType::MIXED:
+            return "Mixed";
+        case EnhancedSessionType::INCOMPLETE:
+            return "Incomplete";
+        default:
+            return "Unknown";
     }
 }
 
 EnhancedSessionType stringToEnhancedSessionType(const std::string& str) {
-    if (str == "LTE-Attach") return EnhancedSessionType::LTE_ATTACH;
-    if (str == "LTE-PDN-Connect") return EnhancedSessionType::LTE_PDN_CONNECT;
-    if (str == "LTE-Handover-X2") return EnhancedSessionType::LTE_HANDOVER_X2;
-    if (str == "LTE-Handover-S1") return EnhancedSessionType::LTE_HANDOVER_S1;
-    if (str == "LTE-Service-Request") return EnhancedSessionType::LTE_SERVICE_REQUEST;
-    if (str == "LTE-Detach") return EnhancedSessionType::LTE_DETACH;
-    if (str == "5G-Registration") return EnhancedSessionType::G5_REGISTRATION;
-    if (str == "5G-PDU-Session") return EnhancedSessionType::G5_PDU_SESSION;
-    if (str == "5G-Handover") return EnhancedSessionType::G5_HANDOVER;
-    if (str == "5G-Service-Request") return EnhancedSessionType::G5_SERVICE_REQUEST;
-    if (str == "5G-Deregistration") return EnhancedSessionType::G5_DEREGISTRATION;
-    if (str == "VoLTE-Call") return EnhancedSessionType::VOLTE_CALL;
-    if (str == "Video-Streaming") return EnhancedSessionType::VIDEO_STREAMING;
-    if (str == "Web-Browsing") return EnhancedSessionType::WEB_BROWSING;
-    if (str == "Data-Transfer") return EnhancedSessionType::DATA_TRANSFER;
-    if (str == "Mixed") return EnhancedSessionType::MIXED;
-    if (str == "Incomplete") return EnhancedSessionType::INCOMPLETE;
+    if (str == "LTE-Attach")
+        return EnhancedSessionType::LTE_ATTACH;
+    if (str == "LTE-PDN-Connect")
+        return EnhancedSessionType::LTE_PDN_CONNECT;
+    if (str == "LTE-Handover-X2")
+        return EnhancedSessionType::LTE_HANDOVER_X2;
+    if (str == "LTE-Handover-S1")
+        return EnhancedSessionType::LTE_HANDOVER_S1;
+    if (str == "LTE-Service-Request")
+        return EnhancedSessionType::LTE_SERVICE_REQUEST;
+    if (str == "LTE-Detach")
+        return EnhancedSessionType::LTE_DETACH;
+    if (str == "5G-Registration")
+        return EnhancedSessionType::G5_REGISTRATION;
+    if (str == "5G-PDU-Session")
+        return EnhancedSessionType::G5_PDU_SESSION;
+    if (str == "5G-Handover")
+        return EnhancedSessionType::G5_HANDOVER;
+    if (str == "5G-Service-Request")
+        return EnhancedSessionType::G5_SERVICE_REQUEST;
+    if (str == "5G-Deregistration")
+        return EnhancedSessionType::G5_DEREGISTRATION;
+    if (str == "VoLTE-Call")
+        return EnhancedSessionType::VOLTE_CALL;
+    if (str == "Video-Streaming")
+        return EnhancedSessionType::VIDEO_STREAMING;
+    if (str == "Web-Browsing")
+        return EnhancedSessionType::WEB_BROWSING;
+    if (str == "Data-Transfer")
+        return EnhancedSessionType::DATA_TRANSFER;
+    if (str == "Mixed")
+        return EnhancedSessionType::MIXED;
+    if (str == "Incomplete")
+        return EnhancedSessionType::INCOMPLETE;
     return EnhancedSessionType::UNKNOWN;
 }
 
 std::string interfaceTypeToString(InterfaceType type) {
     switch (type) {
-        case InterfaceType::UNKNOWN: return "Unknown";
-        case InterfaceType::S1_MME: return "S1-MME";
-        case InterfaceType::S1_U: return "S1-U";
-        case InterfaceType::S11: return "S11";
-        case InterfaceType::S5_S8: return "S5/S8";
-        case InterfaceType::SGI: return "SGi";
-        case InterfaceType::X2: return "X2";
-        case InterfaceType::N1: return "N1";
-        case InterfaceType::N2: return "N2";
-        case InterfaceType::N3: return "N3";
-        case InterfaceType::N4: return "N4";
-        case InterfaceType::N6: return "N6";
-        case InterfaceType::XN: return "Xn";
-        case InterfaceType::IMS_SIP: return "IMS-SIP";
-        case InterfaceType::IMS_RTP: return "IMS-RTP";
-        case InterfaceType::DIAMETER: return "Diameter";
-        case InterfaceType::HTTP_API: return "HTTP-API";
-        default: return "Unknown";
+        case InterfaceType::UNKNOWN:
+            return "Unknown";
+        case InterfaceType::S1_MME:
+            return "S1-MME";
+        case InterfaceType::S1_U:
+            return "S1-U";
+        case InterfaceType::S11:
+            return "S11";
+        case InterfaceType::S5_S8:
+            return "S5/S8";
+        case InterfaceType::SGI:
+            return "SGi";
+        case InterfaceType::X2:
+            return "X2";
+        case InterfaceType::N1:
+            return "N1";
+        case InterfaceType::N2:
+            return "N2";
+        case InterfaceType::N3:
+            return "N3";
+        case InterfaceType::N4:
+            return "N4";
+        case InterfaceType::N6:
+            return "N6";
+        case InterfaceType::XN:
+            return "Xn";
+        case InterfaceType::IMS_SIP:
+            return "IMS-SIP";
+        case InterfaceType::IMS_RTP:
+            return "IMS-RTP";
+        case InterfaceType::DIAMETER:
+            return "Diameter";
+        case InterfaceType::HTTP_API:
+            return "HTTP-API";
+        default:
+            return "Unknown";
     }
 }
 
 InterfaceType stringToInterfaceType(const std::string& str) {
-    if (str == "S1-MME") return InterfaceType::S1_MME;
-    if (str == "S1-U") return InterfaceType::S1_U;
-    if (str == "S11") return InterfaceType::S11;
-    if (str == "S5/S8") return InterfaceType::S5_S8;
-    if (str == "SGi") return InterfaceType::SGI;
-    if (str == "X2") return InterfaceType::X2;
-    if (str == "N1") return InterfaceType::N1;
-    if (str == "N2") return InterfaceType::N2;
-    if (str == "N3") return InterfaceType::N3;
-    if (str == "N4") return InterfaceType::N4;
-    if (str == "N6") return InterfaceType::N6;
-    if (str == "Xn") return InterfaceType::XN;
-    if (str == "IMS-SIP") return InterfaceType::IMS_SIP;
-    if (str == "IMS-RTP") return InterfaceType::IMS_RTP;
-    if (str == "Diameter") return InterfaceType::DIAMETER;
-    if (str == "HTTP-API") return InterfaceType::HTTP_API;
+    if (str == "S1-MME")
+        return InterfaceType::S1_MME;
+    if (str == "S1-U")
+        return InterfaceType::S1_U;
+    if (str == "S11")
+        return InterfaceType::S11;
+    if (str == "S5/S8")
+        return InterfaceType::S5_S8;
+    if (str == "SGi")
+        return InterfaceType::SGI;
+    if (str == "X2")
+        return InterfaceType::X2;
+    if (str == "N1")
+        return InterfaceType::N1;
+    if (str == "N2")
+        return InterfaceType::N2;
+    if (str == "N3")
+        return InterfaceType::N3;
+    if (str == "N4")
+        return InterfaceType::N4;
+    if (str == "N6")
+        return InterfaceType::N6;
+    if (str == "Xn")
+        return InterfaceType::XN;
+    if (str == "IMS-SIP")
+        return InterfaceType::IMS_SIP;
+    if (str == "IMS-RTP")
+        return InterfaceType::IMS_RTP;
+    if (str == "Diameter")
+        return InterfaceType::DIAMETER;
+    if (str == "HTTP-API")
+        return InterfaceType::HTTP_API;
     return InterfaceType::UNKNOWN;
 }
 

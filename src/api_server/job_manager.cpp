@@ -8,7 +8,6 @@
 
 #include "common/utils.h"
 #include "event_extractor/json_exporter.h"
-#include "flow_manager/session_correlator.h"
 #include "pcap_ingest/pcap_reader.h"
 #include "persistence/database.h"
 #include "protocol_parsers/diameter_parser.h"
@@ -16,6 +15,7 @@
 #include "protocol_parsers/pfcp_parser.h"
 #include "protocol_parsers/rtp_parser.h"
 #include "protocol_parsers/sip_parser.h"
+#include "session/session_correlator.h"
 
 namespace callflow {
 
@@ -499,6 +499,11 @@ void JobManager::processJob(const JobTask& task) {
             it->second->session_count = sessions.size();
 
             // Store session IDs
+            it->second->session_ids.clear();
+            for (const auto& session : sessions) {
+                it->second->session_ids.push_back(session->session_id);
+            }
+
             // Update database
             if (db_) {
                 db_->updateJob(task.job_id, *it->second);

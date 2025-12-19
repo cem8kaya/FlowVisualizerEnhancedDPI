@@ -1,12 +1,13 @@
 #pragma once
 
-#include "session/session_types.h"
-#include "common/types.h"
 #include <memory>
-#include <unordered_map>
-#include <vector>
 #include <mutex>
 #include <optional>
+#include <unordered_map>
+#include <vector>
+
+#include "common/types.h"
+#include "session/session_types.h"
 
 namespace callflow {
 
@@ -94,10 +95,8 @@ public:
 
     /**
      * Get all sessions
-     *
-     * @return Vector of all sessions
      */
-    std::vector<Session> getAllSessions() const;
+    std::vector<std::shared_ptr<Session>> getAllSessions() const;
 
     /**
      * Get sessions by type
@@ -154,18 +153,31 @@ public:
      */
     nlohmann::json exportToJson() const;
 
+    /**
+     * Process a packet and correlate it to a session
+     */
+    void processPacket(const PacketMetadata& packet, ProtocolType protocol,
+                       const nlohmann::json& parsed_data);
+
+    /**
+     * Finalize all sessions (timeout logic, etc.)
+     */
+    void finalizeSessions();
+
 private:
     // Session storage
     std::unordered_map<std::string, Session> sessions_;  // session_id -> Session
 
     // Correlation indices for fast lookup
-    std::unordered_map<std::string, std::vector<std::string>> imsi_index_;       // IMSI -> session_ids
-    std::unordered_map<std::string, std::vector<std::string>> supi_index_;       // SUPI -> session_ids
-    std::unordered_map<uint32_t, std::vector<std::string>> teid_index_;          // TEID -> session_ids
-    std::unordered_map<uint64_t, std::vector<std::string>> seid_index_;          // SEID -> session_ids
-    std::unordered_map<std::string, std::vector<std::string>> ue_ip_index_;      // UE IP -> session_ids
-    std::unordered_map<uint32_t, std::vector<std::string>> mme_ue_id_index_;    // MME UE ID -> session_ids
-    std::unordered_map<uint64_t, std::vector<std::string>> amf_ue_id_index_;    // AMF UE ID -> session_ids
+    std::unordered_map<std::string, std::vector<std::string>> imsi_index_;   // IMSI -> session_ids
+    std::unordered_map<std::string, std::vector<std::string>> supi_index_;   // SUPI -> session_ids
+    std::unordered_map<uint32_t, std::vector<std::string>> teid_index_;      // TEID -> session_ids
+    std::unordered_map<uint64_t, std::vector<std::string>> seid_index_;      // SEID -> session_ids
+    std::unordered_map<std::string, std::vector<std::string>> ue_ip_index_;  // UE IP -> session_ids
+    std::unordered_map<uint32_t, std::vector<std::string>>
+        mme_ue_id_index_;  // MME UE ID -> session_ids
+    std::unordered_map<uint64_t, std::vector<std::string>>
+        amf_ue_id_index_;  // AMF UE ID -> session_ids
 
     // Thread safety
     mutable std::mutex mutex_;

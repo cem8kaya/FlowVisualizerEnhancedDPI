@@ -59,6 +59,10 @@ nlohmann::json FlowSession::toJson(bool include_events) const {
             event_json["short"] = event.short_description;
             event_json["details"] = event.details;
             event_json["packet_ref"] = event.packet_ref;
+            event_json["src_ip"] = event.src_ip;
+            event_json["dst_ip"] = event.dst_ip;
+            event_json["src_port"] = event.src_port;
+            event_json["dst_port"] = event.dst_port;
             events_json.push_back(event_json);
         }
         j["events"] = events_json;
@@ -218,6 +222,10 @@ void SessionCorrelator::addEventToSession(std::shared_ptr<FlowSession> session,
     event.timestamp = packet.timestamp;
     event.protocol = protocol;
     event.packet_ref = packet.packet_id;
+    event.src_ip = packet.five_tuple.src_ip;
+    event.dst_ip = packet.five_tuple.dst_ip;
+    event.src_port = packet.five_tuple.src_port;
+    event.dst_port = packet.five_tuple.dst_port;
 
     // Determine direction (simplified)
     event.direction = Direction::CLIENT_TO_SERVER;

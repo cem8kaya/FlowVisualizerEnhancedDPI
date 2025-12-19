@@ -1,6 +1,7 @@
 #include "event_extractor/json_exporter.h"
 
 #include <fstream>
+#include <numeric>
 
 #include "common/logger.h"
 #include "common/utils.h"
@@ -106,3 +107,69 @@ std::string JsonExporter::formatJson(const nlohmann::json& j, bool pretty_print)
 }
 
 }  // namespace callflow
+
+// Overloads for Enhanced Session
+bool callflow::JsonExporter::exportToFile(const std::string& filename,
+                                          const std::vector<std::shared_ptr<Session>>& sessions,
+                                          bool pretty_print) {
+    try {
+        nlohmann::json j = nlohmann::json::array();
+        for (const auto& session : sessions) {
+            if (session) {
+                j.push_back(session->toJson());
+            }
+        }
+
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            LOG_ERROR("Failed to open file for writing: " << filename);
+            return false;
+        }
+
+        nlohmann::json root;
+        root["sessions"] = j;
+
+        if (pretty_print) {
+            file << root.dump(2);
+        } else {
+            file << root.dump();
+        }
+        file.close();
+        LOG_INFO("Exported " << sessions.size() << " sessions to " << filename);
+        return true;
+    } catch (const std::exception& e) {
+        LOG_ERROR("Failed to export sessions to file: " << e.what());
+        return false;
+    }
+}
+
+std::string callflow::JsonExporter::exportJobResult(
+    const JobId& job_id, const std::vector<std::shared_ptr<Session>>& sessions,
+    const nlohmann::json& metadata) {
+    nlohmann::json result;
+    result["job_id"] = job_id;
+    result["status"] = "completed";
+    result["timestamp"] = utils::timestampToIso8601(utils::now());
+    result["metadata"] = metadata;
+
+    // Session summaries logic is embedded in session->toJson() for now or we just use full json
+    // Ideally we would have session->toSummaryJson() but let's stick to toJson() as it's closer to
+    // what we need
+    nlohmann::json sessions_json = nlohmann::json::array();
+    for (const auto& session : sessions) {
+        if (session) {
+            sessions_json.push_back(session->toJson());
+        }
+    }
+    result["sessions"] = sessions_json;
+
+    result["summary"] = {
+        {"total_sessions", sessions.size()},
+        {"total_events",
+         std::accumulate(sessions.begin(), sessions.end(), 0ULL, [](size_t sum, const auto& s) {
+             return sum + (s ? s->total_packets : 0);  // Using total_packets as proxy for events
+                                                       // count if events size is not direct
+         })}};                                         // Or fix this properly later
+
+    return formatJson(result, true);
+}

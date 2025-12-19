@@ -169,12 +169,27 @@ const app = {
 
 // Jobs Table Management
 const jobsTable = {
+    allJobs: [],
     currentJobs: [],
     statusFilter: '',
+    searchFilter: '',
+    selectedJobs: new Set(),
+    sortField: 'created_at',
+    sortOrder: 'desc',
 
     async init() {
         const refreshBtn = document.getElementById('refreshJobsBtn');
         const statusFilterSelect = document.getElementById('statusFilter');
+        const searchInput = document.getElementById('jobSearchInput');
+        const selectAllCheckbox = document.getElementById('selectAllJobs');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+
+        // Add sort listeners
+        document.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                this.handleSort(th.dataset.sort);
+            });
+        });
 
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.loadJobs());
@@ -183,7 +198,26 @@ const jobsTable = {
         if (statusFilterSelect) {
             statusFilterSelect.addEventListener('change', (e) => {
                 this.statusFilter = e.target.value;
-                this.loadJobs();
+                this.applyFilters();
+            });
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.searchFilter = e.target.value.toLowerCase();
+                this.applyFilters();
+            });
+        }
+
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', (e) => {
+                this.toggleSelectAll(e.target.checked);
+            });
+        }
+
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.addEventListener('click', () => {
+                this.confirmBulkDelete();
             });
         }
 
@@ -195,17 +229,81 @@ const jobsTable = {
 
     async loadJobs() {
         try {
-            const response = await app.getJobs(this.statusFilter);
-            this.currentJobs = response.jobs || [];
-            this.render();
+            // Fetch all jobs, client-side filtering handles the rest
+            const response = await app.getJobs('');
+            this.allJobs = response.jobs || [];
+            this.applyFilters();
         } catch (error) {
             console.error('Failed to load jobs:', error);
         }
     },
 
+    applyFilters() {
+        this.currentJobs = this.allJobs.filter(job => {
+            // Apply status filter (Case insensitive)
+            if (this.statusFilter && job.status.toUpperCase() !== this.statusFilter.toUpperCase()) {
+                return false;
+            }
+
+            // Apply search filter (ID or Filename)
+            if (this.searchFilter) {
+                const searchStr = this.searchFilter;
+                const matchesId = job.job_id && job.job_id.toLowerCase().includes(searchStr);
+                const matchesFile = job.input_filename && job.input_filename.toLowerCase().includes(searchStr);
+                return matchesId || matchesFile;
+            }
+
+            return true;
+        });
+
+        // Apply sorting
+        this.sortJobs();
+
+        this.render();
+    },
+
+    handleSort(field) {
+        if (this.sortField === field) {
+            this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortField = field;
+            this.sortOrder = 'desc'; // Default to desc for new field
+        }
+        this.applyFilters(); // Re-sort and render
+    },
+
+    sortJobs() {
+        this.currentJobs.sort((a, b) => {
+            let valA = a[this.sortField];
+            let valB = b[this.sortField];
+
+            // Handle strings (case insensitive)
+            if (typeof valA === 'string') valA = valA.toLowerCase();
+            if (typeof valB === 'string') valB = valB.toLowerCase();
+
+            // Handle nulls
+            if (valA == null) return 1;
+            if (valB == null) return -1;
+
+            if (valA < valB) return this.sortOrder === 'asc' ? -1 : 1;
+            if (valA > valB) return this.sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+    },
+
     render() {
         const tbody = document.getElementById('jobsTableBody');
         if (!tbody) return;
+
+        // Update header checkbox
+        const selectAllCheckbox = document.getElementById('selectAllJobs');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = this.currentJobs.length > 0 &&
+                this.currentJobs.every(job => this.selectedJobs.has(job.job_id));
+        }
+
+        // Update bulk delete button
+        this.updateBulkDeleteUI();
 
         if (this.currentJobs.length === 0) {
             tbody.innerHTML = `
@@ -218,8 +316,27 @@ const jobsTable = {
             return;
         }
 
+        // Update sort icons
+        document.querySelectorAll('th.sortable i').forEach(icon => {
+            icon.className = 'bi bi-arrow-down-up text-muted small'; // Reset
+        });
+        const activeHeader = document.querySelector(`th[data-sort="${this.sortField}"]`);
+        if (activeHeader) {
+            const icon = activeHeader.querySelector('i');
+            if (icon) {
+                icon.className = this.sortOrder === 'asc' ? 'bi bi-arrow-up text-primary' : 'bi bi-arrow-down text-primary';
+            }
+        }
+
         tbody.innerHTML = this.currentJobs.map(job => `
-            <tr class="fade-in" onclick="jobsTable.viewSessions('${job.job_id}')">
+            <tr class="fade-in ${this.selectedJobs.has(job.job_id) ? 'table-active' : ''}" 
+                onclick="jobsTable.viewSessions('${job.job_id}')">
+                <td onclick="event.stopPropagation()">
+                    <input type="checkbox" class="form-check-input job-select" 
+                           value="${job.job_id}" 
+                           ${this.selectedJobs.has(job.job_id) ? 'checked' : ''}
+                           onchange="jobsTable.toggleSelectJob('${job.job_id}', this.checked)">
+                </td>
                 <td>
                     <small class="text-muted font-monospace">${job.job_id.substring(0, 8)}</small>
                 </td>
@@ -244,10 +361,80 @@ const jobsTable = {
         `).join('');
     },
 
+    toggleSelectAll(checked) {
+        if (checked) {
+            this.currentJobs.forEach(job => this.selectedJobs.add(job.job_id));
+        } else {
+            this.selectedJobs.clear();
+        }
+        this.render();
+    },
+
+    toggleSelectJob(jobId, checked) {
+        if (checked) {
+            this.selectedJobs.add(jobId);
+        } else {
+            this.selectedJobs.delete(jobId);
+        }
+        this.render();
+    },
+
+    updateBulkDeleteUI() {
+        const btn = document.getElementById('bulkDeleteBtn');
+        const countSpan = document.getElementById('selectedCount');
+        if (btn && countSpan) {
+            const count = this.selectedJobs.size;
+            countSpan.textContent = count;
+            btn.disabled = count === 0;
+        }
+    },
+
+    confirmBulkDelete() {
+        if (this.selectedJobs.size === 0) return;
+
+        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        document.querySelector('#deleteModal .modal-body').textContent =
+            `Are you sure you want to delete ${this.selectedJobs.size} selected job(s)?`;
+
+        document.getElementById('confirmDeleteBtn').onclick = async () => {
+            await this.deleteSelectedJobs();
+            modal.hide();
+        };
+        modal.show();
+    },
+
+    async deleteSelectedJobs() {
+        const jobs = Array.from(this.selectedJobs);
+        let successCount = 0;
+
+        // Delete sequentially to avoid overwhelming server
+        for (const jobId of jobs) {
+            try {
+                await app.deleteJob(jobId);
+                successCount++;
+            } catch (error) {
+                console.error(`Failed to delete job ${jobId}`, error);
+            }
+        }
+
+        if (successCount > 0) {
+            app.showToast(`Successfully deleted ${successCount} jobs`, 'success');
+            this.selectedJobs.clear();
+            await this.loadJobs();
+        } else {
+            app.showToast('Failed to delete selected jobs', 'error');
+        }
+    },
+
     truncateFilename(filename, maxLen = 30) {
-        if (filename.length <= maxLen) return filename;
-        const extension = filename.substring(filename.lastIndexOf('.'));
-        const name = filename.substring(0, maxLen - extension.length - 3);
+        if (!filename) return '-';
+        // Strip path
+        const basename = filename.split('/').pop().split('\\').pop();
+
+        if (basename.length <= maxLen) return basename;
+
+        const extension = basename.substring(basename.lastIndexOf('.'));
+        const name = basename.substring(0, maxLen - extension.length - 3);
         return name + '...' + extension;
     },
 

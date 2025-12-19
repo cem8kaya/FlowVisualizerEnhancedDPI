@@ -7,6 +7,7 @@
 #include <unordered_set>
 
 #include "common/logger.h"
+#include "common/utils.h"
 
 namespace callflow {
 
@@ -181,17 +182,6 @@ std::optional<Session> EnhancedSessionCorrelator::getSession(const std::string& 
     }
 
     return std::nullopt;
-}
-
-std::vector<Session> EnhancedSessionCorrelator::getAllSessions() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    std::vector<Session> result;
-
-    for (const auto& [session_id, session] : sessions_) {
-        result.push_back(session);
-    }
-
-    return result;
 }
 
 std::vector<Session> EnhancedSessionCorrelator::getSessionsByType(EnhancedSessionType type) const {
@@ -648,3 +638,144 @@ void EnhancedSessionCorrelator::mergeSessions(const std::string& session_id1,
 }
 
 }  // namespace callflow
+
+void callflow::EnhancedSessionCorrelator::processPacket(const PacketMetadata& packet,
+                                                        ProtocolType protocol,
+                                                        const nlohmann::json& parsed_data) {
+    // 1. Extract correlation key
+    // 1. Extract correlation key
+    SessionCorrelationKey key = extractCorrelationKey(parsed_data, protocol);
+
+    // 2. Identify interface type
+    InterfaceType interface =
+        detectInterfaceType(protocol, packet.five_tuple.src_port, packet.five_tuple.dst_port);
+    if (interface == InterfaceType::UNKNOWN) {
+        // Fallback or log?
+        // Let's assume some default or skip if critical?
+        // For now, proceed.
+    }
+
+    // 3. Determine message type
+    MessageType message_type = MessageType::UNKNOWN;
+
+    if (protocol == ProtocolType::SIP) {
+        if (parsed_data.contains("is_request") && parsed_data["is_request"].get<bool>()) {
+            std::string method = parsed_data.value("method", "UNKNOWN");
+            if (method == "INVITE")
+                message_type = MessageType::SIP_INVITE;
+            else if (method == "ACK")
+                message_type = MessageType::SIP_ACK;
+            else if (method == "BYE")
+                message_type = MessageType::SIP_BYE;
+            else if (method == "REGISTER")
+                message_type = MessageType::SIP_REGISTER;
+            else if (method == "OPTIONS")
+                message_type = MessageType::SIP_OPTIONS;
+            else if (method == "PRACK")
+                message_type = MessageType::SIP_PRACK;
+            else if (method == "UPDATE")
+                message_type = MessageType::SIP_UPDATE;
+        } else {
+            int status_code = parsed_data.value("status_code", 0);
+            if (status_code == 100)
+                message_type = MessageType::SIP_TRYING;
+            else if (status_code == 180)
+                message_type = MessageType::SIP_RINGING;
+            else if (status_code == 200)
+                message_type = MessageType::SIP_OK;
+        }
+    } else if (protocol == ProtocolType::DIAMETER) {
+        if (parsed_data.contains("header") && parsed_data["header"].contains("command_code")) {
+            uint32_t cmd_code = parsed_data["header"]["command_code"].get<uint32_t>();
+            bool is_request = parsed_data["header"].value("request_flag", false);
+            if (cmd_code == 272)
+                message_type = is_request ? MessageType::DIAMETER_CCR : MessageType::DIAMETER_CCA;
+            else if (cmd_code == 265)
+                message_type = is_request ? MessageType::DIAMETER_AAR : MessageType::DIAMETER_AAA;
+        }
+    } else if (protocol == ProtocolType::GTP_C) {
+        if (parsed_data.contains("header") && parsed_data["header"].contains("message_type")) {
+            uint8_t msg_type = parsed_data["header"]["message_type"].get<uint8_t>();
+            switch (msg_type) {
+                case 32:
+                    message_type = MessageType::GTP_CREATE_SESSION_REQ;
+                    break;
+                case 33:
+                    message_type = MessageType::GTP_CREATE_SESSION_RESP;
+                    break;
+                case 36:
+                    message_type = MessageType::GTP_DELETE_SESSION_REQ;
+                    break;
+                case 37:
+                    message_type = MessageType::GTP_DELETE_SESSION_RESP;
+                    break;
+                case 1:
+                    message_type = MessageType::GTP_ECHO_REQ;
+                    break;
+                case 2:
+                    message_type = MessageType::GTP_ECHO_RESP;
+                    break;
+            }
+        }
+    } else if (protocol == ProtocolType::PFCP) {
+        if (parsed_data.contains("header") && parsed_data["header"].contains("message_type")) {
+            uint8_t msg_type = parsed_data["header"]["message_type"].get<uint8_t>();
+            switch (msg_type) {
+                case 50:
+                    message_type = MessageType::PFCP_SESSION_ESTABLISHMENT_REQ;
+                    break;
+                case 51:
+                    message_type = MessageType::PFCP_SESSION_ESTABLISHMENT_RESP;
+                    break;
+                case 52:
+                    message_type = MessageType::PFCP_SESSION_MODIFICATION_REQ;
+                    break;
+                case 53:
+                    message_type = MessageType::PFCP_SESSION_MODIFICATION_RESP;
+                    break;
+                case 54:
+                    message_type = MessageType::PFCP_SESSION_DELETION_REQ;
+                    break;
+                case 55:
+                    message_type = MessageType::PFCP_SESSION_DELETION_RESP;
+                    break;
+            }
+        }
+    }
+
+    // 4. Create SessionMessageRef
+    SessionMessageRef msg;
+    msg.message_id = utils::generateUuid();
+    msg.packet_id = packet.packet_id;
+    msg.timestamp = packet.timestamp;
+    msg.interface = interface;
+    msg.protocol = protocol;
+    msg.message_type = message_type;
+    msg.correlation_key = key;
+    msg.src_ip = packet.five_tuple.src_ip;
+    msg.dst_ip = packet.five_tuple.dst_ip;
+    msg.src_port = packet.five_tuple.src_port;
+    msg.dst_port = packet.five_tuple.dst_port;
+
+    // 5. Correlate to Session
+    // 5. Correlate to Session
+    addMessage(msg);
+}
+
+void callflow::EnhancedSessionCorrelator::finalizeSessions() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto& [id, session] : sessions_) {
+        session.finalize();
+    }
+}
+
+std::vector<std::shared_ptr<callflow::Session>>
+callflow::EnhancedSessionCorrelator::getAllSessions() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::shared_ptr<Session>> result;
+    result.reserve(sessions_.size());
+    for (const auto& [id, session] : sessions_) {
+        result.push_back(std::make_shared<Session>(session));
+    }
+    return result;
+}

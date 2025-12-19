@@ -6,6 +6,7 @@
 
 #include "common/types.h"
 #include "flow_manager/session_correlator.h"
+#include "session/session_types.h"
 
 namespace callflow {
 
@@ -40,11 +41,19 @@ public:
                       const std::vector<std::shared_ptr<FlowSession>>& sessions,
                       bool pretty_print = true);
 
+    bool exportToFile(const std::string& filename,
+                      const std::vector<std::shared_ptr<Session>>& sessions,
+                      bool pretty_print = true);
+
     /**
      * Export job result with metadata
      */
     std::string exportJobResult(const JobId& job_id,
                                 const std::vector<std::shared_ptr<FlowSession>>& sessions,
+                                const nlohmann::json& metadata);
+
+    std::string exportJobResult(const JobId& job_id,
+                                const std::vector<std::shared_ptr<Session>>& sessions,
                                 const nlohmann::json& metadata);
 
 private:
