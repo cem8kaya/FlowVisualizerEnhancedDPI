@@ -143,6 +143,17 @@ struct FiveTuple {
     uint8_t protocol;  // IP protocol number (TCP=6, UDP=17, etc.)
 
     bool operator==(const FiveTuple& other) const;
+    bool operator<(const FiveTuple& other) const {
+        if (src_ip != other.src_ip)
+            return src_ip < other.src_ip;
+        if (dst_ip != other.dst_ip)
+            return dst_ip < other.dst_ip;
+        if (src_port != other.src_port)
+            return src_port < other.src_port;
+        if (dst_port != other.dst_port)
+            return dst_port < other.dst_port;
+        return protocol < other.protocol;
+    }
     std::string toString() const;
     size_t hash() const;
 };
@@ -188,6 +199,7 @@ JobStatus stringToJobStatus(const std::string& str);
 struct JobInfo {
     JobId job_id;
     std::string input_filename;
+    std::string original_filename;
     std::string output_filename;
     JobStatus status;
     int progress;  // 0-100
@@ -199,6 +211,16 @@ struct JobInfo {
     size_t session_count = 0;
     size_t total_packets = 0;
     size_t total_bytes = 0;
+
+    // PCAPNG Metadata
+    std::vector<std::string> comments;
+    struct InterfaceStats {
+        uint32_t interface_id;
+        std::string interface_name;
+        uint64_t packets_received;
+        uint64_t packets_dropped;
+    };
+    std::vector<InterfaceStats> interface_stats;
 };
 
 // Database configuration

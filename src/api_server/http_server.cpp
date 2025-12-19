@@ -152,7 +152,7 @@ void HttpServer::setupRoutes() {
             outfile.close();
 
             // Submit job
-            job_id = job_manager_->submitJob(saved_path);
+            job_id = job_manager_->submitJob(saved_path, file.filename);
             if (job_id.empty()) {
                 throw std::runtime_error("Failed to submit job");
             }
@@ -185,7 +185,10 @@ void HttpServer::setupRoutes() {
 
             nlohmann::json response = {
                 {"job_id", job_info->job_id},
-                {"input_filename", job_info->input_filename},
+                {"input_filename",
+                 job_info->original_filename.empty()
+                     ? std::filesystem::path(job_info->input_filename).filename().string()
+                     : job_info->original_filename},
                 {"status", jobStatusToString(job_info->status)},
                 {"progress", job_info->progress},
                 {"created_at", utils::timestampToIso8601(job_info->created_at)}};
@@ -379,7 +382,10 @@ void HttpServer::setupRoutes() {
             for (const auto& job : all_jobs) {
                 nlohmann::json job_summary = {
                     {"job_id", job->job_id},
-                    {"input_filename", job->input_filename},
+                    {"input_filename",
+                     job->original_filename.empty()
+                         ? std::filesystem::path(job->input_filename).filename().string()
+                         : job->original_filename},
                     {"status", jobStatusToString(job->status)},
                     {"progress", job->progress},
                     {"created_at", utils::timestampToIso8601(job->created_at)}};

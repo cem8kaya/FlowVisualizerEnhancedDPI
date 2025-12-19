@@ -26,22 +26,20 @@ target_link_libraries(config_manager PUBLIC
     yaml-cpp
 )
 
-# PCAP ingestion library
-add_library(pcap_ingest STATIC
-    pcap_ingest/pcap_reader.cpp
-    pcap_ingest/pcapng_reader.cpp
-    pcap_ingest/multi_interface_reader.cpp
-    pcap_ingest/format_detector.cpp
-    pcap_ingest/packet_queue.cpp
+# Session correlation library
+add_library(session_correlation STATIC
+    session/session_types.cpp
+    session/session_correlator.cpp
 )
-target_include_directories(pcap_ingest PUBLIC
+target_include_directories(session_correlation PUBLIC
     ${PROJECT_SOURCE_DIR}/include
-    ${PCAP_INCLUDE_DIR}
 )
-target_link_libraries(pcap_ingest PUBLIC
+target_link_libraries(session_correlation PUBLIC
     callflow_common
-    ${PCAP_LIBRARY}
 )
+
+
+
 
 # nDPI engine wrapper
 if(NOT NEED_NDPI_BUILD)
@@ -72,17 +70,8 @@ target_link_libraries(flow_manager PUBLIC
     callflow_common
 )
 
-# Session correlation library
-add_library(session_correlation STATIC
-    session/session_types.cpp
-    session/session_correlator.cpp
-)
-target_include_directories(session_correlation PUBLIC
-    ${PROJECT_SOURCE_DIR}/include
-)
-target_link_libraries(session_correlation PUBLIC
-    callflow_common
-)
+
+
 
 # Transport layer library
 add_library(transport STATIC
@@ -130,6 +119,29 @@ target_link_libraries(protocol_parsers PUBLIC
     callflow_common
     transport
     asn1_wrapper
+)
+
+# PCAP ingestion library (Depends on protocol_parsers)
+add_library(pcap_ingest STATIC
+    pcap_ingest/pcap_reader.cpp
+    pcap_ingest/pcapng_reader.cpp
+    pcap_ingest/multi_interface_reader.cpp
+    pcap_ingest/format_detector.cpp
+    pcap_ingest/packet_queue.cpp
+    pcap_ingest/link_layer_parser.cpp
+    pcap_ingest/ip_reassembler.cpp
+    pcap_ingest/tcp_reassembler.cpp
+    pcap_ingest/packet_processor.cpp
+)
+target_include_directories(pcap_ingest PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+    ${PCAP_INCLUDE_DIR}
+)
+target_link_libraries(pcap_ingest PUBLIC
+    callflow_common
+    session_correlation
+    protocol_parsers
+    ${PCAP_LIBRARY}
 )
 
 # Event extractor library

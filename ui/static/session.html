@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/timeline.css">
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -17,7 +19,7 @@
                 <i class="bi bi-diagram-3"></i> Callflow Visualizer
             </a>
             <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/">
+                <a class="nav-link" href="/" id="backLink">
                     <i class="bi bi-arrow-left"></i> Back to Jobs
                 </a>
                 <a class="nav-link" href="#" id="darkModeToggle">
@@ -60,26 +62,24 @@
         <!-- Tabs -->
         <ul class="nav nav-tabs" id="sessionTabs" role="tablist">
             <li class="nav-item">
-                <button class="nav-link active" id="timeline-tab" data-bs-toggle="tab"
-                        data-bs-target="#timeline" type="button">
+                <button class="nav-link active" id="timeline-tab" data-bs-toggle="tab" data-bs-target="#timeline"
+                    type="button">
                     <i class="bi bi-clock-history"></i> Timeline
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="flowchart-tab" data-bs-toggle="tab"
-                        data-bs-target="#flowchart" type="button">
+                <button class="nav-link" id="flowchart-tab" data-bs-toggle="tab" data-bs-target="#flowchart"
+                    type="button">
                     <i class="bi bi-diagram-3"></i> Flow Diagram
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="events-tab" data-bs-toggle="tab"
-                        data-bs-target="#events" type="button">
+                <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button">
                     <i class="bi bi-list-ul"></i> Events
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="metrics-tab" data-bs-toggle="tab"
-                        data-bs-target="#metrics" type="button">
+                <button class="nav-link" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics" type="button">
                     <i class="bi bi-bar-chart"></i> Metrics
                 </button>
             </li>
@@ -166,7 +166,9 @@
                             <div class="card-body">
                                 <table class="table table-sm">
                                     <tbody id="metricsTableBody">
-                                        <tr><td>Loading metrics...</td></tr>
+                                        <tr>
+                                            <td>Loading metrics...</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                                 <button class="btn btn-sm btn-outline-primary" id="exportMetricsBtn">
@@ -214,7 +216,8 @@
                             </table>
                         </div>
                         <div class="tab-pane fade" id="packetDetails">
-                            <pre id="packetDetailsContent" class="bg-light p-3 overflow-auto" style="max-height: 400px;"></pre>
+                            <pre id="packetDetailsContent" class="bg-light p-3 overflow-auto"
+                                style="max-height: 400px;"></pre>
                         </div>
                         <div class="tab-pane fade" id="packetRaw">
                             <div class="d-flex justify-content-end mb-2">
@@ -222,7 +225,8 @@
                                     <i class="bi bi-clipboard"></i> Copy
                                 </button>
                             </div>
-                            <pre id="packetRawContent" class="bg-dark text-light p-3 font-monospace overflow-auto" style="max-height: 400px; font-size: 0.85rem;"></pre>
+                            <pre id="packetRawContent" class="bg-dark text-light p-3 font-monospace overflow-auto"
+                                style="max-height: 400px; font-size: 0.85rem;"></pre>
                         </div>
                     </div>
                 </div>
@@ -250,4 +254,5 @@
     <script src="/js/packet-inspector.js"></script>
     <script src="/js/session-list.js"></script>
 </body>
+
 </html>

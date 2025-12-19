@@ -639,6 +639,70 @@ void EnhancedSessionCorrelator::mergeSessions(const std::string& session_id1,
 
 }  // namespace callflow
 
+callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorrelationKey(
+    const nlohmann::json& parsed_data, ProtocolType protocol) const {
+    SessionCorrelationKey key;
+
+    try {
+        if (protocol == ProtocolType::GTP_C || protocol == ProtocolType::GTP_U) {
+            // Extract GTP correlation keys
+            if (parsed_data.contains("header")) {
+                if (parsed_data["header"].contains("teid")) {
+                    key.teid_s1u = parsed_data["header"]["teid"].get<uint32_t>();
+                }
+            }
+            if (parsed_data.contains("imsi")) {
+                key.imsi = parsed_data["imsi"].get<std::string>();
+            }
+        } else if (protocol == ProtocolType::PFCP) {
+            // Extract PFCP correlation keys
+            if (parsed_data.contains("header")) {
+                if (parsed_data["header"].contains("seid")) {
+                    key.seid_n4 = parsed_data["header"]["seid"].get<uint64_t>();
+                }
+            }
+            if (parsed_data.contains("imsi")) {
+                key.imsi = parsed_data["imsi"].get<std::string>();
+            }
+            if (parsed_data.contains("ue_ip_address")) {
+                key.ue_ipv4 = parsed_data["ue_ip_address"].get<std::string>();
+            }
+        } else if (protocol == ProtocolType::SIP) {
+            // Extract SIP correlation keys
+            if (parsed_data.contains("call_id")) {
+                key.sip_call_id = parsed_data["call_id"].get<std::string>();
+            }
+            // Try to extract IMSI/User from From/To fields if available
+            // This is a simplification; in reality, need to parse URI
+        } else if (protocol == ProtocolType::DIAMETER) {
+            // Extract Diameter identifiers
+            if (parsed_data.contains("imsi")) {
+                key.imsi = parsed_data["imsi"].get<std::string>();
+            }
+            if (parsed_data.contains("session_id")) {
+                // Could be mapped to a generic session ID or specific field
+            }
+        } else if (protocol == ProtocolType::SCTP) {
+            // Extract NGAP identifiers (transported over SCTP)
+            if (parsed_data.contains("ran_ue_ngap_id")) {
+                key.ran_ue_ngap_id = parsed_data["ran_ue_ngap_id"].get<uint64_t>();
+            }
+            if (parsed_data.contains("amf_ue_ngap_id")) {
+                key.amf_ue_ngap_id = parsed_data["amf_ue_ngap_id"].get<uint64_t>();
+            }
+        }
+
+        // Generic IP extraction if available and not already set
+        if (!key.ue_ipv4.has_value() && parsed_data.contains("ue_ipv4")) {
+            key.ue_ipv4 = parsed_data["ue_ipv4"].get<std::string>();
+        }
+    } catch (const std::exception& e) {
+        LOG_ERROR("Error extracting correlation key: " << e.what());
+    }
+
+    return key;
+}
+
 void callflow::EnhancedSessionCorrelator::processPacket(const PacketMetadata& packet,
                                                         ProtocolType protocol,
                                                         const nlohmann::json& parsed_data) {
@@ -751,14 +815,18 @@ void callflow::EnhancedSessionCorrelator::processPacket(const PacketMetadata& pa
     msg.interface = interface;
     msg.protocol = protocol;
     msg.message_type = message_type;
-    msg.correlation_key = key;
+    msg.correlation_key = key;  // Use the potentially partial key first
     msg.src_ip = packet.five_tuple.src_ip;
     msg.dst_ip = packet.five_tuple.dst_ip;
     msg.src_port = packet.five_tuple.src_port;
     msg.dst_port = packet.five_tuple.dst_port;
+    msg.payload_length = packet.packet_length;
 
-    // 5. Correlate to Session
-    // 5. Correlate to Session
+    // Fallback for UE IP if not extracted
+    if (!msg.correlation_key.ue_ipv4.has_value() && !msg.correlation_key.ue_ipv6.has_value()) {
+        msg.correlation_key.ue_ipv4 = packet.five_tuple.src_ip;
+    }
+
     addMessage(msg);
 }
 
@@ -766,6 +834,8 @@ void callflow::EnhancedSessionCorrelator::finalizeSessions() {
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto& [id, session] : sessions_) {
         session.finalize();
+        // Detect session type after collecting all messages
+        session.session_type = detectSessionType(session);
     }
 }
 

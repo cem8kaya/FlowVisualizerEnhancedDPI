@@ -167,7 +167,7 @@ const jobSessions = {
     },
 
     viewSession(sessionId) {
-        window.location.href = `/session.html?session=${sessionId}`;
+        window.location.href = `/session.html?session=${sessionId}&job=${this.jobId}`;
     }
 };
 

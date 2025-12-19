@@ -52,10 +52,12 @@ public:
     /**
      * Submit a new job
      * @param input_file Path to input PCAP file
+     * @param original_filename Original filename uploaded by user
      * @param output_file Path to output JSON file (optional)
      * @return Job ID on success, empty string on failure
      */
-    JobId submitJob(const std::string& input_file, const std::string& output_file = "");
+    JobId submitJob(const std::string& input_file, const std::string& original_filename,
+                    const std::string& output_file = "");
 
     /**
      * Get job info

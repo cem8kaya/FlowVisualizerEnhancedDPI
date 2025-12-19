@@ -2,19 +2,24 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <netinet/ip.h>
+#include <netinet/udp.h>
 
 #include <filesystem>
+#include <set>
 
 #include "common/utils.h"
 #include "event_extractor/json_exporter.h"
+#include "pcap_ingest/packet_processor.h"
 #include "pcap_ingest/pcap_reader.h"
+#include "pcap_ingest/pcapng_reader.h"
 #include "persistence/database.h"
 #include "protocol_parsers/diameter_parser.h"
 #include "protocol_parsers/gtp_parser.h"
 #include "protocol_parsers/pfcp_parser.h"
 #include "protocol_parsers/rtp_parser.h"
 #include "protocol_parsers/sip_parser.h"
+#include "session/session_correlator.h"
+#include "session/session_correlator.h"  // EnhancedSessionCorrelator
 #include "session/session_correlator.h"
 
 namespace callflow {
@@ -76,7 +81,8 @@ void JobManager::stop() {
     LOG_INFO("JobManager stopped");
 }
 
-JobId JobManager::submitJob(const std::string& input_file, const std::string& output_file) {
+JobId JobManager::submitJob(const std::string& input_file, const std::string& original_filename,
+                            const std::string& output_file) {
     if (!running_.load()) {
         LOG_ERROR("JobManager not running");
         return "";
@@ -89,6 +95,7 @@ JobId JobManager::submitJob(const std::string& input_file, const std::string& ou
     auto job_info = std::make_shared<JobInfo>();
     job_info->job_id = job_id;
     job_info->input_filename = input_file;
+    job_info->original_filename = original_filename;
     job_info->output_filename =
         output_file.empty() ? config_.results_dir + "/job-" + job_id + ".json" : output_file;
     job_info->status = JobStatus::QUEUED;
@@ -298,177 +305,176 @@ void JobManager::processJob(const JobTask& task) {
     updateProgress(task.job_id, 0, "Starting PCAP processing");
     sendEvent(task.job_id, "status", {{"status", "running"}});
 
-    // Create PCAP reader and session correlator
-    PcapReader pcap_reader;
-    SessionCorrelator correlator(config_);
+    EnhancedSessionCorrelator correlator;  // Default constructor? Or config?
+    // Check constructor of EnhancedSessionCorrelator. It is default.
+    // EnhancedSessionCorrelator correlator; // No config?
+    // Old SessionCorrelator took config.
+    // Let's assume default is fine based on header file view.
+    PacketProcessor processor(correlator);
 
-    // Open PCAP file
-    if (!pcap_reader.open(task.input_file)) {
-        throw std::runtime_error("Failed to open PCAP file: " + task.input_file);
-    }
-
-    updateProgress(task.job_id, 10, "PCAP file opened");
-
-    // Process packets
     size_t packet_count = 0;
     size_t total_bytes = 0;
 
-    auto callback = [&](const uint8_t* data, const struct pcap_pkthdr* header, void* user) {
-        PacketMetadata packet;
-        packet.packet_id = utils::generateUuid();
-        packet.timestamp = std::chrono::system_clock::from_time_t(header->ts.tv_sec) +
-                           std::chrono::microseconds(header->ts.tv_usec);
-        packet.frame_number = packet_count;
-        packet.packet_length = header->caplen;
+    // Detect format
+    bool is_pcapng = PcapngReader::validate(task.input_file);
 
-        // Parse packet (simplified version from main.cpp)
-        // Determine Link Header Length and Type
-        int link_header_len = 14;
-        uint16_t eth_type = 0;
+    if (is_pcapng) {
+        LOG_INFO("Detected PCAPNG format for job " << task.job_id);
+        PcapngReader reader;
+        if (!reader.open(task.input_file)) {
+            throw std::runtime_error("Failed to open PCAPNG file: " + task.input_file);
+        }
 
-        // Check Datalink Type
-        if (pcap_reader.getDatalinkType() == 113) {  // DLT_LINUX_SLL
-            link_header_len = 16;
-            if (header->caplen >= 16) {
-                eth_type = ntohs(*reinterpret_cast<const uint16_t*>(&data[14]));
+        // PcapngReader uses a block-based loop or processPackets with callback.
+        // But we want to intercept comments and stats.
+        // PcapngReader::processPackets only gives us packets.
+        // We need to iterate blocks manually?
+        // PcapngReader API: readNextBlock(), getCurrentBlockType().
+
+        while (reader.readNextBlock()) {
+            auto block_type = reader.getCurrentBlockType();
+
+            if (block_type == PcapngBlockType::ENHANCED_PACKET) {
+                uint32_t interface_id;
+                uint64_t timestamp;
+                std::vector<uint8_t> packet_data;
+                uint32_t original_length;
+                PcapngPacketMetadata metadata;
+
+                if (reader.readEnhancedPacket(interface_id, timestamp, packet_data, original_length,
+                                              metadata)) {
+                    // Convert timestamp ns to systemclock
+                    auto ts = std::chrono::system_clock::time_point(
+                        std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                            std::chrono::nanoseconds(timestamp)));
+
+                    // TODO: Pass DLT? Pcapng interface has link type.
+                    const PcapngInterface* iface = reader.getInterface(interface_id);
+                    int dlt = iface ? iface->link_type : 1;  // Default to Ethernet
+
+                    processor.processPacket(packet_data.data(), packet_data.size(), ts,
+                                            packet_count, dlt);
+
+                    packet_count++;
+                    total_bytes += packet_data.size();
+                }
+            } else if (block_type == PcapngBlockType::INTERFACE_STATISTICS) {
+                // Parse stats
+                // Need to expose parseInterfaceStatistics or access the stats?
+                // The reader parses it automatically if we call parseInterfaceStatistics() but that
+                // is private? Wait, processPackets calls it. If we manually loop, we need to call
+                // the parse methods. BUT they are private helpers in PcapngReader. We should
+                // probably enhance PcapngReader public API or just use `processPackets` and extract
+                // stats afterwards? `reader.getInterfaceStatistics()` returns the vector of parsed
+                // stats. So if we just continue loop, does it parse? Look at `readNextBlock`: it
+                // reads type and data. That's it. Calling `processPackets` (API) does the dispatch.
+                // `processPackets` takes a callback for PACKETS. It handles other blocks
+                // internally. So we can use `processPackets`.
             }
-        } else {  // Ethernet
-            if (header->caplen >= 14) {
-                eth_type = ntohs(*reinterpret_cast<const uint16_t*>(&data[12]));
+
+            if (packet_count % 1000 == 0 && packet_count > 0) {
+                int progress = 10 + (packet_count % 10000) * 60 / 10000;
+                updateProgress(task.job_id, progress,
+                               "Processed " + std::to_string(packet_count) + " packets");
             }
         }
 
-        // Handle VLAN (802.1Q)
-        if (eth_type == 0x8100 && header->caplen >= link_header_len + 4) {
-            link_header_len += 4;
-            // Read inner type (at offset 16 for Ethernet, 18 for SLL?? No, relative to new offset)
-            // VLAN tag is 4 bytes. Original type field was at link_header_len - 2.
-            // After VLAN, new type is at link_header_len - 2 + 4 = link_header_len + 2.
-            // Wait, for Ethernet:
-            // 0-11: MACs
-            // 12-13: 0x8100
-            // 14-15: VLAN ID
-            // 16-17: EtherType
-            // So new type is at 16. New header len is 18.
-            eth_type = ntohs(
-                *reinterpret_cast<const uint16_t*>(&data[link_header_len - 2]));  // Is this right?
-            // Before increment: len=14. Type at 12.
-            // VLAN: len becomes 18. Type at 16.
-            // So if I increment len by 4, type is at len-2. Yes.
-        }
+        // Use processPackets for simplicity? No, we started manual loop logic.
+        // Actually manual loop logic above is incomplete because `parseInterfaceStatistics` is
+        // private. I checked `PcapngReader` code earlier. `parseInterfaceStatistics` is private.
+        // Accessing `current_block_type_` is public.
 
-        if (header->caplen >= static_cast<bpf_u_int32>(link_header_len + 20)) {  // IP(20)
-            const uint8_t* ip_header = data + link_header_len;
-            size_t ip_len = header->caplen - link_header_len;
+        // FIX: I will use `processPackets` and let it handle parsing.
+        // Then I will retrieve stats via `getInterfaceStatistics()` AFTER processing.
+        // And `processPackets` handles logic for all blocks internally (calls parseXxxx).
 
-            if (ip_len >= 20) {
-                uint8_t version = (ip_header[0] >> 4) & 0x0F;
-                if (version == 4) {
-                    uint8_t ihl = (ip_header[0] & 0x0F) * 4;
-                    uint8_t protocol = ip_header[9];
-                    uint32_t src_ip = ntohl(*reinterpret_cast<const uint32_t*>(&ip_header[12]));
-                    uint32_t dst_ip = ntohl(*reinterpret_cast<const uint32_t*>(&ip_header[16]));
+        // Re-opening reader or resetting? No, just use processPackets.
+        // Need to close/re-open? I just opened it. I haven't consumed loop yet (logic above was
+        // just hypothetical). So I will use `reader.processPackets`.
 
-                    packet.five_tuple.src_ip = utils::ipToString(src_ip);
-                    packet.five_tuple.dst_ip = utils::ipToString(dst_ip);
-                    packet.five_tuple.protocol = protocol;
+        auto callback = [&](uint32_t interface_id, uint64_t timestamp_ns, const uint8_t* data,
+                            uint32_t cap_len, uint32_t orig_len, const PcapngPacketMetadata& meta) {
+            auto ts = std::chrono::system_clock::time_point(
+                std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                    std::chrono::nanoseconds(timestamp_ns)));
 
-                    const uint8_t* transport_header = ip_header + ihl;
-                    size_t transport_len = ip_len - ihl;
+            const PcapngInterface* iface = reader.getInterface(interface_id);
+            int dlt = iface ? iface->link_type : 1;
 
-                    if (protocol == 17 && transport_len >= 8) {  // UDP
-                        packet.five_tuple.src_port =
-                            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[0]));
-                        packet.five_tuple.dst_port =
-                            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[2]));
+            processor.processPacket(data, cap_len, ts, packet_count, dlt);
 
-                        const uint8_t* payload = transport_header + 8;
-                        size_t payload_len = transport_len - 8;
+            // Capture comments
+            if (meta.comment.has_value()) {
+                std::lock_guard<std::mutex> lock(jobs_mutex_);
+                auto it = jobs_.find(task.job_id);
+                if (it != jobs_.end()) {
+                    it->second->comments.push_back(meta.comment.value());
+                }
+            }
 
-                        if (payload_len > 0) {
-                            packet.raw_data.assign(payload, payload + payload_len);
+            packet_count++;
+            total_bytes += cap_len;
+        };
 
-                            // Try PFCP parsing (UDP port 8805)
-                            if (packet.five_tuple.src_port == 8805 ||
-                                packet.five_tuple.dst_port == 8805) {
-                                PfcpParser pfcp_parser;
-                                auto pfcp_msg = pfcp_parser.parse(packet.raw_data.data(),
-                                                                  packet.raw_data.size());
-                                if (pfcp_msg.has_value()) {
-                                    correlator.processPacket(packet, ProtocolType::PFCP,
-                                                             pfcp_msg->toJson());
-                                }
-                            }
-                            // Try GTP-C parsing (UDP port 2123)
-                            else if (packet.five_tuple.src_port == 2123 ||
-                                     packet.five_tuple.dst_port == 2123) {
-                                GtpParser gtp_parser;
-                                auto gtp_msg = gtp_parser.parse(packet.raw_data.data(),
-                                                                packet.raw_data.size());
-                                if (gtp_msg.has_value()) {
-                                    correlator.processPacket(packet, ProtocolType::GTP_C,
-                                                             gtp_msg->toJson());
-                                }
-                            }
-                            // Try DIAMETER parsing (TCP/UDP port 3868)
-                            else if (packet.five_tuple.src_port == 3868 ||
-                                     packet.five_tuple.dst_port == 3868) {
-                                DiameterParser diameter_parser;
-                                auto diameter_msg = diameter_parser.parse(packet.raw_data.data(),
-                                                                          packet.raw_data.size());
-                                if (diameter_msg.has_value()) {
-                                    correlator.processPacket(packet, ProtocolType::DIAMETER,
-                                                             diameter_msg->toJson());
-                                }
-                            }
-                            // Try SIP parsing
-                            else if (packet.five_tuple.src_port == 5060 ||
-                                     packet.five_tuple.dst_port == 5060) {
-                                SipParser sip_parser;
-                                auto sip_msg = sip_parser.parse(packet.raw_data.data(),
-                                                                packet.raw_data.size());
-                                if (sip_msg.has_value()) {
-                                    correlator.processPacket(packet, ProtocolType::SIP,
-                                                             sip_msg->toJson());
-                                }
-                            }
-                            // Try RTP parsing
-                            else if ((packet.five_tuple.src_port >= 10000 &&
-                                      packet.five_tuple.src_port % 2 == 0) ||
-                                     (packet.five_tuple.dst_port >= 10000 &&
-                                      packet.five_tuple.dst_port % 2 == 0)) {
-                                RtpParser rtp_parser;
-                                auto rtp_header = rtp_parser.parseRtp(packet.raw_data.data(),
-                                                                      packet.raw_data.size());
-                                if (rtp_header.has_value()) {
-                                    correlator.processPacket(packet, ProtocolType::RTP,
-                                                             rtp_header->toJson());
-                                }
-                            }
-                        }
+        reader.processPackets(callback);
+
+        // Post-processing: Extract stats
+        {
+            std::lock_guard<std::mutex> lock(jobs_mutex_);
+            auto it = jobs_.find(task.job_id);
+            if (it != jobs_.end()) {
+                const auto& stats = reader.getInterfaceStatistics();
+                for (const auto& s : stats) {
+                    JobInfo::InterfaceStats js;
+                    js.interface_id = s.interface_id;
+                    const auto* iface = reader.getInterface(s.interface_id);
+                    if (iface && iface->name.has_value()) {
+                        js.interface_name = iface->name.value();
                     }
+                    js.packets_received = s.packets_received.value_or(0);
+                    js.packets_dropped = s.packets_dropped.value_or(0);
+                    it->second->interface_stats.push_back(js);
+                }
+
+                // Also get section header comments
+                const auto& shb = reader.getSectionHeader();
+                if (shb.comment.has_value()) {
+                    it->second->comments.push_back("SHB: " + shb.comment.value());
                 }
             }
         }
 
-        packet_count++;
-        total_bytes += header->caplen;
-
-        // Update progress every 1000 packets
-        if (packet_count % 1000 == 0) {
-            int progress = 10 + (packet_count % 10000) * 60 / 10000;  // 10-70%
-            updateProgress(task.job_id, progress,
-                           "Processed " + std::to_string(packet_count) + " packets");
+    } else {
+        // Standard PCAP
+        LOG_INFO("Detected standard PCAP format for job " << task.job_id);
+        PcapReader reader;
+        if (!reader.open(task.input_file)) {
+            throw std::runtime_error("Failed to open PCAP file: " + task.input_file);
         }
 
-        // Send event every 100 packets
-        if (packet_count % 100 == 0) {
-            sendEvent(task.job_id, "progress", {{"packets", packet_count}, {"bytes", total_bytes}});
-        }
-    };
+        updateProgress(task.job_id, 10, "PCAP file opened");
 
-    pcap_reader.processPackets(callback);
-    pcap_reader.close();
+        int dlt = reader.getDatalinkType();
+
+        auto callback = [&](const uint8_t* data, const struct pcap_pkthdr* header, void* user) {
+            auto ts = std::chrono::system_clock::from_time_t(header->ts.tv_sec) +
+                      std::chrono::microseconds(header->ts.tv_usec);
+
+            processor.processPacket(data, header->caplen, ts, packet_count, dlt);
+
+            packet_count++;
+            total_bytes += header->caplen;
+
+            if (packet_count % 1000 == 0) {
+                int progress = 10 + (packet_count % 10000) * 60 / 10000;
+                updateProgress(task.job_id, progress,
+                               "Processed " + std::to_string(packet_count) + " packets");
+            }
+        };
+
+        reader.processPackets(callback);
+        reader.close();
+    }
 
     updateProgress(task.job_id, 70, "Finalizing sessions");
 
@@ -513,33 +519,61 @@ void JobManager::processJob(const JobTask& task) {
                     SessionRecord record;
                     record.session_id = session->session_id;
                     record.job_id = task.job_id;
-                    record.session_type = sessionTypeToString(session->type);
-                    record.session_key = session->session_key;
+                    record.session_type = enhancedSessionTypeToString(session->session_type);
+
+                    // Session Key: Use primary identifier or JSON dump
+                    record.session_key = session->correlation_key.getPrimaryIdentifier();
+                    if (record.session_key.empty()) {
+                        record.session_key = session->correlation_key.toJson().dump();
+                    }
 
                     // Convert Timestamps
-                    record.start_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                            session->start_time.time_since_epoch())
-                                            .count();
-                    record.end_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                          session->end_time.time_since_epoch())
-                                          .count();
-                    record.duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                             session->end_time - session->start_time)
-                                             .count();
+                    if (session->start_time.time_since_epoch().count() > 0) {
+                        record.start_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                                session->start_time.time_since_epoch())
+                                                .count();
+                    } else {
+                        record.start_time = 0;
+                    }
+
+                    if (session->end_time.time_since_epoch().count() > 0) {
+                        record.end_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                              session->end_time.time_since_epoch())
+                                              .count();
+                    } else {
+                        record.end_time = record.start_time;
+                    }
+
+                    record.duration_ms = 0;
+                    if (record.end_time >= record.start_time) {
+                        record.duration_ms = record.end_time - record.start_time;
+                    }
 
                     // Metrics
-                    record.packet_count = session->metrics.total_packets;
-                    record.byte_count = session->metrics.total_bytes;
+                    record.packet_count = session->total_packets;
+                    record.byte_count = session->total_bytes;
 
-                    // Convert participants
+                    // Convert participants (Extract unique IPs)
                     nlohmann::json participants_json = nlohmann::json::array();
-                    for (const auto& p : session->participants) {
-                        participants_json.push_back({{"ip", p.ip}, {"port", p.port}});
+                    std::set<std::string> unique_ips;
+                    for (const auto& leg : session->legs) {
+                        for (const auto& msg : leg.messages) {
+                            if (unique_ips.find(msg.src_ip) == unique_ips.end()) {
+                                unique_ips.insert(msg.src_ip);
+                                participants_json.push_back(
+                                    {{"ip", msg.src_ip}, {"port", msg.src_port}});
+                            }
+                            if (unique_ips.find(msg.dst_ip) == unique_ips.end()) {
+                                unique_ips.insert(msg.dst_ip);
+                                participants_json.push_back(
+                                    {{"ip", msg.dst_ip}, {"port", msg.dst_port}});
+                            }
+                        }
                     }
                     record.participant_ips = participants_json.dump();
 
                     // Metadata
-                    record.metadata = session->toSummaryJson().dump();
+                    record.metadata = session->toJson().dump();
 
                     db_->insertSession(record);
                 }

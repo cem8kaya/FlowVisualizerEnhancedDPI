@@ -4,293 +4,127 @@
 #include "common/types.h"
 #include "common/utils.h"
 #include "event_extractor/json_exporter.h"
-#include "flow_manager/flow_tracker.h"
-#include "flow_manager/session_correlator.h"
-#include "pcap_ingest/packet_queue.h"
+#include "pcap_ingest/packet_processor.h"
 #include "pcap_ingest/pcap_reader.h"
-#include "protocol_parsers/diameter_parser.h"
-#include "protocol_parsers/gtp_parser.h"
-#include "protocol_parsers/rtp_parser.h"
-#include "protocol_parsers/sip_parser.h"
+#include "pcap_ingest/pcapng_reader.h"
+#include "persistence/database.h"  // Moved out of ifdef as it's used in main now
+#include "session/session_correlator.h"
 
 #ifdef BUILD_API_SERVER
 #include "api_server/http_server.h"
 #include "api_server/job_manager.h"
 #include "api_server/websocket_handler.h"
 #include "config/config_manager.h"
-#include "persistence/database.h"
 #endif
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/udp.h>
 
 #include <atomic>
 #include <csignal>
+#include <fstream>  // Added for std::ifstream
 #include <iostream>
+#include <map>
 #include <thread>
 #include <vector>
 
 using namespace callflow;
 
-/**
- * Packet processor worker
- */
-class PacketProcessor {
-public:
-    PacketProcessor(Config& config, SessionCorrelator& correlator)
-        : config_(config), correlator_(correlator) {}
+std::atomic<bool> running(true);
 
-    void processPacket(const PacketMetadata& packet) {
-        // Protocol detection and parsing
-        if (packet.five_tuple.protocol == 17) {  // UDP
-            // Check for DIAMETER (port 3868, but can also run on TCP)
-            if (packet.five_tuple.src_port == 3868 || packet.five_tuple.dst_port == 3868) {
-                DiameterParser diameter_parser;
-                auto diameter_msg =
-                    diameter_parser.parse(packet.raw_data.data(), packet.raw_data.size());
-
-                if (diameter_msg.has_value()) {
-                    LOG_DEBUG("Parsed DIAMETER message: " << diameter_msg->getCommandName());
-                    correlator_.processPacket(packet, ProtocolType::DIAMETER,
-                                              diameter_msg->toJson());
-                    return;
-                }
-            }
-
-            // Check for GTP-C (port 2123)
-            if (packet.five_tuple.src_port == 2123 || packet.five_tuple.dst_port == 2123) {
-                GtpParser gtp_parser;
-                auto gtp_msg = gtp_parser.parse(packet.raw_data.data(), packet.raw_data.size());
-
-                if (gtp_msg.has_value()) {
-                    LOG_DEBUG("Parsed GTP message: " << gtp_msg->getMessageTypeName());
-                    correlator_.processPacket(packet, ProtocolType::GTP_C, gtp_msg->toJson());
-                    return;
-                }
-            }
-
-            // Check for GTP-U (port 2152)
-            if (packet.five_tuple.src_port == 2152 || packet.five_tuple.dst_port == 2152) {
-                GtpParser gtp_parser;
-                auto gtp_msg = gtp_parser.parse(packet.raw_data.data(), packet.raw_data.size());
-
-                if (gtp_msg.has_value()) {
-                    LOG_DEBUG("Parsed GTP-U message: " << gtp_msg->getMessageTypeName());
-                    correlator_.processPacket(packet, ProtocolType::GTP_U, gtp_msg->toJson());
-                    return;
-                }
-            }
-
-            // Check if likely SIP (port 5060)
-            if (packet.five_tuple.src_port == 5060 || packet.five_tuple.dst_port == 5060) {
-                SipParser sip_parser;
-                auto sip_msg = sip_parser.parse(packet.raw_data.data(), packet.raw_data.size());
-
-                if (sip_msg.has_value()) {
-                    LOG_DEBUG("Parsed SIP message: " << sip_msg->call_id);
-                    correlator_.processPacket(packet, ProtocolType::SIP, sip_msg->toJson());
-                    return;
-                }
-            }
-
-            // Check if likely RTP (even ports 10000-65535)
-            if ((packet.five_tuple.src_port >= 10000 && packet.five_tuple.src_port % 2 == 0) ||
-                (packet.five_tuple.dst_port >= 10000 && packet.five_tuple.dst_port % 2 == 0)) {
-                RtpParser rtp_parser;
-                auto rtp_header =
-                    rtp_parser.parseRtp(packet.raw_data.data(), packet.raw_data.size());
-
-                if (rtp_header.has_value()) {
-                    LOG_TRACE("Parsed RTP packet: SSRC=" << rtp_header->ssrc
-                                                         << " seq=" << rtp_header->sequence_number);
-                    correlator_.processPacket(packet, ProtocolType::RTP, rtp_header->toJson());
-                    return;
-                }
-            }
-        } else if (packet.five_tuple.protocol == 6) {  // TCP
-            // DIAMETER can also run on TCP (port 3868)
-            if (packet.five_tuple.src_port == 3868 || packet.five_tuple.dst_port == 3868) {
-                DiameterParser diameter_parser;
-                auto diameter_msg =
-                    diameter_parser.parse(packet.raw_data.data(), packet.raw_data.size());
-
-                if (diameter_msg.has_value()) {
-                    LOG_DEBUG("Parsed DIAMETER message (TCP): " << diameter_msg->getCommandName());
-                    correlator_.processPacket(packet, ProtocolType::DIAMETER,
-                                              diameter_msg->toJson());
-                    return;
-                }
-            }
-        }
-
-        // If not identified, still track as generic flow
-        LOG_TRACE("Unidentified packet: " << packet.five_tuple.toString());
-    }
-
-private:
-    Config& config_;
-    SessionCorrelator& correlator_;
-};
-
-/**
- * Parse Ethernet/IP/UDP packet
- */
-bool parsePacket(const uint8_t* data, size_t len, PacketMetadata& packet) {
-    if (len < 42) {  // Min: Ethernet(14) + IP(20) + UDP(8)
-        return false;
-    }
-
-    // Skip Ethernet header (14 bytes)
-    const uint8_t* ip_header = data + 14;
-    size_t ip_len = len - 14;
-
-    // Parse IP header
-    if (ip_len < 20) {
-        return false;
-    }
-
-    uint8_t version = (ip_header[0] >> 4) & 0x0F;
-    if (version != 4) {
-        return false;  // Only IPv4 for M1
-    }
-
-    uint8_t ihl = (ip_header[0] & 0x0F) * 4;
-    uint8_t protocol = ip_header[9];
-    uint32_t src_ip = ntohl(*reinterpret_cast<const uint32_t*>(&ip_header[12]));
-    uint32_t dst_ip = ntohl(*reinterpret_cast<const uint32_t*>(&ip_header[16]));
-
-    packet.five_tuple.src_ip = utils::ipToString(src_ip);
-    packet.five_tuple.dst_ip = utils::ipToString(dst_ip);
-    packet.five_tuple.protocol = protocol;
-
-    // Parse transport layer (UDP/TCP)
-    const uint8_t* transport_header = ip_header + ihl;
-    size_t transport_len = ip_len - ihl;
-
-    if (protocol == 17 && transport_len >= 8) {  // UDP
-        packet.five_tuple.src_port =
-            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[0]));
-        packet.five_tuple.dst_port =
-            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[2]));
-
-        // Copy payload
-        const uint8_t* payload = transport_header + 8;
-        size_t payload_len = transport_len - 8;
-
-        if (payload_len > 0) {
-            packet.raw_data.assign(payload, payload + payload_len);
-        }
-
-        return true;
-    } else if (protocol == 6 && transport_len >= 20) {  // TCP
-        packet.five_tuple.src_port =
-            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[0]));
-        packet.five_tuple.dst_port =
-            ntohs(*reinterpret_cast<const uint16_t*>(&transport_header[2]));
-
-        uint8_t data_offset = (transport_header[12] >> 4) * 4;
-        const uint8_t* payload = transport_header + data_offset;
-        size_t payload_len = transport_len - data_offset;
-
-        if (payload_len > 0) {
-            packet.raw_data.assign(payload, payload + payload_len);
-        }
-
-        return true;
-    }
-
-    return false;
+void signalHandler(int signum) {
+    LOG_INFO("Interrupt signal (" << signum << ") received.");
+    running = false;
 }
 
-/**
- * Main processing function
- */
-int processPcap(const CliArgs& args) {
-    // Configure logging
-    Logger::getInstance().setLevel(args.log_level);
+void processPcap(const std::string& input_file, const std::string& output_file, bool is_pcapng,
+                 Config& config) {
+    LOG_INFO("Processing " << (is_pcapng ? "PCAPNG" : "PCAP") << " file: " << input_file);
 
-    LOG_INFO("Starting Callflow Visualizer (Milestone 1)");
-    LOG_INFO("Input PCAP: " << args.input_file);
-    LOG_INFO("Worker threads: " << args.worker_threads);
+    EnhancedSessionCorrelator correlator;  // New correlator
+    PacketProcessor processor(correlator);
 
-    // Create configuration
-    Config config;
-    config.worker_threads = args.worker_threads;
-    config.output_dir = args.output_dir;
-    config.export_pcap_subsets = args.export_pcap_subsets;
-
-    // Create components
-    PcapReader pcap_reader;
-    SessionCorrelator correlator(config);
-    PacketProcessor processor(config, correlator);
-
-    // Open PCAP file
-    if (!pcap_reader.open(args.input_file)) {
-        LOG_ERROR("Failed to open PCAP file");
-        return 1;
-    }
-
-    LOG_INFO("Processing packets...");
-
-    // Process packets
     size_t packet_count = 0;
+    size_t total_bytes = 0;
+
+    // Setup file reader
+    // We reuse logic from JobManager partly, but simpler.
+
     auto process_start = utils::now();
 
-    auto callback = [&](const uint8_t* data, const struct pcap_pkthdr* header, void* user) {
-        PacketMetadata packet;
-        packet.packet_id = utils::generateUuid();
-        packet.timestamp = std::chrono::system_clock::from_time_t(header->ts.tv_sec) +
-                           std::chrono::microseconds(header->ts.tv_usec);
-        packet.frame_number = packet_count;
-        packet.packet_length = header->caplen;
-
-        // Parse packet
-        if (parsePacket(data, header->caplen, packet)) {
-            processor.processPacket(packet);
+    if (is_pcapng) {
+        PcapngReader reader;
+        if (!reader.open(input_file)) {
+            LOG_ERROR("Failed to open PCAPNG file: " << input_file);
+            return;
         }
 
-        packet_count++;
+        auto callback = [&](uint32_t interface_id, uint64_t timestamp_ns, const uint8_t* data,
+                            uint32_t cap_len, uint32_t orig_len, const PcapngPacketMetadata& meta) {
+            if (!running)
+                return;
 
-        if (packet_count % 10000 == 0) {
-            LOG_INFO("Processed " << packet_count << " packets, " << correlator.getSessionCount()
-                                  << " sessions...");
+            auto ts = std::chrono::system_clock::time_point(
+                std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                    std::chrono::nanoseconds(timestamp_ns)));
+
+            const PcapngInterface* iface = reader.getInterface(interface_id);
+            int dlt = iface ? iface->link_type : 1;
+
+            processor.processPacket(data, cap_len, ts, packet_count, dlt);
+
+            packet_count++;
+            total_bytes += cap_len;
+
+            if (packet_count % 10000 == 0) {
+                std::cout << "\rProcessed " << packet_count << " packets..." << std::flush;
+            }
+        };
+
+        reader.processPackets(callback);
+
+    } else {
+        PcapReader reader;
+        if (!reader.open(input_file)) {
+            LOG_ERROR("Failed to open PCAP file: " << input_file);
+            return;
         }
-    };
 
-    pcap_reader.processPackets(callback);
-    pcap_reader.close();
+        int dlt = reader.getDatalinkType();
+
+        auto callback = [&](const uint8_t* data, const struct pcap_pkthdr* header, void* user) {
+            if (!running)
+                return;
+
+            auto ts = std::chrono::system_clock::from_time_t(header->ts.tv_sec) +
+                      std::chrono::microseconds(header->ts.tv_usec);
+
+            processor.processPacket(data, header->caplen, ts, packet_count, dlt);
+
+            packet_count++;
+            total_bytes += header->caplen;
+
+            if (packet_count % 10000 == 0) {
+                std::cout << "\rProcessed " << packet_count << " packets..." << std::flush;
+            }
+        };
+
+        reader.processPackets(callback);
+        reader.close();
+    }
 
     auto process_end = utils::now();
     auto duration_ms = utils::timeDiffMs(process_start, process_end);
 
-    LOG_INFO("Processed " << packet_count << " packets in " << duration_ms << "ms ("
-                          << (packet_count * 1000.0 / duration_ms) << " pps)");
-
-    // Finalize sessions
-    LOG_INFO("Finalizing sessions...");
+    std::cout << "\nFinalizing sessions..." << std::endl;
     correlator.finalizeSessions();
 
-    // Export results
-    LOG_INFO("Exporting results...");
-
     auto sessions = correlator.getAllSessions();
-    LOG_INFO("Found " << sessions.size() << " sessions");
-
-    // Generate output filename
-    std::string output_file = args.output_file;
-    if (output_file.empty()) {
-        std::string job_id = utils::generateUuid();
-        output_file = args.output_dir + "/job-" + job_id + ".json";
-    }
+    LOG_INFO("Total sessions: " << sessions.size());
 
     JsonExporter exporter;
+    // Export results
     if (exporter.exportToFile(output_file, sessions, true)) {
-        LOG_INFO("Results exported to: " << output_file);
+        LOG_INFO("Results exported to " << output_file);
     } else {
         LOG_ERROR("Failed to export results");
-        return 1;
     }
 
     // Print summary
@@ -302,17 +136,15 @@ int processPcap(const CliArgs& args) {
     std::cout << "Output file: " << output_file << "\n";
 
     // Session breakdown
-    std::map<SessionType, size_t> session_types;
+    std::map<EnhancedSessionType, size_t> session_types;
     for (const auto& session : sessions) {
-        session_types[session->type]++;
+        session_types[session->session_type]++;
     }
 
     std::cout << "\nSession breakdown:\n";
     for (const auto& [type, count] : session_types) {
-        std::cout << "  " << sessionTypeToString(type) << ": " << count << "\n";
+        std::cout << "  " << enhancedSessionTypeToString(type) << ": " << count << "\n";
     }
-
-    return 0;
 }
 
 /**
@@ -457,7 +289,33 @@ int main(int argc, char** argv) {
             return runApiServer(args);
         } else {
             // Traditional CLI mode
-            return processPcap(args);
+            std::string input_file = args.input_file;
+            std::string output_file = args.output_file;
+            if (output_file.empty()) {
+                output_file = "output.json";
+            }
+            // Load config similarly to API mode so we have settings
+            Config config;
+            if (!args.config_file.empty()) {
+                ConfigLoader loader;
+                if (!loader.loadFromFile(args.config_file, config)) {
+                    LOG_ERROR("Failed to load config file: " << args.config_file);
+                    return 1;
+                }
+            } else {
+                // Default config
+                ConfigLoader loader;
+                // Check if config.json exists using standard I/O to avoid filesystem dependency
+                // issues
+                std::ifstream f("config.json");
+                if (f.good()) {
+                    loader.loadFromFile("config.json", config);
+                }
+            }
+
+            bool is_pcapng = PcapngReader::validate(input_file);
+            processPcap(input_file, output_file, is_pcapng, config);
+            return 0;
         }
     } catch (const std::exception& e) {
         LOG_FATAL("Fatal error: " << e.what());

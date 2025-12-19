@@ -295,6 +295,9 @@ nlohmann::json Session::toJson() const {
     j["session_id"] = session_id;
     j["session_type"] = enhancedSessionTypeToString(session_type);
     j["correlation_key"] = correlation_key.toJson();
+    // Add missing fields expected by UI
+    j["session_key"] = correlation_key.getPrimaryIdentifier();
+
     j["start_time"] =
         std::chrono::duration_cast<std::chrono::milliseconds>(start_time.time_since_epoch())
             .count();
@@ -302,7 +305,9 @@ nlohmann::json Session::toJson() const {
         std::chrono::duration_cast<std::chrono::milliseconds>(end_time.time_since_epoch()).count();
     j["duration_ms"] = getDurationMs();
     j["total_packets"] = total_packets;
+    j["packet_count"] = total_packets;  // Alias for UI
     j["total_bytes"] = total_bytes;
+    j["byte_count"] = total_bytes;  // Alias for UI
     j["is_complete"] = is_complete;
 
     if (setup_time_ms.has_value()) {
@@ -421,6 +426,7 @@ void Session::addMessage(const SessionMessageRef& msg) {
     correlation_key.merge(msg.correlation_key);
 
     total_packets++;
+    total_bytes += msg.payload_length;
 }
 
 void Session::finalize() {

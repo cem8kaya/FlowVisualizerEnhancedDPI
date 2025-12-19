@@ -153,6 +153,7 @@ struct SessionMessageRef {
     MessageType message_type;               // Specific message type
     SessionCorrelationKey correlation_key;  // Extracted correlation keys
     uint32_t sequence_in_session;           // Sequence number within session
+    uint32_t payload_length;                // Length of payload (for byte counts)
 
     // 5-tuple info for UI display
     std::string src_ip;

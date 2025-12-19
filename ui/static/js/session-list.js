@@ -8,13 +8,25 @@ const sessionView = {
         // Get session ID from URL
         const params = new URLSearchParams(window.location.search);
         this.sessionId = params.get('session');
+        this.jobId = params.get('job');
 
         if (!this.sessionId) {
             app.showToast('No session ID provided', 'error');
             return;
         }
 
+        this.updateBackLink();
         await this.loadSession();
+    },
+
+    updateBackLink() {
+        if (this.jobId) {
+            const backLink = document.getElementById('backLink');
+            if (backLink) {
+                backLink.href = `/sessions.html?job=${this.jobId}`;
+                backLink.innerHTML = '<i class="bi bi-arrow-left"></i> Back to Job';
+            }
+        }
     },
 
     async loadSession() {
