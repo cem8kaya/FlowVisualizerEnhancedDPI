@@ -11,6 +11,50 @@
 namespace callflow {
 
 /**
+ * SCTP Payload Protocol Identifiers (RFC 4960)
+ * Used to identify the upper layer protocol carried in DATA chunks
+ */
+enum class SctpPayloadProtocolId : uint32_t {
+    RESERVED = 0,
+    IUA = 1,                // ISDN Q.921 User Adaptation
+    M2UA = 2,               // SS7 MTP2 User Adaptation
+    M3UA = 3,               // SS7 MTP3 User Adaptation
+    SUA = 4,                // SS7 SCCP User Adaptation
+    M2PA = 5,               // SS7 MTP2 Peer Adaptation
+    V5UA = 6,               // V5.2 User Adaptation
+    H248 = 7,               // H.248
+    BICC = 8,               // BICC/Q.1902
+    TALI = 9,               // TALI
+    DUA = 10,               // DPNSS/DASS2 User Adaptation
+    ASAP = 11,              // ASAP
+    ENRP = 12,              // ENRP
+    H323 = 13,              // H.323
+    QIPC = 14,              // QIPC
+    SIMCO = 15,             // SIMCO
+    DDP_SEG = 16,           // DDP Segment
+    DDP_STREAM = 17,        // DDP Stream
+    S1AP = 18,              // S1 Application Protocol (LTE)
+    RUA = 19,               // RANAP User Adaptation
+    HNBAP = 20,             // HNB Application Part
+    FORCES_HP = 21,         // ForCES-HP
+    FORCES_MP = 22,         // ForCES-MP
+    FORCES_LP = 23,         // ForCES-LP
+    SBC_AP = 24,            // SBc-AP
+    X2AP = 27,              // X2 Application Protocol (LTE)
+    SABP = 31,              // Service Area Broadcast Protocol
+    DIAMETER = 46,          // Diameter (when used over SCTP)
+    NGAP = 60,              // NG Application Protocol (5G)
+    XWAP = 61,              // Xw Application Protocol
+
+    // Vendor-specific range: 0x00000080 - 0xFFFFFFFF
+};
+
+/**
+ * Get human-readable name for PPID
+ */
+std::string getSctpPpidName(uint32_t ppid);
+
+/**
  * SCTP chunk types (RFC 4960, RFC 6525)
  */
 enum class SctpChunkType : uint8_t {

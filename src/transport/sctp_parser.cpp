@@ -7,6 +7,50 @@
 namespace callflow {
 
 // ============================================================================
+// SCTP Payload Protocol ID utilities
+// ============================================================================
+
+std::string getSctpPpidName(uint32_t ppid) {
+    switch (static_cast<SctpPayloadProtocolId>(ppid)) {
+        case SctpPayloadProtocolId::RESERVED: return "RESERVED";
+        case SctpPayloadProtocolId::IUA: return "IUA";
+        case SctpPayloadProtocolId::M2UA: return "M2UA";
+        case SctpPayloadProtocolId::M3UA: return "M3UA";
+        case SctpPayloadProtocolId::SUA: return "SUA";
+        case SctpPayloadProtocolId::M2PA: return "M2PA";
+        case SctpPayloadProtocolId::V5UA: return "V5UA";
+        case SctpPayloadProtocolId::H248: return "H248";
+        case SctpPayloadProtocolId::BICC: return "BICC";
+        case SctpPayloadProtocolId::TALI: return "TALI";
+        case SctpPayloadProtocolId::DUA: return "DUA";
+        case SctpPayloadProtocolId::ASAP: return "ASAP";
+        case SctpPayloadProtocolId::ENRP: return "ENRP";
+        case SctpPayloadProtocolId::H323: return "H323";
+        case SctpPayloadProtocolId::QIPC: return "QIPC";
+        case SctpPayloadProtocolId::SIMCO: return "SIMCO";
+        case SctpPayloadProtocolId::DDP_SEG: return "DDP_SEG";
+        case SctpPayloadProtocolId::DDP_STREAM: return "DDP_STREAM";
+        case SctpPayloadProtocolId::S1AP: return "S1AP";
+        case SctpPayloadProtocolId::RUA: return "RUA";
+        case SctpPayloadProtocolId::HNBAP: return "HNBAP";
+        case SctpPayloadProtocolId::FORCES_HP: return "FORCES_HP";
+        case SctpPayloadProtocolId::FORCES_MP: return "FORCES_MP";
+        case SctpPayloadProtocolId::FORCES_LP: return "FORCES_LP";
+        case SctpPayloadProtocolId::SBC_AP: return "SBC_AP";
+        case SctpPayloadProtocolId::X2AP: return "X2AP";
+        case SctpPayloadProtocolId::SABP: return "SABP";
+        case SctpPayloadProtocolId::DIAMETER: return "DIAMETER";
+        case SctpPayloadProtocolId::NGAP: return "NGAP";
+        case SctpPayloadProtocolId::XWAP: return "XWAP";
+        default:
+            if (ppid >= 0x80) {
+                return "VENDOR_SPECIFIC";
+            }
+            return "UNKNOWN";
+    }
+}
+
+// ============================================================================
 // CRC32C for SCTP checksum (RFC 4960 Appendix B)
 // ============================================================================
 
@@ -75,6 +119,7 @@ nlohmann::json SctpDataChunk::toJson() const {
     j["stream_id"] = stream_id;
     j["stream_sequence"] = stream_sequence;
     j["payload_protocol"] = payload_protocol;
+    j["payload_protocol_name"] = getSctpPpidName(payload_protocol);
     j["data_length"] = user_data.size();
     j["unordered"] = unordered();
     j["beginning"] = beginning();
