@@ -118,6 +118,9 @@ add_library(protocol_parsers STATIC
     protocol_parsers/diameter/diameter_rx_parser.cpp
     protocol_parsers/diameter/diameter_gy_parser.cpp
     protocol_parsers/diameter/policy_rule_parser.cpp
+    protocol_parsers/diameter/ims_types.cpp
+    protocol_parsers/diameter/diameter_cx_parser.cpp
+    protocol_parsers/diameter/diameter_sh_parser.cpp
     protocol_parsers/http2_parser.cpp
     protocol_parsers/fiveg_sba_parser.cpp
     protocol_parsers/x2ap_parser.cpp
