@@ -6,6 +6,114 @@
 namespace callflow {
 
 // ============================================================================
+// Diameter Utility Functions
+// ============================================================================
+
+std::string getResultCodeCategory(uint32_t result_code) {
+    if (result_code >= 2000 && result_code < 3000) {
+        return "Success";
+    } else if (result_code >= 3000 && result_code < 4000) {
+        return "Protocol Error";
+    } else if (result_code >= 4000 && result_code < 5000) {
+        return "Transient Failure";
+    } else if (result_code >= 5000 && result_code < 6000) {
+        return "Permanent Failure";
+    }
+    return "Unknown";
+}
+
+std::string getResultCodeName(uint32_t result_code) {
+    switch (static_cast<DiameterResultCode>(result_code)) {
+        case DiameterResultCode::DIAMETER_SUCCESS:
+            return "DIAMETER_SUCCESS";
+        case DiameterResultCode::DIAMETER_LIMITED_SUCCESS:
+            return "DIAMETER_LIMITED_SUCCESS";
+        case DiameterResultCode::DIAMETER_COMMAND_UNSUPPORTED:
+            return "DIAMETER_COMMAND_UNSUPPORTED";
+        case DiameterResultCode::DIAMETER_UNABLE_TO_DELIVER:
+            return "DIAMETER_UNABLE_TO_DELIVER";
+        case DiameterResultCode::DIAMETER_REALM_NOT_SERVED:
+            return "DIAMETER_REALM_NOT_SERVED";
+        case DiameterResultCode::DIAMETER_TOO_BUSY:
+            return "DIAMETER_TOO_BUSY";
+        case DiameterResultCode::DIAMETER_LOOP_DETECTED:
+            return "DIAMETER_LOOP_DETECTED";
+        case DiameterResultCode::DIAMETER_REDIRECT_INDICATION:
+            return "DIAMETER_REDIRECT_INDICATION";
+        case DiameterResultCode::DIAMETER_APPLICATION_UNSUPPORTED:
+            return "DIAMETER_APPLICATION_UNSUPPORTED";
+        case DiameterResultCode::DIAMETER_INVALID_HDR_BITS:
+            return "DIAMETER_INVALID_HDR_BITS";
+        case DiameterResultCode::DIAMETER_INVALID_AVP_BITS:
+            return "DIAMETER_INVALID_AVP_BITS";
+        case DiameterResultCode::DIAMETER_UNKNOWN_PEER:
+            return "DIAMETER_UNKNOWN_PEER";
+        case DiameterResultCode::DIAMETER_AUTHENTICATION_REJECTED:
+            return "DIAMETER_AUTHENTICATION_REJECTED";
+        case DiameterResultCode::DIAMETER_OUT_OF_SPACE:
+            return "DIAMETER_OUT_OF_SPACE";
+        case DiameterResultCode::DIAMETER_ELECTION_LOST:
+            return "DIAMETER_ELECTION_LOST";
+        case DiameterResultCode::DIAMETER_AVP_UNSUPPORTED:
+            return "DIAMETER_AVP_UNSUPPORTED";
+        case DiameterResultCode::DIAMETER_UNKNOWN_SESSION_ID:
+            return "DIAMETER_UNKNOWN_SESSION_ID";
+        case DiameterResultCode::DIAMETER_AUTHORIZATION_REJECTED:
+            return "DIAMETER_AUTHORIZATION_REJECTED";
+        case DiameterResultCode::DIAMETER_INVALID_AVP_VALUE:
+            return "DIAMETER_INVALID_AVP_VALUE";
+        case DiameterResultCode::DIAMETER_MISSING_AVP:
+            return "DIAMETER_MISSING_AVP";
+        case DiameterResultCode::DIAMETER_RESOURCES_EXCEEDED:
+            return "DIAMETER_RESOURCES_EXCEEDED";
+        case DiameterResultCode::DIAMETER_CONTRADICTING_AVPS:
+            return "DIAMETER_CONTRADICTING_AVPS";
+        case DiameterResultCode::DIAMETER_AVP_NOT_ALLOWED:
+            return "DIAMETER_AVP_NOT_ALLOWED";
+        case DiameterResultCode::DIAMETER_AVP_OCCURS_TOO_MANY_TIMES:
+            return "DIAMETER_AVP_OCCURS_TOO_MANY_TIMES";
+        case DiameterResultCode::DIAMETER_NO_COMMON_APPLICATION:
+            return "DIAMETER_NO_COMMON_APPLICATION";
+        case DiameterResultCode::DIAMETER_UNSUPPORTED_VERSION:
+            return "DIAMETER_UNSUPPORTED_VERSION";
+        case DiameterResultCode::DIAMETER_UNABLE_TO_COMPLY:
+            return "DIAMETER_UNABLE_TO_COMPLY";
+        case DiameterResultCode::DIAMETER_INVALID_BIT_IN_HEADER:
+            return "DIAMETER_INVALID_BIT_IN_HEADER";
+        case DiameterResultCode::DIAMETER_INVALID_AVP_LENGTH:
+            return "DIAMETER_INVALID_AVP_LENGTH";
+        case DiameterResultCode::DIAMETER_INVALID_MESSAGE_LENGTH:
+            return "DIAMETER_INVALID_MESSAGE_LENGTH";
+        case DiameterResultCode::DIAMETER_INVALID_AVP_BIT_COMBO:
+            return "DIAMETER_INVALID_AVP_BIT_COMBO";
+        case DiameterResultCode::DIAMETER_NO_COMMON_SECURITY:
+            return "DIAMETER_NO_COMMON_SECURITY";
+        default:
+            return "UNKNOWN_" + std::to_string(result_code);
+    }
+}
+
+std::string getAvpDataTypeName(DiameterAvpDataType type) {
+    switch (type) {
+        case DiameterAvpDataType::OCTET_STRING: return "OctetString";
+        case DiameterAvpDataType::INTEGER32: return "Integer32";
+        case DiameterAvpDataType::INTEGER64: return "Integer64";
+        case DiameterAvpDataType::UNSIGNED32: return "Unsigned32";
+        case DiameterAvpDataType::UNSIGNED64: return "Unsigned64";
+        case DiameterAvpDataType::FLOAT32: return "Float32";
+        case DiameterAvpDataType::FLOAT64: return "Float64";
+        case DiameterAvpDataType::GROUPED: return "Grouped";
+        case DiameterAvpDataType::UTF8STRING: return "UTF8String";
+        case DiameterAvpDataType::DIAMETER_IDENTITY: return "DiameterIdentity";
+        case DiameterAvpDataType::DIAMETER_URI: return "DiameterURI";
+        case DiameterAvpDataType::ENUMERATED: return "Enumerated";
+        case DiameterAvpDataType::IP_ADDRESS: return "IPAddress";
+        case DiameterAvpDataType::TIME: return "Time";
+        default: return "Unknown";
+    }
+}
+
+// ============================================================================
 // DiameterHeader Methods
 // ============================================================================
 
