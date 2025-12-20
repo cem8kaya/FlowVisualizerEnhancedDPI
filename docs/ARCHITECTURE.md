@@ -57,10 +57,10 @@ Callflow Visualizer is designed as a modular, high-performance system for proces
 │  │   SIP    │  │   RTP    │  │   GTP    │  │   DIAMETER   │   │
 │  │  Parser  │  │  Parser  │  │  Parser  │  │    Parser    │   │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────┘   │
-│  ┌──────────┐                                                   │
-│  │  HTTP/2  │                                                   │
-│  │  Parser  │                                                   │
-│  └──────────┘                                                   │
+│  ┌──────────┐  ┌──────────┐                                   │
+│  │  HTTP/2  │  │  5G SBA  │                                   │
+│  │  Parser  │  │  Parser  │                                   │
+│  └──────────┘  └──────────┘                                   │
 └─────────────────────────────────────────────────────────────────┘
           │
 ┌─────────▼───────────────────────────────────────────────────────┐
@@ -226,6 +226,7 @@ Callflow Visualizer is designed as a modular, high-performance system for proces
 - `GtpParser`: GTP-C/GTP-U message parsing (M3)
 - `DiameterParser`: DIAMETER AVP parsing (M3)
 - `Http2Parser`: HTTP/2 frame parsing (M4)
+- `FiveGSbaParser`: 5G Service Based Architecture JSON parsing (M7)
 
 **Design:**
 - Protocol-agnostic base interface
@@ -252,6 +253,7 @@ Callflow Visualizer is designed as a modular, high-performance system for proces
 - **VoLTE**: SIP Call-ID + associated RTP flows
 - **GTP**: TEID (Tunnel Endpoint Identifier)
 - **DIAMETER**: Session-Id AVP
+- **5G SBA**: Stream ID / SBI Correlation ID / SUPI
 - **HTTP/2**: Connection 5-tuple + Stream ID
 - **Fallback**: 5-tuple for unidentified traffic
 

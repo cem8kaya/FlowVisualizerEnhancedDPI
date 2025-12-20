@@ -13,6 +13,7 @@ A production-ready Callflow Visualizer that ingests PCAPs, decodes telecom proto
 - ✅ M4: HTTP/2 parser with HPACK, Advanced web UI, SQLite3 database persistence
 - ✅ M5: Docker containerization, CI/CD pipeline, Security hardening, Kubernetes deployment
 - ✅ M6: Authentication & authorization, Analytics & monitoring, Prometheus metrics
+- ✅ M7: 5G SBA Parser, HTTP/2 Reassembly, Enhanced Session Correlation
 
 **Status**: 🚀 **ENTERPRISE READY**
 
@@ -255,6 +256,23 @@ A production-ready Callflow Visualizer that ingests PCAPs, decodes telecom proto
   - Updated README with M6 features
   - Authentication flow diagrams
   - Analytics architecture diagrams
+
+### ✅ M7 Features (Latest)
+
+- **5G SBA (Service Based Architecture) Support**:
+  - Full **HTTP/2** stream reassembly and state tracking
+  - **JSON Payload Parsing** for SBI interfaces
+  - **Network Function (NF) Detection**: AMF, SMF, UDM, AUSF, NRF, PCF
+  - **Procedure Tracking**: Registration, PDU Session Establishment, Authentication
+  - Extraction of 5G Identifiers: SUPI, PEI, GPSI, 5G-GUTI, DNN, S-NSSAI
+- **Enhanced Session Correlation**:
+  - Advanced **Cross-Protocol Correlation** (SIP, Diameter, GTP, SBA)
+  - Unified timeline generation for multi-protocol sessions (e.g. VoLTE over 5G)
+  - Improved handling of fragmented and out-of-order packets
+- **UI Improvements**:
+  - **Flow Diagram Improvements**: Better visualization of SBA request/response cycles
+  - **Session Details**: Enhanced metadata display for 5G specific fields
+  - **Navigation**: Improved back navigation and state preservation
 
 ## Quick Start with Docker
 

@@ -76,10 +76,33 @@ This document provides a comprehensive list of all features implemented in the n
   - Dynamic table with LRU eviction
   - Integer encoding/decoding
   - String encoding/decoding
+- **Stream Reassembly**:
+  - Reassembles fragmented DATA frames into complete messages
+  - Handles multi-frame headers and continuations
+  - Buffering for out-of-order delivery
 - Stream multiplexing and correlation
 - Pseudo-header extraction (:method, :path, :authority, :scheme, :status)
 - Connection settings negotiation
 - Stream state tracking
+
+#### 5G SBA (Service Based Architecture)
+- **JSON Payload Parsing**:
+  - Extracts and parses JSON content from HTTP/2 DATA frames
+  - Correlates request/response pairs based on stream ID
+- **Network Function Detection**:
+  - Identifies NFs based on URI path and headers (AMF, SMF, AUSF, UDM, PCF, NRF)
+  - Extracts Service Names (e.g., `namf-comm`, `nsmf-pdusession`)
+- **Key Information Extraction**:
+  - Subscription Permanent Identifier (SUPI)
+  - Permanent Equipment Identifier (PEI)
+  - Data Network Name (DNN)
+  - Single Network Slice Selection Assistance Information (S-NSSAI)
+  - 5G-GUTI (Globally Unique Temporary Identifier)
+- **Procedure Tracking**:
+  - Registration (Request/Accept/Complete)
+  - PDU Session Establishment
+  - Authentication flows (5G-AKA)
+  - UE Context Management
 
 ### Protocol Classification
 
@@ -104,16 +127,24 @@ This document provides a comprehensive list of all features implemented in the n
 - **VoLTE**: SIP Call-ID + associated RTP flows
 - **GTP**: TEID (Tunnel Endpoint Identifier)
 - **DIAMETER**: Session-Id AVP
+- **5G SBA**: SBI Correlation ID, HTTP/2 Stream ID, or SUPI/PEI
 - **HTTP/2**: Connection 5-tuple + Stream ID
 - **Fallback**: 5-tuple for unidentified traffic
 
-#### Session Tracking
-- Flow tracking by 5-tuple (src IP, dst IP, src port, dst port, protocol)
-- Automatic session type classification
-- Timeline event building
-- Participant IP tracking
-- Session start/end time
-- Duration calculation
+#### Enhanced Session Correlation
+- **Multi-Protocol Linking**:
+  - Correlates control plane (SIP/GTP/SBA) with user plane (RTP/GTP-U)
+  - cross-protocol correlation using identifiers (e.g. IMSI/SUPI across GTP and SBA)
+- **Stateful Tracking**:
+  - Maintains state machine for complex calls (e.g. VoLTE setup -> media -> teardown)
+  - Detects partial or failed sessions
+- **Timeline Event Building**:
+  - Unifies events from all protocols into a single chronological timeline
+  - Directional tracking (Client -> Server, Server -> Client)
+- **Participant Tracking**:
+  - Identifies distinct participants (UE, P-CSCF, PGW, AMF, etc.) based on IP/Port
+- **Automatic Classification**:
+  - Determines session type (VoLTE, 5G Data, Internet, IMS Signaling) based on dominant protocol and flow characteristics
 
 #### Metrics Calculation
 - Packet count per session

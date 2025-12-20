@@ -212,14 +212,14 @@ Get detailed information about a session.
   "session_key": "call-id-12345@192.168.1.1",
   "start_time": "2025-11-13T10:00:10.000Z",
   "end_time": "2025-11-13T10:05:30.000Z",
+  "duration_ms": 320000,
+  "packet_count": 5234,
+  "byte_count": 1048576,
   "participants": ["192.168.1.1:5060", "192.168.1.2:5060"],
   "metrics": {
-    "packets": 5234,
-    "bytes": 1048576,
     "rtp_loss": 0.02,
     "rtp_jitter_ms": 3.5,
-    "setup_time_ms": 450,
-    "duration_ms": 320000
+    "setup_time_ms": 450
   },
   "events": [
     {
