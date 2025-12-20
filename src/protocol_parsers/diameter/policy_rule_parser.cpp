@@ -1,7 +1,7 @@
-#include "protocol_parsers/diameter/diameter_gx.h"
-#include "protocol_parsers/diameter/diameter_rx.h"
-#include "protocol_parsers/diameter/diameter_gy.h"
 #include "common/logger.h"
+#include "protocol_parsers/diameter/diameter_gx.h"
+#include "protocol_parsers/diameter/diameter_gy.h"
+#include "protocol_parsers/diameter/diameter_rx.h"
 
 namespace callflow {
 namespace diameter {
@@ -65,6 +65,7 @@ bool validatePriorityLevel(uint32_t priority) {
  * Validate service identifier
  */
 bool validateServiceIdentifier(uint32_t service_id) {
+    (void)service_id;
     // Service identifiers can be any 32-bit value
     // No specific validation needed
     return true;
@@ -74,6 +75,7 @@ bool validateServiceIdentifier(uint32_t service_id) {
  * Validate rating group
  */
 bool validateRatingGroup(uint32_t rating_group) {
+    (void)rating_group;
     // Rating groups can be any 32-bit value
     // No specific validation needed
     return true;
@@ -177,22 +179,21 @@ bool isValidQoSInformation(const QoSInformation& qos) {
 bool isValidChargingRuleDefinition(const ChargingRuleDefinition& rule) {
     // Must have a rule name
     if (rule.charging_rule_name.empty()) {
-        Logger::warning("Charging rule has no name");
+        LOG_WARN("Charging rule has no name");
         return false;
     }
 
     // Should have either service identifier or rating group
     if (!rule.service_identifier.has_value() && !rule.rating_group.has_value()) {
-        Logger::warning("Charging rule " + rule.charging_rule_name +
-                       " has no service identifier or rating group");
+        LOG_WARN("Charging rule " + rule.charging_rule_name +
+                 " has no service identifier or rating group");
         return false;
     }
 
     // If QoS is present, validate it
     if (rule.qos_information.has_value()) {
         if (!isValidQoSInformation(rule.qos_information.value())) {
-            Logger::warning("Charging rule " + rule.charging_rule_name +
-                           " has invalid QoS information");
+            LOG_WARN("Charging rule " + rule.charging_rule_name + " has invalid QoS information");
             return false;
         }
     }
@@ -200,8 +201,7 @@ bool isValidChargingRuleDefinition(const ChargingRuleDefinition& rule) {
     // If flow information is present, validate it
     for (const auto& flow : rule.flow_information) {
         if (!validateIPFilterRule(flow.flow_description)) {
-            Logger::warning("Charging rule " + rule.charging_rule_name +
-                           " has invalid flow description");
+            LOG_WARN("Charging rule " + rule.charging_rule_name + " has invalid flow description");
             return false;
         }
     }
@@ -215,24 +215,22 @@ bool isValidChargingRuleDefinition(const ChargingRuleDefinition& rule) {
 bool isValidMediaComponentDescription(const MediaComponentDescription& media) {
     // Must have a media component number
     if (media.media_component_number == 0) {
-        Logger::warning("Media component has no number");
+        LOG_WARN("Media component has no number");
         return false;
     }
 
     // Should have at least one media sub-component
     if (media.media_sub_components.empty()) {
-        Logger::warning("Media component " +
-                       std::to_string(media.media_component_number) +
-                       " has no sub-components");
+        LOG_WARN("Media component " + std::to_string(media.media_component_number) +
+                 " has no sub-components");
         return false;
     }
 
     // Validate sub-components
     for (const auto& sub : media.media_sub_components) {
         if (sub.flow_descriptions.empty()) {
-            Logger::warning("Media sub-component " +
-                           std::to_string(sub.flow_number) +
-                           " has no flow descriptions");
+            LOG_WARN("Media sub-component " + std::to_string(sub.flow_number) +
+                     " has no flow descriptions");
             return false;
         }
     }
@@ -244,35 +242,31 @@ bool isValidMediaComponentDescription(const MediaComponentDescription& media) {
  * Log policy rule installation
  */
 void logChargingRuleInstall(const ChargingRuleInstall& install) {
-    Logger::info("Installing charging rules:");
+    LOG_INFO("Installing charging rules:");
 
     if (!install.charging_rule_definition.empty()) {
-        Logger::info("  Dynamic rules: " +
-                    std::to_string(install.charging_rule_definition.size()));
+        LOG_INFO("  Dynamic rules: " + std::to_string(install.charging_rule_definition.size()));
         for (const auto& rule : install.charging_rule_definition) {
-            Logger::info("    - " + rule.charging_rule_name);
+            LOG_INFO("    - " + rule.charging_rule_name);
         }
     }
 
     if (!install.charging_rule_name.empty()) {
-        Logger::info("  Predefined rules: " +
-                    std::to_string(install.charging_rule_name.size()));
+        LOG_INFO("  Predefined rules: " + std::to_string(install.charging_rule_name.size()));
         for (const auto& name : install.charging_rule_name) {
-            Logger::info("    - " + name);
+            LOG_INFO("    - " + name);
         }
     }
 
     if (!install.charging_rule_base_name.empty()) {
-        Logger::info("  Base rule names: " +
-                    std::to_string(install.charging_rule_base_name.size()));
+        LOG_INFO("  Base rule names: " + std::to_string(install.charging_rule_base_name.size()));
         for (const auto& name : install.charging_rule_base_name) {
-            Logger::info("    - " + name);
+            LOG_INFO("    - " + name);
         }
     }
 
     if (install.bearer_identifier.has_value()) {
-        Logger::info("  Bearer ID: " +
-                    std::to_string(install.bearer_identifier.value()));
+        LOG_INFO("  Bearer ID: " + std::to_string(install.bearer_identifier.value()));
     }
 }
 
@@ -291,14 +285,17 @@ void logCreditControlUsage(const MultipleServicesCreditControl& mscc) {
     }
 
     if (mscc.used_service_unit.has_value()) {
-        log_msg += "Used: " + formatServiceUnit(*reinterpret_cast<const ServiceUnit*>(&mscc.used_service_unit.value())) + " ";
+        log_msg += "Used: " +
+                   formatServiceUnit(
+                       *reinterpret_cast<const ServiceUnit*>(&mscc.used_service_unit.value())) +
+                   " ";
     }
 
     if (mscc.granted_service_unit.has_value()) {
         log_msg += "Granted: " + formatServiceUnit(mscc.granted_service_unit.value()) + " ";
     }
 
-    Logger::info(log_msg);
+    LOG_INFO(log_msg);
 }
 
 }  // namespace diameter

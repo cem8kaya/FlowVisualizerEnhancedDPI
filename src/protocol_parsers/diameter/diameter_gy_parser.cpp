@@ -1,7 +1,8 @@
-#include "protocol_parsers/diameter/diameter_gy.h"
-#include "protocol_parsers/diameter/diameter_avp_parser.h"
-#include "common/logger.h"
 #include <arpa/inet.h>
+
+#include "common/logger.h"
+#include "protocol_parsers/diameter/diameter_avp_parser.h"
+#include "protocol_parsers/diameter/diameter_gy.h"
 
 namespace callflow {
 namespace diameter {
@@ -291,7 +292,8 @@ GyCreditControlRequest DiameterGyParser::parseCCR(const DiameterMessage& msg) {
     }
 
     // Multiple Services Credit Control
-    auto mscc_avps = msg.findAllAVPs(static_cast<uint32_t>(GyAVPCode::MULTIPLE_SERVICES_CREDIT_CONTROL));
+    auto mscc_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(GyAVPCode::MULTIPLE_SERVICES_CREDIT_CONTROL));
     for (const auto& avp : mscc_avps) {
         auto mscc = parseMSCC(avp);
         if (mscc.has_value()) {
@@ -306,7 +308,8 @@ GyCreditControlRequest DiameterGyParser::parseCCR(const DiameterMessage& msg) {
     }
 
     // Service information
-    auto service_info_avp = msg.findAVP(static_cast<uint32_t>(GyAVPCode::SERVICE_INFORMATION), DIAMETER_VENDOR_3GPP);
+    auto service_info_avp =
+        msg.findAVP(static_cast<uint32_t>(GyAVPCode::SERVICE_INFORMATION), DIAMETER_VENDOR_3GPP);
     if (service_info_avp) {
         ccr.service_information = parseServiceInformation(service_info_avp);
     }
@@ -346,7 +349,8 @@ GyCreditControlAnswer DiameterGyParser::parseCCA(const DiameterMessage& msg) {
     }
 
     // Multiple Services Credit Control
-    auto mscc_avps = msg.findAllAVPs(static_cast<uint32_t>(GyAVPCode::MULTIPLE_SERVICES_CREDIT_CONTROL));
+    auto mscc_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(GyAVPCode::MULTIPLE_SERVICES_CREDIT_CONTROL));
     for (const auto& avp : mscc_avps) {
         auto mscc = parseMSCC(avp);
         if (mscc.has_value()) {
@@ -373,7 +377,8 @@ GyCreditControlAnswer DiameterGyParser::parseCCA(const DiameterMessage& msg) {
 // AVP Parsers
 // ============================================================================
 
-std::optional<MultipleServicesCreditControl> DiameterGyParser::parseMSCC(std::shared_ptr<DiameterAVP> avp) {
+std::optional<MultipleServicesCreditControl> DiameterGyParser::parseMSCC(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -427,7 +432,8 @@ std::optional<MultipleServicesCreditControl> DiameterGyParser::parseMSCC(std::sh
     return mscc;
 }
 
-std::optional<SubscriptionId> DiameterGyParser::parseSubscriptionId(std::shared_ptr<DiameterAVP> avp) {
+std::optional<SubscriptionId> DiameterGyParser::parseSubscriptionId(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -485,7 +491,8 @@ std::optional<ServiceUnit> DiameterGyParser::parseServiceUnit(std::shared_ptr<Di
     return su;
 }
 
-std::optional<UsedServiceUnit> DiameterGyParser::parseUsedServiceUnit(std::shared_ptr<DiameterAVP> avp) {
+std::optional<UsedServiceUnit> DiameterGyParser::parseUsedServiceUnit(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -526,7 +533,8 @@ std::optional<UsedServiceUnit> DiameterGyParser::parseUsedServiceUnit(std::share
     return usu;
 }
 
-std::optional<FinalUnitIndication> DiameterGyParser::parseFinalUnitIndication(std::shared_ptr<DiameterAVP> avp) {
+std::optional<FinalUnitIndication> DiameterGyParser::parseFinalUnitIndication(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -559,7 +567,8 @@ std::optional<FinalUnitIndication> DiameterGyParser::parseFinalUnitIndication(st
     return fui;
 }
 
-std::optional<RedirectServer> DiameterGyParser::parseRedirectServer(std::shared_ptr<DiameterAVP> avp) {
+std::optional<RedirectServer> DiameterGyParser::parseRedirectServer(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -586,7 +595,8 @@ std::optional<RedirectServer> DiameterGyParser::parseRedirectServer(std::shared_
     return rs;
 }
 
-std::optional<UserEquipmentInfo> DiameterGyParser::parseUserEquipmentInfo(std::shared_ptr<DiameterAVP> avp) {
+std::optional<UserEquipmentInfo> DiameterGyParser::parseUserEquipmentInfo(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -600,7 +610,8 @@ std::optional<UserEquipmentInfo> DiameterGyParser::parseUserEquipmentInfo(std::s
             case static_cast<uint32_t>(GyAVPCode::USER_EQUIPMENT_INFO_TYPE): {
                 auto type_val = sub_avp->getDataAsUint32();
                 if (type_val.has_value()) {
-                    uei.user_equipment_info_type = static_cast<UserEquipmentInfoType>(type_val.value());
+                    uei.user_equipment_info_type =
+                        static_cast<UserEquipmentInfoType>(type_val.value());
                 }
                 break;
             }
@@ -613,7 +624,8 @@ std::optional<UserEquipmentInfo> DiameterGyParser::parseUserEquipmentInfo(std::s
     return uei;
 }
 
-std::optional<ServiceInformation> DiameterGyParser::parseServiceInformation(std::shared_ptr<DiameterAVP> avp) {
+std::optional<ServiceInformation> DiameterGyParser::parseServiceInformation(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -635,7 +647,8 @@ std::optional<ServiceInformation> DiameterGyParser::parseServiceInformation(std:
     return si;
 }
 
-std::optional<PSInformation> DiameterGyParser::parsePSInformation(std::shared_ptr<DiameterAVP> avp) {
+std::optional<PSInformation> DiameterGyParser::parsePSInformation(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -681,7 +694,8 @@ std::optional<PSInformation> DiameterGyParser::parsePSInformation(std::shared_pt
     return psi;
 }
 
-std::optional<IMSInformation> DiameterGyParser::parseIMSInformation(std::shared_ptr<DiameterAVP> avp) {
+std::optional<IMSInformation> DiameterGyParser::parseIMSInformation(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -691,6 +705,7 @@ std::optional<IMSInformation> DiameterGyParser::parseIMSInformation(std::shared_
 
     // Simplified parsing - would need vendor-specific AVP codes for full implementation
     for (const auto& sub_avp : grouped_avps.value()) {
+        (void)sub_avp;
         // Parse vendor-specific AVPs here
         // This is a placeholder for IMS-specific information
     }
@@ -698,7 +713,8 @@ std::optional<IMSInformation> DiameterGyParser::parseIMSInformation(std::shared_
     return imsi;
 }
 
-std::optional<CostInformation> DiameterGyParser::parseCostInformation(std::shared_ptr<DiameterAVP> avp) {
+std::optional<CostInformation> DiameterGyParser::parseCostInformation(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;

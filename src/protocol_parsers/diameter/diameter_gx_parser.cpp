@@ -1,7 +1,8 @@
-#include "protocol_parsers/diameter/diameter_gx.h"
-#include "protocol_parsers/diameter/diameter_avp_parser.h"
-#include "common/logger.h"
 #include <arpa/inet.h>
+
+#include "common/logger.h"
+#include "protocol_parsers/diameter/diameter_avp_parser.h"
+#include "protocol_parsers/diameter/diameter_gx.h"
 
 namespace callflow {
 namespace diameter {
@@ -392,8 +393,7 @@ std::optional<DiameterGxMessage> DiameterGxParser::parse(const DiameterMessage& 
             break;
 
         default:
-            Logger::warning("Unknown Gx command code: " +
-                          std::to_string(msg.header.command_code));
+            LOG_WARN("Unknown Gx command code: " + std::to_string(msg.header.command_code));
             break;
     }
 
@@ -421,7 +421,8 @@ GxCreditControlRequest DiameterGxParser::parseCCR(const DiameterMessage& msg) {
     }
 
     // Network information
-    auto ip_can_avp = msg.findAVP(static_cast<uint32_t>(GxAVPCode::IP_CAN_TYPE), DIAMETER_VENDOR_3GPP);
+    auto ip_can_avp =
+        msg.findAVP(static_cast<uint32_t>(GxAVPCode::IP_CAN_TYPE), DIAMETER_VENDOR_3GPP);
     if (ip_can_avp) {
         auto ip_can_val = ip_can_avp->getDataAsUint32();
         if (ip_can_val.has_value()) {
@@ -434,7 +435,8 @@ GxCreditControlRequest DiameterGxParser::parseCCR(const DiameterMessage& msg) {
         ccr.rat_type = rat_avp->getDataAsUint32();
     }
 
-    auto bearer_ctrl_avp = msg.findAVP(static_cast<uint32_t>(GxAVPCode::BEARER_CONTROL_MODE), DIAMETER_VENDOR_3GPP);
+    auto bearer_ctrl_avp =
+        msg.findAVP(static_cast<uint32_t>(GxAVPCode::BEARER_CONTROL_MODE), DIAMETER_VENDOR_3GPP);
     if (bearer_ctrl_avp) {
         auto bearer_val = bearer_ctrl_avp->getDataAsUint32();
         if (bearer_val.has_value()) {
@@ -465,7 +467,8 @@ GxCreditControlRequest DiameterGxParser::parseCCR(const DiameterMessage& msg) {
     ccr.event_triggers = parseEventTriggers(msg);
 
     // Usage monitoring
-    auto usage_mon_avps = msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::USAGE_MONITORING_INFORMATION));
+    auto usage_mon_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::USAGE_MONITORING_INFORMATION));
     for (const auto& avp : usage_mon_avps) {
         auto umi = parseUsageMonitoringInformation(avp);
         if (umi.has_value()) {
@@ -474,7 +477,8 @@ GxCreditControlRequest DiameterGxParser::parseCCR(const DiameterMessage& msg) {
     }
 
     // Access network info
-    auto an_gw_avp = msg.findAVP(static_cast<uint32_t>(GxAVPCode::AN_GW_ADDRESS), DIAMETER_VENDOR_3GPP);
+    auto an_gw_avp =
+        msg.findAVP(static_cast<uint32_t>(GxAVPCode::AN_GW_ADDRESS), DIAMETER_VENDOR_3GPP);
     if (an_gw_avp) {
         auto ip_str = DiameterAVPParser::parseIPAddress(an_gw_avp->data);
         if (ip_str.has_value()) {
@@ -511,7 +515,8 @@ GxCreditControlAnswer DiameterGxParser::parseCCA(const DiameterMessage& msg) {
     }
 
     // Charging rule install
-    auto rule_install_avps = msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::CHARGING_RULE_INSTALL));
+    auto rule_install_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::CHARGING_RULE_INSTALL));
     for (const auto& avp : rule_install_avps) {
         auto rule_install = parseChargingRuleInstall(avp);
         if (rule_install.has_value()) {
@@ -529,19 +534,22 @@ GxCreditControlAnswer DiameterGxParser::parseCCA(const DiameterMessage& msg) {
     }
 
     // QoS information
-    auto qos_avp = msg.findAVP(static_cast<uint32_t>(GxAVPCode::QOS_INFORMATION), DIAMETER_VENDOR_3GPP);
+    auto qos_avp =
+        msg.findAVP(static_cast<uint32_t>(GxAVPCode::QOS_INFORMATION), DIAMETER_VENDOR_3GPP);
     if (qos_avp) {
         cca.qos_information = parseQoSInformation(qos_avp);
     }
 
     // Default EPS Bearer QoS
-    auto default_qos_avp = msg.findAVP(static_cast<uint32_t>(GxAVPCode::DEFAULT_EPS_BEARER_QOS), DIAMETER_VENDOR_3GPP);
+    auto default_qos_avp =
+        msg.findAVP(static_cast<uint32_t>(GxAVPCode::DEFAULT_EPS_BEARER_QOS), DIAMETER_VENDOR_3GPP);
     if (default_qos_avp) {
         cca.default_eps_bearer_qos = parseDefaultEPSBearerQoS(default_qos_avp);
     }
 
     // Bearer control mode
-    auto bearer_ctrl_avp = msg.findAVP(static_cast<uint32_t>(GxAVPCode::BEARER_CONTROL_MODE), DIAMETER_VENDOR_3GPP);
+    auto bearer_ctrl_avp =
+        msg.findAVP(static_cast<uint32_t>(GxAVPCode::BEARER_CONTROL_MODE), DIAMETER_VENDOR_3GPP);
     if (bearer_ctrl_avp) {
         auto bearer_val = bearer_ctrl_avp->getDataAsUint32();
         if (bearer_val.has_value()) {
@@ -550,7 +558,8 @@ GxCreditControlAnswer DiameterGxParser::parseCCA(const DiameterMessage& msg) {
     }
 
     // Usage monitoring
-    auto usage_mon_avps = msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::USAGE_MONITORING_INFORMATION));
+    auto usage_mon_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::USAGE_MONITORING_INFORMATION));
     for (const auto& avp : usage_mon_avps) {
         auto umi = parseUsageMonitoringInformation(avp);
         if (umi.has_value()) {
@@ -562,7 +571,8 @@ GxCreditControlAnswer DiameterGxParser::parseCCA(const DiameterMessage& msg) {
     cca.event_triggers = parseEventTriggers(msg);
 
     // Session release cause
-    auto session_release_avp = msg.findAVP(static_cast<uint32_t>(GxAVPCode::SESSION_RELEASE_CAUSE), DIAMETER_VENDOR_3GPP);
+    auto session_release_avp =
+        msg.findAVP(static_cast<uint32_t>(GxAVPCode::SESSION_RELEASE_CAUSE), DIAMETER_VENDOR_3GPP);
     if (session_release_avp) {
         auto release_val = session_release_avp->getDataAsUint32();
         if (release_val.has_value()) {
@@ -586,7 +596,8 @@ GxReAuthRequest DiameterGxParser::parseRAR(const DiameterMessage& msg) {
     }
 
     // Charging rule install
-    auto rule_install_avps = msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::CHARGING_RULE_INSTALL));
+    auto rule_install_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::CHARGING_RULE_INSTALL));
     for (const auto& avp : rule_install_avps) {
         auto rule_install = parseChargingRuleInstall(avp);
         if (rule_install.has_value()) {
@@ -604,12 +615,14 @@ GxReAuthRequest DiameterGxParser::parseRAR(const DiameterMessage& msg) {
     }
 
     // QoS updates
-    auto qos_avp = msg.findAVP(static_cast<uint32_t>(GxAVPCode::QOS_INFORMATION), DIAMETER_VENDOR_3GPP);
+    auto qos_avp =
+        msg.findAVP(static_cast<uint32_t>(GxAVPCode::QOS_INFORMATION), DIAMETER_VENDOR_3GPP);
     if (qos_avp) {
         rar.qos_information = parseQoSInformation(qos_avp);
     }
 
-    auto default_qos_avp = msg.findAVP(static_cast<uint32_t>(GxAVPCode::DEFAULT_EPS_BEARER_QOS), DIAMETER_VENDOR_3GPP);
+    auto default_qos_avp =
+        msg.findAVP(static_cast<uint32_t>(GxAVPCode::DEFAULT_EPS_BEARER_QOS), DIAMETER_VENDOR_3GPP);
     if (default_qos_avp) {
         rar.default_eps_bearer_qos = parseDefaultEPSBearerQoS(default_qos_avp);
     }
@@ -618,7 +631,8 @@ GxReAuthRequest DiameterGxParser::parseRAR(const DiameterMessage& msg) {
     rar.event_triggers = parseEventTriggers(msg);
 
     // Usage monitoring
-    auto usage_mon_avps = msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::USAGE_MONITORING_INFORMATION));
+    auto usage_mon_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(GxAVPCode::USAGE_MONITORING_INFORMATION));
     for (const auto& avp : usage_mon_avps) {
         auto umi = parseUsageMonitoringInformation(avp);
         if (umi.has_value()) {
@@ -644,7 +658,8 @@ GxReAuthAnswer DiameterGxParser::parseRAA(const DiameterMessage& msg) {
 // AVP Parsers
 // ============================================================================
 
-std::optional<ChargingRuleInstall> DiameterGxParser::parseChargingRuleInstall(std::shared_ptr<DiameterAVP> avp) {
+std::optional<ChargingRuleInstall> DiameterGxParser::parseChargingRuleInstall(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -683,7 +698,8 @@ std::optional<ChargingRuleInstall> DiameterGxParser::parseChargingRuleInstall(st
     return cri;
 }
 
-std::optional<ChargingRuleRemove> DiameterGxParser::parseChargingRuleRemove(std::shared_ptr<DiameterAVP> avp) {
+std::optional<ChargingRuleRemove> DiameterGxParser::parseChargingRuleRemove(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -705,7 +721,8 @@ std::optional<ChargingRuleRemove> DiameterGxParser::parseChargingRuleRemove(std:
     return crr;
 }
 
-std::optional<ChargingRuleDefinition> DiameterGxParser::parseChargingRuleDefinition(std::shared_ptr<DiameterAVP> avp) {
+std::optional<ChargingRuleDefinition> DiameterGxParser::parseChargingRuleDefinition(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -770,7 +787,8 @@ std::optional<ChargingRuleDefinition> DiameterGxParser::parseChargingRuleDefinit
     return crd;
 }
 
-std::optional<QoSInformation> DiameterGxParser::parseQoSInformation(std::shared_ptr<DiameterAVP> avp) {
+std::optional<QoSInformation> DiameterGxParser::parseQoSInformation(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -807,7 +825,8 @@ std::optional<QoSInformation> DiameterGxParser::parseQoSInformation(std::shared_
     return qos;
 }
 
-std::optional<DefaultEPSBearerQoS> DiameterGxParser::parseDefaultEPSBearerQoS(std::shared_ptr<DiameterAVP> avp) {
+std::optional<DefaultEPSBearerQoS> DiameterGxParser::parseDefaultEPSBearerQoS(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -839,7 +858,8 @@ std::optional<DefaultEPSBearerQoS> DiameterGxParser::parseDefaultEPSBearerQoS(st
     return qos;
 }
 
-std::optional<AllocationRetentionPriority> DiameterGxParser::parseAllocationRetentionPriority(std::shared_ptr<DiameterAVP> avp) {
+std::optional<AllocationRetentionPriority> DiameterGxParser::parseAllocationRetentionPriority(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -869,7 +889,8 @@ std::optional<AllocationRetentionPriority> DiameterGxParser::parseAllocationRete
             case static_cast<uint32_t>(GxAVPCode::PRE_EMPTION_VULNERABILITY): {
                 auto vuln_val = sub_avp->getDataAsUint32();
                 if (vuln_val.has_value()) {
-                    arp.pre_emption_vulnerability = static_cast<PreemptionVulnerability>(vuln_val.value());
+                    arp.pre_emption_vulnerability =
+                        static_cast<PreemptionVulnerability>(vuln_val.value());
                 }
                 break;
             }
@@ -879,7 +900,8 @@ std::optional<AllocationRetentionPriority> DiameterGxParser::parseAllocationRete
     return arp;
 }
 
-std::optional<FlowInformation> DiameterGxParser::parseFlowInformation(std::shared_ptr<DiameterAVP> avp) {
+std::optional<FlowInformation> DiameterGxParser::parseFlowInformation(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -902,7 +924,8 @@ std::optional<FlowInformation> DiameterGxParser::parseFlowInformation(std::share
     return flow;
 }
 
-std::optional<UsageMonitoringInformation> DiameterGxParser::parseUsageMonitoringInformation(std::shared_ptr<DiameterAVP> avp) {
+std::optional<UsageMonitoringInformation> DiameterGxParser::parseUsageMonitoringInformation(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -958,7 +981,8 @@ std::optional<ServiceUnit> DiameterGxParser::parseServiceUnit(std::shared_ptr<Di
     return su;
 }
 
-std::optional<UsedServiceUnit> DiameterGxParser::parseUsedServiceUnit(std::shared_ptr<DiameterAVP> avp) {
+std::optional<UsedServiceUnit> DiameterGxParser::parseUsedServiceUnit(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -989,7 +1013,8 @@ std::optional<UsedServiceUnit> DiameterGxParser::parseUsedServiceUnit(std::share
     return usu;
 }
 
-std::optional<PCCRuleStatusReport> DiameterGxParser::parsePCCRuleStatusReport(std::shared_ptr<DiameterAVP> avp) {
+std::optional<PCCRuleStatusReport> DiameterGxParser::parsePCCRuleStatusReport(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;

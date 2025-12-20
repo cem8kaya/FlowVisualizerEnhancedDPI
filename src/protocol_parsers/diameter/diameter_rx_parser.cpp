@@ -1,7 +1,8 @@
-#include "protocol_parsers/diameter/diameter_rx.h"
-#include "protocol_parsers/diameter/diameter_avp_parser.h"
-#include "common/logger.h"
 #include <arpa/inet.h>
+
+#include "common/logger.h"
+#include "protocol_parsers/diameter/diameter_avp_parser.h"
+#include "protocol_parsers/diameter/diameter_rx.h"
 
 namespace callflow {
 namespace diameter {
@@ -80,7 +81,8 @@ nlohmann::json MediaComponentDescription::toJson() const {
 
 nlohmann::json AccessNetworkChargingIdentifier::toJson() const {
     nlohmann::json j;
-    j["access_network_charging_identifier_value"] = nlohmann::json(access_network_charging_identifier_value);
+    j["access_network_charging_identifier_value"] =
+        nlohmann::json(access_network_charging_identifier_value);
     if (!flows.empty()) {
         j["flows"] = flows;
     }
@@ -338,8 +340,7 @@ std::optional<DiameterRxMessage> DiameterRxParser::parse(const DiameterMessage& 
             break;
 
         default:
-            Logger::warning("Unknown Rx command code: " +
-                          std::to_string(msg.header.command_code));
+            LOG_WARN("Unknown Rx command code: " + std::to_string(msg.header.command_code));
             break;
     }
 
@@ -364,7 +365,8 @@ RxAARequest DiameterRxParser::parseAAR(const DiameterMessage& msg) {
     }
 
     // Media components
-    auto media_comp_avps = msg.findAllAVPs(static_cast<uint32_t>(RxAVPCode::MEDIA_COMPONENT_DESCRIPTION));
+    auto media_comp_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(RxAVPCode::MEDIA_COMPONENT_DESCRIPTION));
     for (const auto& avp : media_comp_avps) {
         auto media_comp = parseMediaComponentDescription(avp);
         if (media_comp.has_value()) {
@@ -428,7 +430,8 @@ RxAAAnswer DiameterRxParser::parseAAA(const DiameterMessage& msg) {
     }
 
     // Media components
-    auto media_comp_avps = msg.findAllAVPs(static_cast<uint32_t>(RxAVPCode::MEDIA_COMPONENT_DESCRIPTION));
+    auto media_comp_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(RxAVPCode::MEDIA_COMPONENT_DESCRIPTION));
     for (const auto& avp : media_comp_avps) {
         auto media_comp = parseMediaComponentDescription(avp);
         if (media_comp.has_value()) {
@@ -437,7 +440,8 @@ RxAAAnswer DiameterRxParser::parseAAA(const DiameterMessage& msg) {
     }
 
     // Service authorization info
-    auto service_auth_avp = msg.findAVP(static_cast<uint32_t>(RxAVPCode::SERVICE_AUTHORIZATION_INFO));
+    auto service_auth_avp =
+        msg.findAVP(static_cast<uint32_t>(RxAVPCode::SERVICE_AUTHORIZATION_INFO));
     if (service_auth_avp) {
         aaa.service_authorization_info = service_auth_avp->getDataAsString();
     }
@@ -487,7 +491,8 @@ RxReAuthAnswer DiameterRxParser::parseRAA(const DiameterMessage& msg) {
     }
 
     // Media components
-    auto media_comp_avps = msg.findAllAVPs(static_cast<uint32_t>(RxAVPCode::MEDIA_COMPONENT_DESCRIPTION));
+    auto media_comp_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(RxAVPCode::MEDIA_COMPONENT_DESCRIPTION));
     for (const auto& avp : media_comp_avps) {
         auto media_comp = parseMediaComponentDescription(avp);
         if (media_comp.has_value()) {
@@ -550,7 +555,8 @@ RxAbortSessionAnswer DiameterRxParser::parseASA(const DiameterMessage& msg) {
 // AVP Parsers
 // ============================================================================
 
-std::optional<MediaComponentDescription> DiameterRxParser::parseMediaComponentDescription(std::shared_ptr<DiameterAVP> avp) {
+std::optional<MediaComponentDescription> DiameterRxParser::parseMediaComponentDescription(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -625,7 +631,8 @@ std::optional<MediaComponentDescription> DiameterRxParser::parseMediaComponentDe
     return mcd;
 }
 
-std::optional<MediaSubComponent> DiameterRxParser::parseMediaSubComponent(std::shared_ptr<DiameterAVP> avp) {
+std::optional<MediaSubComponent> DiameterRxParser::parseMediaSubComponent(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -667,7 +674,8 @@ std::optional<MediaSubComponent> DiameterRxParser::parseMediaSubComponent(std::s
     return msc;
 }
 
-std::optional<AccessNetworkChargingIdentifier> DiameterRxParser::parseAccessNetworkChargingIdentifier(std::shared_ptr<DiameterAVP> avp) {
+std::optional<AccessNetworkChargingIdentifier>
+DiameterRxParser::parseAccessNetworkChargingIdentifier(std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -689,7 +697,8 @@ std::optional<AccessNetworkChargingIdentifier> DiameterRxParser::parseAccessNetw
     return anci;
 }
 
-std::optional<SponsoredConnectivityData> DiameterRxParser::parseSponsoredConnectivityData(std::shared_ptr<DiameterAVP> avp) {
+std::optional<SponsoredConnectivityData> DiameterRxParser::parseSponsoredConnectivityData(
+    std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
