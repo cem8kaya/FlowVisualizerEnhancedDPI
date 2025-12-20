@@ -120,4 +120,61 @@ set_tests_properties(test_diameter_base PROPERTIES
     LABELS "unit"
 )
 
+# Diameter Gx Parser Tests
+add_executable(test_diameter_gx
+    unit/test_diameter_gx.cpp
+)
+
+target_link_libraries(test_diameter_gx PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_diameter_gx COMMAND test_diameter_gx)
+
+set_tests_properties(test_diameter_gx PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Diameter Rx Parser Tests
+add_executable(test_diameter_rx
+    unit/test_diameter_rx.cpp
+)
+
+target_link_libraries(test_diameter_rx PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_diameter_rx COMMAND test_diameter_rx)
+
+set_tests_properties(test_diameter_rx PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Diameter Gy Parser Tests
+add_executable(test_diameter_gy
+    unit/test_diameter_gy.cpp
+)
+
+target_link_libraries(test_diameter_gy PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_diameter_gy COMMAND test_diameter_gy)
+
+set_tests_properties(test_diameter_gy PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
