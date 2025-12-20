@@ -1,11 +1,11 @@
 #include "event_extractor/event_builder.h"
+
 #include "common/utils.h"
 
 namespace callflow {
 
-SessionEvent EventBuilder::buildEvent(const PacketMetadata& packet,
-                                     ProtocolType protocol,
-                                     const nlohmann::json& parsed_data) {
+SessionEvent EventBuilder::buildEvent(const PacketMetadata& packet, ProtocolType protocol,
+                                      const nlohmann::json& parsed_data) {
     SessionEvent event;
 
     event.event_id = utils::generateUuid();
@@ -24,25 +24,32 @@ MessageType EventBuilder::inferMessageType(ProtocolType protocol, const nlohmann
     if (protocol == ProtocolType::SIP) {
         if (data.contains("is_request") && data["is_request"].get<bool>()) {
             std::string method = data.value("method", "");
-            if (method == "INVITE") return MessageType::SIP_INVITE;
-            if (method == "ACK") return MessageType::SIP_ACK;
-            if (method == "BYE") return MessageType::SIP_BYE;
-            if (method == "CANCEL") return MessageType::SIP_CANCEL;
-            if (method == "REGISTER") return MessageType::SIP_REGISTER;
+            if (method == "INVITE")
+                return MessageType::SIP_INVITE;
+            if (method == "ACK")
+                return MessageType::SIP_ACK;
+            if (method == "BYE")
+                return MessageType::SIP_BYE;
+            if (method == "CANCEL")
+                return MessageType::SIP_CANCEL;
+            if (method == "REGISTER")
+                return MessageType::SIP_REGISTER;
         } else if (data.contains("status_code")) {
             int code = data["status_code"].get<int>();
-            if (code == 100) return MessageType::SIP_TRYING;
-            if (code == 180) return MessageType::SIP_RINGING;
-            if (code == 200) return MessageType::SIP_OK;
+            if (code == 100)
+                return MessageType::SIP_TRYING;
+            if (code == 180)
+                return MessageType::SIP_RINGING;
+            if (code == 200)
+                return MessageType::SIP_OK;
         }
     }
 
     return MessageType::UNKNOWN;
 }
 
-std::string EventBuilder::createShortDescription(ProtocolType protocol,
-                                                MessageType msg_type,
-                                                const nlohmann::json& data) {
+std::string EventBuilder::createShortDescription(ProtocolType protocol, MessageType msg_type,
+                                                 const nlohmann::json& data) {
     std::string desc = protocolTypeToString(protocol);
 
     if (msg_type != MessageType::UNKNOWN) {
@@ -64,6 +71,14 @@ std::string EventBuilder::createShortDescription(ProtocolType protocol,
                 }
             }
         }
+    } else if (msg_type == MessageType::FIVEG_SBA_INTERACTION) {
+        // Consumer -> Producer: Service Name
+        // e.g., AMF -> UDM: nudm-ueau
+        std::string service = data.value("service", "Unknown");
+        std::string nf_type = data.value("nf_type", "NF");
+        std::string api = data.value("api", "");
+
+        desc = "5G SBA: " + nf_type + " (" + service + ") " + api;
     }
 
     return desc;

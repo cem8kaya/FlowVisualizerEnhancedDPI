@@ -1,12 +1,13 @@
 #pragma once
 
-#include "common/types.h"
-#include <optional>
-#include <vector>
-#include <map>
-#include <string>
 #include <deque>
+#include <map>
 #include <nlohmann/json.hpp>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "common/types.h"
 
 namespace callflow {
 
@@ -32,21 +33,21 @@ std::string http2FrameTypeToString(Http2FrameType type);
  * HTTP/2 frame flags
  */
 namespace Http2Flags {
-    constexpr uint8_t END_STREAM = 0x1;
-    constexpr uint8_t ACK = 0x1;
-    constexpr uint8_t END_HEADERS = 0x4;
-    constexpr uint8_t PADDED = 0x8;
-    constexpr uint8_t PRIORITY = 0x20;
-}
+constexpr uint8_t END_STREAM = 0x1;
+constexpr uint8_t ACK = 0x1;
+constexpr uint8_t END_HEADERS = 0x4;
+constexpr uint8_t PADDED = 0x8;
+constexpr uint8_t PRIORITY = 0x20;
+}  // namespace Http2Flags
 
 /**
  * HTTP/2 frame header (9 bytes)
  */
 struct Http2FrameHeader {
-    uint32_t length;           // 24-bit frame length
-    Http2FrameType type;       // Frame type
-    uint8_t flags;             // Frame-specific flags
-    uint32_t stream_id;        // 31-bit stream identifier (R bit reserved)
+    uint32_t length;      // 24-bit frame length
+    Http2FrameType type;  // Frame type
+    uint8_t flags;        // Frame-specific flags
+    uint32_t stream_id;   // 31-bit stream identifier (R bit reserved)
 
     nlohmann::json toJson() const;
 };
@@ -66,18 +67,25 @@ struct Http2Frame {
  */
 struct Http2Stream {
     uint32_t stream_id;
-    std::string method;           // :method pseudo-header
-    std::string path;             // :path pseudo-header
-    std::string authority;        // :authority pseudo-header
-    std::string scheme;           // :scheme pseudo-header (http or https)
-    int status_code = 0;          // :status pseudo-header (response)
+    std::string method;     // :method pseudo-header
+    std::string path;       // :path pseudo-header
+    std::string authority;  // :authority pseudo-header
+    std::string scheme;     // :scheme pseudo-header (http or https)
+    int status_code = 0;    // :status pseudo-header (response)
 
-    std::map<std::string, std::string> headers;
-    std::vector<uint8_t> data;    // Assembled DATA frames
+    std::map<std::string, std::string> request_headers;
+    std::map<std::string, std::string> response_headers;
+
+    std::vector<uint8_t> request_data;   // Assembled Request DATA frames
+    std::vector<uint8_t> response_data;  // Assembled Response DATA frames
 
     bool request_complete = false;
     bool response_complete = false;
-    bool headers_complete = false;
+    bool headers_complete = false;  // Tracks if *current* header block is done
+
+    // Timing for latency
+    std::chrono::system_clock::time_point start_time;
+    std::chrono::system_clock::time_point end_time;
 
     nlohmann::json toJson() const;
 };
@@ -89,6 +97,7 @@ struct Http2Connection {
     bool preface_received = false;
     std::map<uint32_t, Http2Stream> streams;
     std::vector<Http2Frame> frames;
+    std::vector<uint8_t> buffer;
 
     // Connection settings
     uint32_t header_table_size = 4096;

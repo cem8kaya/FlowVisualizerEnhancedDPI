@@ -243,6 +243,98 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
 
     // HTTP/2 (Usually TCP 80, 8080, etc., but we need H2 parser)
 
+    // HTTP/2 (80, 8000, 8080, 5000-6000 for SBA)
+    // 5G SBA typically uses ports like 80 (HTTP) or specific allocated ports.
+    // We'll check for HTTP/2 Preface or common ports.
+    bool possibly_http2 = false;
+    if (metadata.five_tuple.protocol == IPPROTO_TCP) {
+        uint16_t port = metadata.five_tuple.dst_port;
+        uint16_t src_port = metadata.five_tuple.src_port;
+        if (port == 80 || port == 8080 || port == 8000 || (port >= 2000 && port <= 10000) ||
+            src_port == 80 || src_port == 8080 || src_port == 8000 ||
+            (src_port >= 2000 && src_port <= 10000)) {
+            possibly_http2 = true;
+        }
+    }
+
+    if (possibly_http2) {
+        // Get session state
+        auto& connection = http2_sessions_[metadata.five_tuple];
+
+        // Append new data to connection buffer
+        connection.buffer.insert(connection.buffer.end(), payload.begin(), payload.end());
+
+        size_t processed_offset = 0;
+        bool progress = true;
+
+        while (progress && processed_offset < connection.buffer.size()) {
+            progress = false;
+            size_t remaining = connection.buffer.size() - processed_offset;
+            const uint8_t* data_ptr = connection.buffer.data() + processed_offset;
+
+            // Check for Preface first if not established
+            if (!connection.preface_received) {
+                if (Http2Parser::isHttp2(data_ptr, remaining)) {
+                    connection.preface_received = true;
+                    // Skip preface length (24 bytes)
+                    processed_offset += 24;
+                    progress = true;
+                    continue;
+                } else {
+                    // If buffer has < 24 bytes, wait for more. If > 24 and not Match, probably not
+                    // HTTP2. But we only set progress=true if we consumed something. For now,
+                    // strict check.
+                    if (remaining >= 24) {
+                        // Not HTTP2 preface, stop trying for this connection?
+                        // Or might be mid-stream if we missed start?
+                        // Let's assume we might have missed start if packet loss.
+                        // But robust parser is hard. Assume start of flow.
+                    }
+                    break;
+                }
+            }
+
+            // Parse Frame
+            auto frame_opt = http2_parser_.parseFrame(data_ptr, remaining);
+            if (frame_opt) {
+                // Successfully parsed a frame
+                http2_parser_.processFrame(*frame_opt, connection);
+
+                // Advance offset
+                // Frame size = 9 (header) + payload length
+                size_t frame_total_len = 9 + frame_opt->header.length;
+                processed_offset += frame_total_len;
+                progress = true;
+            }
+        }
+
+        // Remove processed data from buffer
+        if (processed_offset > 0) {
+            connection.buffer.erase(connection.buffer.begin(),
+                                    connection.buffer.begin() + processed_offset);
+        }
+
+        // Check for completed streams and analyze
+        auto it = connection.streams.begin();
+        while (it != connection.streams.end()) {
+            auto& stream = it->second;
+
+            // If we have a full request-response cycle
+            if (stream.response_complete) {
+                // Check for 5G SBA (using correct parser instance)
+                auto sba_event = sba_parser_.parse(stream);
+                if (sba_event) {
+                    correlator_.processPacket(metadata, ProtocolType::HTTP2, sba_event->toJson());
+
+                    // Cleanup stream
+                    it = connection.streams.erase(it);
+                    continue;
+                }
+            }
+            ++it;
+        }
+    }
+
     // NGAP (SCTP 38412)
     // Note: PacketProcessor currently doesn't reassemble SCTP fully, but if metadata.protocol ==
     // 132 (SCTP) or if the ports match and it's IP+SCTP...

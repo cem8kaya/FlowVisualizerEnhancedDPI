@@ -2,11 +2,15 @@
 
 #include <pcap/pcap.h>  // for pcap_pkthdr
 
+#include <unordered_map>
+
 #include "common/types.h"
 #include "pcap_ingest/ip_reassembler.h"
 #include "pcap_ingest/link_layer_parser.h"
 #include "pcap_ingest/tcp_reassembler.h"
-#include "session/session_correlator.h"  // Assuming this is where Correlator is
+#include "protocol_parsers/fiveg_sba_parser.h"
+#include "protocol_parsers/http2_parser.h"
+#include "session/session_correlator.h"
 
 namespace callflow {
 
@@ -37,6 +41,15 @@ private:
     LinkLayerParser link_parser_;
     IpReassembler ip_reassembler_;
     TcpReassembler tcp_reassembler_;
+
+    // Stateful parsers
+    // Map: FiveTuple -> Http2Connection
+    // Note: We use FiveTuple hash as key for simpler map, or specialized hash map
+    std::unordered_map<FiveTuple, Http2Connection> http2_sessions_;
+
+    // Parsers
+    FiveGSbaParser sba_parser_;
+    Http2Parser http2_parser_;
 
     void processIpPacket(const std::vector<uint8_t>& ip_packet, Timestamp ts,
                          uint32_t frame_number);

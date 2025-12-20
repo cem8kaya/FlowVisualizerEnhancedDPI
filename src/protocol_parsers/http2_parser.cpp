@@ -1,8 +1,11 @@
 #include "protocol_parsers/http2_parser.h"
-#include "common/logger.h"
+
+#include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <sstream>
-#include <algorithm>
+
+#include "common/logger.h"
 
 namespace callflow {
 
@@ -19,17 +22,28 @@ static const size_t FRAME_HEADER_SIZE = 9;
 
 std::string http2FrameTypeToString(Http2FrameType type) {
     switch (type) {
-        case Http2FrameType::DATA: return "DATA";
-        case Http2FrameType::HEADERS: return "HEADERS";
-        case Http2FrameType::PRIORITY: return "PRIORITY";
-        case Http2FrameType::RST_STREAM: return "RST_STREAM";
-        case Http2FrameType::SETTINGS: return "SETTINGS";
-        case Http2FrameType::PUSH_PROMISE: return "PUSH_PROMISE";
-        case Http2FrameType::PING: return "PING";
-        case Http2FrameType::GOAWAY: return "GOAWAY";
-        case Http2FrameType::WINDOW_UPDATE: return "WINDOW_UPDATE";
-        case Http2FrameType::CONTINUATION: return "CONTINUATION";
-        default: return "UNKNOWN";
+        case Http2FrameType::DATA:
+            return "DATA";
+        case Http2FrameType::HEADERS:
+            return "HEADERS";
+        case Http2FrameType::PRIORITY:
+            return "PRIORITY";
+        case Http2FrameType::RST_STREAM:
+            return "RST_STREAM";
+        case Http2FrameType::SETTINGS:
+            return "SETTINGS";
+        case Http2FrameType::PUSH_PROMISE:
+            return "PUSH_PROMISE";
+        case Http2FrameType::PING:
+            return "PING";
+        case Http2FrameType::GOAWAY:
+            return "GOAWAY";
+        case Http2FrameType::WINDOW_UPDATE:
+            return "WINDOW_UPDATE";
+        case Http2FrameType::CONTINUATION:
+            return "CONTINUATION";
+        default:
+            return "UNKNOWN";
     }
 }
 
@@ -56,15 +70,37 @@ nlohmann::json Http2Frame::toJson() const {
 nlohmann::json Http2Stream::toJson() const {
     nlohmann::json j;
     j["stream_id"] = stream_id;
-    if (!method.empty()) j["method"] = method;
-    if (!path.empty()) j["path"] = path;
-    if (!authority.empty()) j["authority"] = authority;
-    if (!scheme.empty()) j["scheme"] = scheme;
-    if (status_code > 0) j["status"] = status_code;
-    if (!headers.empty()) j["headers"] = headers;
+    if (!method.empty())
+        j["method"] = method;
+    if (!path.empty())
+        j["path"] = path;
+    if (!authority.empty())
+        j["authority"] = authority;
+    if (!scheme.empty())
+        j["scheme"] = scheme;
+    if (status_code > 0)
+        j["status"] = status_code;
+
+    if (!request_headers.empty())
+        j["request_headers"] = request_headers;
+    if (!response_headers.empty())
+        j["response_headers"] = response_headers;
+
     j["request_complete"] = request_complete;
     j["response_complete"] = response_complete;
-    if (!data.empty()) j["data_size"] = data.size();
+
+    if (!request_data.empty())
+        j["request_data_size"] = request_data.size();
+    if (!response_data.empty())
+        j["response_data_size"] = response_data.size();
+
+    // Calculate latency if both available
+    if (start_time.time_since_epoch().count() > 0 && end_time.time_since_epoch().count() > 0) {
+        auto duration =
+            std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        j["latency_us"] = duration;
+    }
+
     return j;
 }
 
@@ -101,70 +137,68 @@ const std::vector<std::pair<std::string, std::string>> HpackDecoder::static_tabl
     HpackDecoder::initStaticTable();
 
 std::vector<std::pair<std::string, std::string>> HpackDecoder::initStaticTable() {
-    return {
-        {"", ""},
-        {":authority", ""},
-        {":method", "GET"},
-        {":method", "POST"},
-        {":path", "/"},
-        {":path", "/index.html"},
-        {":scheme", "http"},
-        {":scheme", "https"},
-        {":status", "200"},
-        {":status", "204"},
-        {":status", "206"},
-        {":status", "304"},
-        {":status", "400"},
-        {":status", "404"},
-        {":status", "500"},
-        {"accept-charset", ""},
-        {"accept-encoding", "gzip, deflate"},
-        {"accept-language", ""},
-        {"accept-ranges", ""},
-        {"accept", ""},
-        {"access-control-allow-origin", ""},
-        {"age", ""},
-        {"allow", ""},
-        {"authorization", ""},
-        {"cache-control", ""},
-        {"content-disposition", ""},
-        {"content-encoding", ""},
-        {"content-language", ""},
-        {"content-length", ""},
-        {"content-location", ""},
-        {"content-range", ""},
-        {"content-type", ""},
-        {"cookie", ""},
-        {"date", ""},
-        {"etag", ""},
-        {"expect", ""},
-        {"expires", ""},
-        {"from", ""},
-        {"host", ""},
-        {"if-match", ""},
-        {"if-modified-since", ""},
-        {"if-none-match", ""},
-        {"if-range", ""},
-        {"if-unmodified-since", ""},
-        {"last-modified", ""},
-        {"link", ""},
-        {"location", ""},
-        {"max-forwards", ""},
-        {"proxy-authenticate", ""},
-        {"proxy-authorization", ""},
-        {"range", ""},
-        {"referer", ""},
-        {"refresh", ""},
-        {"retry-after", ""},
-        {"server", ""},
-        {"set-cookie", ""},
-        {"strict-transport-security", ""},
-        {"transfer-encoding", ""},
-        {"user-agent", ""},
-        {"vary", ""},
-        {"via", ""},
-        {"www-authenticate", ""}
-    };
+    return {{"", ""},
+            {":authority", ""},
+            {":method", "GET"},
+            {":method", "POST"},
+            {":path", "/"},
+            {":path", "/index.html"},
+            {":scheme", "http"},
+            {":scheme", "https"},
+            {":status", "200"},
+            {":status", "204"},
+            {":status", "206"},
+            {":status", "304"},
+            {":status", "400"},
+            {":status", "404"},
+            {":status", "500"},
+            {"accept-charset", ""},
+            {"accept-encoding", "gzip, deflate"},
+            {"accept-language", ""},
+            {"accept-ranges", ""},
+            {"accept", ""},
+            {"access-control-allow-origin", ""},
+            {"age", ""},
+            {"allow", ""},
+            {"authorization", ""},
+            {"cache-control", ""},
+            {"content-disposition", ""},
+            {"content-encoding", ""},
+            {"content-language", ""},
+            {"content-length", ""},
+            {"content-location", ""},
+            {"content-range", ""},
+            {"content-type", ""},
+            {"cookie", ""},
+            {"date", ""},
+            {"etag", ""},
+            {"expect", ""},
+            {"expires", ""},
+            {"from", ""},
+            {"host", ""},
+            {"if-match", ""},
+            {"if-modified-since", ""},
+            {"if-none-match", ""},
+            {"if-range", ""},
+            {"if-unmodified-since", ""},
+            {"last-modified", ""},
+            {"link", ""},
+            {"location", ""},
+            {"max-forwards", ""},
+            {"proxy-authenticate", ""},
+            {"proxy-authorization", ""},
+            {"range", ""},
+            {"referer", ""},
+            {"refresh", ""},
+            {"retry-after", ""},
+            {"server", ""},
+            {"set-cookie", ""},
+            {"strict-transport-security", ""},
+            {"transfer-encoding", ""},
+            {"user-agent", ""},
+            {"vary", ""},
+            {"via", ""},
+            {"www-authenticate", ""}};
 }
 
 HpackDecoder::HpackDecoder() {
@@ -207,8 +241,8 @@ void HpackDecoder::addToDynamicTable(const std::string& name, const std::string&
 
     // Check if entry is larger than max table size
     if (entry_size > max_dynamic_table_size_) {
-        LOG_DEBUG("HPACK: Entry size {} exceeds max table size {}",
-                  entry_size, max_dynamic_table_size_);
+        LOG_DEBUG("HPACK: Entry size {} exceeds max table size {}", entry_size,
+                  max_dynamic_table_size_);
         dynamic_table_.clear();
         current_dynamic_table_size_ = 0;
         return;
@@ -239,7 +273,8 @@ size_t HpackDecoder::calculateEntrySize(const std::string& name, const std::stri
     return name.length() + value.length() + 32;
 }
 
-uint64_t HpackDecoder::decodeInteger(const uint8_t*& data, const uint8_t* end, uint8_t prefix_bits) {
+uint64_t HpackDecoder::decodeInteger(const uint8_t*& data, const uint8_t* end,
+                                     uint8_t prefix_bits) {
     if (data >= end) {
         return 0;
     }
@@ -382,8 +417,7 @@ std::vector<HpackDecoder::DecodedHeader> HpackDecoder::decode(const uint8_t* dat
             uint64_t max_size = decodeInteger(ptr, end, 5);
             setMaxDynamicTableSize(max_size);
             LOG_DEBUG("HPACK: Dynamic table size update: {}", max_size);
-        }
-        else {
+        } else {
             LOG_ERROR("HPACK: Unknown header encoding: 0x{:02x}", first_byte);
             break;
         }
@@ -410,16 +444,15 @@ bool Http2Parser::isHttp2(const uint8_t* data, size_t len) {
 
 std::optional<Http2FrameHeader> Http2Parser::parseFrameHeader(const uint8_t* data, size_t len) {
     if (!data || len < FRAME_HEADER_SIZE) {
-        LOG_DEBUG("HTTP/2: Insufficient data for frame header (need {}, got {})",
-                  FRAME_HEADER_SIZE, len);
+        LOG_DEBUG("HTTP/2: Insufficient data for frame header (need {}, got {})", FRAME_HEADER_SIZE,
+                  len);
         return std::nullopt;
     }
 
     Http2FrameHeader header;
 
     // Length (3 bytes, big-endian)
-    header.length = (static_cast<uint32_t>(data[0]) << 16) |
-                    (static_cast<uint32_t>(data[1]) << 8) |
+    header.length = (static_cast<uint32_t>(data[0]) << 16) | (static_cast<uint32_t>(data[1]) << 8) |
                     static_cast<uint32_t>(data[2]);
 
     // Type (1 byte)
@@ -431,8 +464,7 @@ std::optional<Http2FrameHeader> Http2Parser::parseFrameHeader(const uint8_t* dat
     // Stream ID (4 bytes, big-endian, first bit reserved)
     header.stream_id = (static_cast<uint32_t>(data[5] & 0x7F) << 24) |
                        (static_cast<uint32_t>(data[6]) << 16) |
-                       (static_cast<uint32_t>(data[7]) << 8) |
-                       static_cast<uint32_t>(data[8]);
+                       (static_cast<uint32_t>(data[7]) << 8) | static_cast<uint32_t>(data[8]);
 
     LOG_TRACE("HTTP/2: Parsed frame header: type={}, len={}, stream={}, flags=0x{:02x}",
               http2FrameTypeToString(header.type), header.length, header.stream_id, header.flags);
@@ -493,8 +525,8 @@ std::optional<Http2Connection> Http2Parser::parseConnection(const uint8_t* data,
         remaining -= frame_size;
     }
 
-    LOG_INFO("HTTP/2: Parsed connection with {} frames and {} streams",
-             connection.frames.size(), connection.streams.size());
+    LOG_INFO("HTTP/2: Parsed connection with {} frames and {} streams", connection.frames.size(),
+             connection.streams.size());
 
     return connection;
 }
@@ -564,13 +596,29 @@ bool Http2Parser::processHeadersFrame(const Http2Frame& frame, Http2Connection& 
     // Decode header block
     if (header_block_offset < frame.payload.size()) {
         size_t header_block_len = frame.payload.size() - header_block_offset - padding_length;
-        auto headers = hpack_decoder_.decode(
-            frame.payload.data() + header_block_offset,
-            header_block_len
-        );
+        auto headers =
+            hpack_decoder_.decode(frame.payload.data() + header_block_offset, header_block_len);
+
+        // Determine interaction phase based on headers
+        bool is_request = false;
+        bool is_response = false;
+
+        for (const auto& header : headers) {
+            if (header.name == ":method")
+                is_request = true;
+            if (header.name == ":status")
+                is_response = true;
+        }
+
+        if (is_request) {
+            if (stream.start_time.time_since_epoch().count() == 0) {
+                stream.start_time = std::chrono::system_clock::now();
+            }
+        }
 
         // Process decoded headers
         for (const auto& header : headers) {
+            // Update semantic fields
             if (header.name == ":method") {
                 stream.method = header.value;
             } else if (header.name == ":path") {
@@ -581,8 +629,16 @@ bool Http2Parser::processHeadersFrame(const Http2Frame& frame, Http2Connection& 
                 stream.scheme = header.value;
             } else if (header.name == ":status") {
                 stream.status_code = std::stoi(header.value);
+            }
+
+            // Store in appropriate map
+            // Note: If we received a request earlier, and now getting response headers, status_code
+            // logic handles it. But here we rely on the specific flags found in *this* header
+            // block.
+            if (is_response || stream.status_code > 0) {
+                stream.response_headers[header.name] = header.value;
             } else {
-                stream.headers[header.name] = header.value;
+                stream.request_headers[header.name] = header.value;
             }
         }
     }
@@ -628,22 +684,31 @@ bool Http2Parser::processDataFrame(const Http2Frame& frame, Http2Connection& con
     // Append data
     if (data_offset < frame.payload.size()) {
         size_t data_len = frame.payload.size() - data_offset - padding_length;
-        stream.data.insert(stream.data.end(),
-                          frame.payload.begin() + data_offset,
-                          frame.payload.begin() + data_offset + data_len);
+
+        // Append to appropriate buffer
+        if (stream.status_code > 0) {
+            stream.response_data.insert(stream.response_data.end(),
+                                        frame.payload.begin() + data_offset,
+                                        frame.payload.begin() + data_offset + data_len);
+        } else {
+            stream.request_data.insert(stream.request_data.end(),
+                                       frame.payload.begin() + data_offset,
+                                       frame.payload.begin() + data_offset + data_len);
+        }
     }
 
     // Check if stream is complete
     if (frame.header.flags & Http2Flags::END_STREAM) {
         if (stream.status_code > 0) {
             stream.response_complete = true;
+            stream.end_time = std::chrono::system_clock::now();
         } else {
             stream.request_complete = true;
         }
     }
 
-    LOG_DEBUG("HTTP/2: DATA frame processed for stream {} (size={})",
-              stream.stream_id, stream.data.size());
+    LOG_DEBUG("HTTP/2: DATA frame processed for stream {} (req_size={}, resp_size={})",
+              stream.stream_id, stream.request_data.size(), stream.response_data.size());
     return true;
 }
 
@@ -661,12 +726,10 @@ bool Http2Parser::processSettingsFrame(const Http2Frame& frame, Http2Connection&
 
     // Parse settings (6 bytes per setting)
     for (size_t i = 0; i + 6 <= frame.payload.size(); i += 6) {
-        uint16_t id = (static_cast<uint16_t>(frame.payload[i]) << 8) |
-                      frame.payload[i + 1];
+        uint16_t id = (static_cast<uint16_t>(frame.payload[i]) << 8) | frame.payload[i + 1];
         uint32_t value = (static_cast<uint32_t>(frame.payload[i + 2]) << 24) |
-                        (static_cast<uint32_t>(frame.payload[i + 3]) << 16) |
-                        (static_cast<uint32_t>(frame.payload[i + 4]) << 8) |
-                        frame.payload[i + 5];
+                         (static_cast<uint32_t>(frame.payload[i + 3]) << 16) |
+                         (static_cast<uint32_t>(frame.payload[i + 4]) << 8) | frame.payload[i + 5];
 
         switch (id) {
             case 1:  // SETTINGS_HEADER_TABLE_SIZE
