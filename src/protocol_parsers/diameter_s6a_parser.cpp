@@ -657,15 +657,29 @@ DeleteSubscriberDataAnswer DiameterS6aParser::parseDSA(const DiameterMessage& ms
 // ============================================================================
 
 std::optional<SubscriptionData> DiameterS6aParser::parseSubscriptionData(const DiameterAvp& avp) {
-    // This would parse the grouped AVP containing subscription data
-    // For now, return a basic structure
     SubscriptionData sub_data;
 
-    // Parse grouped AVP (to be fully implemented)
     auto grouped_avps = parseGroupedAVP(avp);
 
-    // Extract fields from grouped AVPs
-    // TODO: Implement full parsing
+    for (const auto& group_avp : grouped_avps) {
+        if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::SUBSCRIBER_STATUS)) {
+            auto val = getAVPUint32(group_avp).value_or(0);
+            sub_data.subscriber_status = static_cast<SubscriberStatus>(val);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::MSISDN)) {
+            sub_data.msisdn = getAVPString(group_avp);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::NETWORK_ACCESS_MODE)) {
+            auto val = getAVPUint32(group_avp).value_or(0);
+            sub_data.network_access_mode = static_cast<NetworkAccessMode>(val);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::OPERATOR_DETERMINED_BARRING)) {
+            sub_data.operator_determined_barring = getAVPUint32(group_avp);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::AMBR)) {
+            sub_data.ambr = parseAMBR(group_avp);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::APN_CONFIGURATION_PROFILE)) {
+            sub_data.apn_configuration_profile = parseAPNConfigurationProfile(group_avp);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::ACCESS_RESTRICTION_DATA)) {
+            sub_data.access_restriction_data = getAVPUint32(group_avp);
+        }
+    }
 
     return sub_data;
 }
@@ -757,8 +771,23 @@ std::optional<ULAFlags> DiameterS6aParser::parseULAFlags(const DiameterAvp& avp)
 }
 
 std::optional<EPSSubscribedQoSProfile> DiameterS6aParser::parseEPSSubscribedQoSProfile(const DiameterAvp& avp) {
-    // TODO: Implement full parsing
-    return std::nullopt;
+    EPSSubscribedQoSProfile qos;
+    qos.qos_class_identifier = 0;
+
+    auto grouped_avps = parseGroupedAVP(avp);
+
+    for (const auto& group_avp : grouped_avps) {
+        if (group_avp.code == static_cast<uint32_t>(DiameterAvpCode::QOS_CLASS_IDENTIFIER)) {
+            qos.qos_class_identifier = getAVPUint32(group_avp).value_or(0);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::ALLOCATION_RETENTION_PRIORITY)) {
+            auto arp = parseAllocationRetentionPriority(group_avp);
+            if (arp.has_value()) {
+                qos.allocation_retention_priority = arp.value();
+            }
+        }
+    }
+
+    return qos;
 }
 
 std::optional<AMBR> DiameterS6aParser::parseAMBR(const DiameterAvp& avp) {
@@ -780,18 +809,82 @@ std::optional<AMBR> DiameterS6aParser::parseAMBR(const DiameterAvp& avp) {
 }
 
 std::optional<AllocationRetentionPriority> DiameterS6aParser::parseAllocationRetentionPriority(const DiameterAvp& avp) {
-    // TODO: Implement full parsing
-    return std::nullopt;
+    AllocationRetentionPriority arp;
+    arp.priority_level = 0;
+    arp.pre_emption_capability = false;
+    arp.pre_emption_vulnerability = false;
+
+    auto grouped_avps = parseGroupedAVP(avp);
+
+    for (const auto& group_avp : grouped_avps) {
+        if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::PRIORITY_LEVEL)) {
+            arp.priority_level = getAVPUint32(group_avp).value_or(0);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::PRE_EMPTION_CAPABILITY)) {
+            auto val = getAVPUint32(group_avp).value_or(0);
+            arp.pre_emption_capability = (val == 0);  // 0 = PRE-EMPTION_CAPABILITY_ENABLED
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::PRE_EMPTION_VULNERABILITY)) {
+            auto val = getAVPUint32(group_avp).value_or(0);
+            arp.pre_emption_vulnerability = (val == 0);  // 0 = PRE-EMPTION_VULNERABILITY_ENABLED
+        }
+    }
+
+    return arp;
 }
 
 std::optional<APNConfiguration> DiameterS6aParser::parseAPNConfiguration(const DiameterAvp& avp) {
-    // TODO: Implement full parsing
-    return std::nullopt;
+    APNConfiguration apn_config;
+    apn_config.context_identifier = 0;
+    apn_config.pdn_type = PDNType::IPv4;
+    apn_config.qos_profile = EPSSubscribedQoSProfile{};
+
+    auto grouped_avps = parseGroupedAVP(avp);
+
+    for (const auto& group_avp : grouped_avps) {
+        if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::CONTEXT_IDENTIFIER)) {
+            apn_config.context_identifier = getAVPUint32(group_avp).value_or(0);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterAvpCode::SERVICE_SELECTION)) {
+            apn_config.service_selection = getAVPString(group_avp).value_or("");
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::PDN_TYPE)) {
+            auto pdn_val = getAVPUint32(group_avp).value_or(0);
+            apn_config.pdn_type = static_cast<PDNType>(pdn_val);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::EPS_SUBSCRIBED_QOS_PROFILE)) {
+            auto qos = parseEPSSubscribedQoSProfile(group_avp);
+            if (qos.has_value()) {
+                apn_config.qos_profile = qos.value();
+            }
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::AMBR)) {
+            apn_config.ambr = parseAMBR(group_avp);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::VPLMN_DYNAMIC_ADDRESS_ALLOWED)) {
+            auto val = getAVPUint32(group_avp).value_or(0);
+            apn_config.vplmn_dynamic_address_allowed = (val == 0);  // 0 = NOTALLOWED, 1 = ALLOWED
+        }
+    }
+
+    return apn_config;
 }
 
 std::optional<APNConfigurationProfile> DiameterS6aParser::parseAPNConfigurationProfile(const DiameterAvp& avp) {
-    // TODO: Implement full parsing
-    return std::nullopt;
+    APNConfigurationProfile profile;
+    profile.context_identifier = 0;
+    profile.all_apn_config_inc_ind = false;
+
+    auto grouped_avps = parseGroupedAVP(avp);
+
+    for (const auto& group_avp : grouped_avps) {
+        if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::CONTEXT_IDENTIFIER)) {
+            profile.context_identifier = getAVPUint32(group_avp).value_or(0);
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::ALL_APN_CONFIG_INC_IND)) {
+            auto val = getAVPUint32(group_avp).value_or(0);
+            profile.all_apn_config_inc_ind = (val == 0);  // 0 = All_APN_CONFIGURATIONS_INCLUDED
+        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::APN_CONFIGURATION)) {
+            auto apn_config = parseAPNConfiguration(group_avp);
+            if (apn_config.has_value()) {
+                profile.apn_configs.push_back(apn_config.value());
+            }
+        }
+    }
+
+    return profile;
 }
 
 // ============================================================================
@@ -835,12 +928,88 @@ std::optional<std::vector<uint8_t>> DiameterS6aParser::getAVPOctetString(const D
 std::vector<DiameterAvp> DiameterS6aParser::parseGroupedAVP(const DiameterAvp& avp) {
     std::vector<DiameterAvp> result;
 
-    // Parse grouped AVP data
-    // This is a simplified implementation - a full implementation would
-    // recursively parse the AVP data as a sequence of AVPs
+    if (avp.data.empty()) {
+        return result;
+    }
 
-    // TODO: Implement full grouped AVP parsing
+    const uint8_t* data = avp.data.data();
+    size_t len = avp.data.size();
+    size_t offset = 0;
 
+    // Parse each nested AVP
+    while (offset < len) {
+        // AVP header is at least 8 bytes (without vendor ID)
+        if (offset + 8 > len) {
+            LOG_DEBUG("Not enough data for nested AVP header at offset " << offset);
+            break;
+        }
+
+        DiameterAvp nested_avp;
+
+        // Bytes 0-3: AVP Code
+        uint32_t code;
+        std::memcpy(&code, data + offset, 4);
+        nested_avp.code = ntohl(code);
+
+        // Byte 4: Flags
+        uint8_t flags = data[offset + 4];
+        nested_avp.vendor_flag = (flags & 0x80) != 0;      // V bit
+        nested_avp.mandatory_flag = (flags & 0x40) != 0;   // M bit
+        nested_avp.protected_flag = (flags & 0x20) != 0;   // P bit
+
+        // Bytes 5-7: AVP Length (24 bits)
+        nested_avp.length = (static_cast<uint32_t>(data[offset + 5]) << 16) |
+                            (static_cast<uint32_t>(data[offset + 6]) << 8) |
+                            static_cast<uint32_t>(data[offset + 7]);
+
+        if (nested_avp.length < 8) {
+            LOG_ERROR("Invalid nested AVP length: " << nested_avp.length);
+            break;
+        }
+
+        size_t header_len = 8;
+
+        // Bytes 8-11: Vendor ID (if V flag set)
+        if (nested_avp.vendor_flag) {
+            if (offset + 12 > len) {
+                LOG_DEBUG("Not enough data for vendor ID at offset " << offset);
+                break;
+            }
+            uint32_t vendor_id;
+            std::memcpy(&vendor_id, data + offset + 8, 4);
+            nested_avp.vendor_id = ntohl(vendor_id);
+            header_len = 12;
+        } else {
+            nested_avp.vendor_id = 0;
+        }
+
+        // Calculate data length
+        if (nested_avp.length < header_len) {
+            LOG_ERROR("Nested AVP length " << nested_avp.length << " is less than header length " << header_len);
+            break;
+        }
+
+        size_t data_len = nested_avp.length - header_len;
+
+        // Check if we have enough data
+        if (offset + header_len + data_len > len) {
+            LOG_DEBUG("Not enough data for nested AVP data at offset " << offset);
+            break;
+        }
+
+        // Copy nested AVP data
+        nested_avp.data.resize(data_len);
+        std::memcpy(nested_avp.data.data(), data + offset + header_len, data_len);
+
+        result.push_back(nested_avp);
+
+        // Calculate padding (AVPs are padded to 4-byte boundaries)
+        size_t remainder = nested_avp.length % 4;
+        size_t padding = remainder == 0 ? 0 : (4 - remainder);
+        offset += nested_avp.length + padding;
+    }
+
+    LOG_DEBUG("Parsed " << result.size() << " nested AVPs from grouped AVP");
     return result;
 }
 
