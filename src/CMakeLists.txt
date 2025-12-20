@@ -4,6 +4,8 @@ add_library(callflow_common STATIC
     common/types.cpp
     common/utils.cpp
     common/config_loader.cpp
+    common/crypto_utils.cpp
+    common/nas_security_context.cpp
 )
 target_include_directories(callflow_common PUBLIC
     ${PROJECT_SOURCE_DIR}/include
@@ -12,6 +14,7 @@ target_link_libraries(callflow_common PUBLIC
     nlohmann_json::nlohmann_json
     Threads::Threads
     fmt::fmt
+    OpenSSL::Crypto
 )
 
 # Config manager library

@@ -1,11 +1,43 @@
 #pragma once
 
-#include "common/types.h"
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <vector>
-#include <nlohmann/json.hpp>
+
+#include "common/nas_security_context.h"  // Add this
+#include "common/types.h"
 
 namespace callflow {
+
+/**
+ * Generic NAS Information Element (Recursive)
+ */
+struct NasIe {
+    uint8_t iei = 0;
+    std::string name;
+    std::vector<uint8_t> raw_data;
+    std::vector<NasIe> inner_ies;
+
+    // Decoded value (human readable)
+    std::string decoded_value;
+
+    nlohmann::json toJson() const {
+        nlohmann::json j;
+        j["iei"] = iei;
+        j["name"] = name;
+        j["length"] = raw_data.size();
+        if (!decoded_value.empty()) {
+            j["value"] = decoded_value;
+        }
+        if (!inner_ies.empty()) {
+            j["inner_ies"] = nlohmann::json::array();
+            for (const auto& ie : inner_ies) {
+                j["inner_ies"].push_back(ie.toJson());
+            }
+        }
+        return j;
+    }
+};
 
 /**
  * 5G NAS Message Types (3GPP TS 24.501)
@@ -69,10 +101,10 @@ enum class Nas5gSecurityHeaderType : uint8_t {
  */
 enum class Nas5gMobileIdentityType : uint8_t {
     NO_IDENTITY = 0,
-    SUCI = 1,      // Subscription Concealed Identifier
-    FIVE_G_GUTI = 2, // 5G Globally Unique Temporary Identifier
+    SUCI = 1,         // Subscription Concealed Identifier
+    FIVE_G_GUTI = 2,  // 5G Globally Unique Temporary Identifier
     IMEI = 3,
-    FIVE_G_S_TMSI = 4, // 5G S-Temporary Mobile Subscriber Identity
+    FIVE_G_S_TMSI = 4,  // 5G S-Temporary Mobile Subscriber Identity
     IMEISV = 5,
     MAC_ADDRESS = 6
 };
@@ -86,13 +118,16 @@ struct Nas5gMessage {
     std::vector<uint8_t> payload;
 
     // Decoded common fields
-    std::optional<std::string> supi;       // SUPI (from SUCI or 5G-GUTI)
-    std::optional<std::string> five_g_guti; // 5G-GUTI
+    std::optional<std::string> supi;         // SUPI (from SUCI or 5G-GUTI)
+    std::optional<std::string> five_g_guti;  // 5G-GUTI
     std::optional<uint8_t> pdu_session_id;
-    std::optional<uint8_t> pti;            // Procedure Transaction Identifier
+    std::optional<uint8_t> pti;  // Procedure Transaction Identifier
     std::optional<uint8_t> request_type;
-    std::optional<std::string> dnn;        // Data Network Name (like APN in 4G)
-    std::optional<std::string> s_nssai;    // Single Network Slice Selection Assistance Info
+    std::optional<std::string> dnn;      // Data Network Name (like APN in 4G)
+    std::optional<std::string> s_nssai;  // Single Network Slice Selection Assistance Info
+
+    // Full tree of IEs
+    std::vector<NasIe> ies;
 
     nlohmann::json toJson() const;
 
@@ -130,9 +165,11 @@ public:
      * Parse 5G NAS message from NAS PDU
      * @param data NAS PDU data
      * @param len PDU length
+     * @param context Optional security context for decryption
      * @return Parsed 5G NAS message or nullopt if parsing fails
      */
-    std::optional<Nas5gMessage> parse(const uint8_t* data, size_t len);
+    std::optional<Nas5gMessage> parse(const uint8_t* data, size_t len,
+                                      NasSecurityContext* context = nullptr);
 
     /**
      * Check if data appears to be a 5G NAS message

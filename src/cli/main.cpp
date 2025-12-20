@@ -25,6 +25,8 @@
 #include <thread>
 #include <vector>
 
+#include "common/nas_security_context.h"  // Add this for Manager
+
 using namespace callflow;
 
 std::atomic<bool> running(true);
@@ -305,12 +307,23 @@ int main(int argc, char** argv) {
             } else {
                 // Default config
                 ConfigLoader loader;
+                std::ifstream f("config.json");
                 // Check if config.json exists using standard I/O to avoid filesystem dependency
                 // issues
-                std::ifstream f("config.json");
                 if (f.good()) {
                     loader.loadFromFile("config.json", config);
                 }
+            }
+
+            // Populate NAS Security Manager
+            auto& nas_manager = NasSecurityManager::getInstance();
+            for (const auto& key : config.ue_keys) {
+                auto context = std::make_shared<NasSecurityContext>();
+                context->setKeys(callflow::utils::hexToBytes(key.k_nas_enc),
+                                 callflow::utils::hexToBytes(key.k_nas_int));
+                context->setAlgorithms(static_cast<NasCipheringAlgorithm>(key.algorithm_enc),
+                                       static_cast<NasIntegrityAlgorithm>(key.algorithm_int));
+                nas_manager.addContext(key.imsi, context);
             }
 
             bool is_pcapng = PcapngReader::validate(input_file);

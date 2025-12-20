@@ -191,6 +191,33 @@ void ConfigLoader::parseConfig(const nlohmann::json& j, Config& config) {
             config.database.retention_days = db["retention_days"];
         }
     }
+
+    // UE Keys for NAS Decryption
+    if (j.contains("ue_keys") && j["ue_keys"].is_array()) {
+        config.ue_keys.clear();
+        for (const auto& key_entry : j["ue_keys"]) {
+            UEKeyConfig ue_key;
+            if (key_entry.contains("imsi")) {
+                ue_key.imsi = key_entry["imsi"];
+            }
+            if (key_entry.contains("k_nas_enc")) {
+                ue_key.k_nas_enc = key_entry["k_nas_enc"];
+            }
+            if (key_entry.contains("k_nas_int")) {
+                ue_key.k_nas_int = key_entry["k_nas_int"];
+            }
+            if (key_entry.contains("k_amf")) {
+                ue_key.k_amf = key_entry["k_amf"];
+            }
+            if (key_entry.contains("algorithm_enc")) {
+                ue_key.algorithm_enc = key_entry["algorithm_enc"];
+            }
+            if (key_entry.contains("algorithm_int")) {
+                ue_key.algorithm_int = key_entry["algorithm_int"];
+            }
+            config.ue_keys.push_back(ue_key);
+        }
+    }
 }
 
 nlohmann::json ConfigLoader::configToJson(const Config& config) {
@@ -223,6 +250,19 @@ nlohmann::json ConfigLoader::configToJson(const Config& config) {
     j["database"] = {{"enabled", config.database.enabled},
                      {"path", config.database.path},
                      {"retention_days", config.database.retention_days}};
+
+    // UE Keys
+    j["ue_keys"] = nlohmann::json::array();
+    for (const auto& key : config.ue_keys) {
+        nlohmann::json key_json;
+        key_json["imsi"] = key.imsi;
+        key_json["k_nas_enc"] = key.k_nas_enc;
+        key_json["k_nas_int"] = key.k_nas_int;
+        key_json["k_amf"] = key.k_amf;
+        key_json["algorithm_enc"] = key.algorithm_enc;
+        key_json["algorithm_int"] = key.algorithm_int;
+        j["ue_keys"].push_back(key_json);
+    }
 
     return j;
 }

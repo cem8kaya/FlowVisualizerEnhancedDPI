@@ -38,6 +38,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Find dependencies
 find_package(Threads REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # Find libpcap
 find_path(PCAP_INCLUDE_DIR pcap.h)
@@ -114,12 +115,7 @@ if(BUILD_API_SERVER)
 
     # OpenSSL for HTTPS/TLS support and JWT signing
     if(ENABLE_TLS)
-        find_package(OpenSSL REQUIRED)
-        if(OpenSSL_FOUND)
-            message(STATUS "Found OpenSSL: ${OPENSSL_VERSION}")
-            message(STATUS "  Include: ${OPENSSL_INCLUDE_DIR}")
-            message(STATUS "  Libraries: ${OPENSSL_LIBRARIES}")
-        endif()
+        # Already found globally
     endif()
 
     # jwt-cpp for JWT token handling

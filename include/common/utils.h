@@ -1,9 +1,11 @@
 #pragma once
 
-#include <string>
-#include <vector>
 #include <chrono>
 #include <cstdint>
+#include <iomanip>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace callflow {
 namespace utils {
@@ -37,6 +39,30 @@ uint32_t stringToIp(const std::string& ip_str);
  * Convert bytes to hex string
  */
 std::string bytesToHex(const uint8_t* data, size_t len);
+
+/**
+ * Convert hex string to bytes
+ */
+std::vector<uint8_t> hexToBytes(const std::string& hex);
+
+/**
+ * Convert BCD to string
+ * @param data Buffer containing BCD data
+ * @param len Length of buffer
+ * @param skip_first_nibble If true, skip the lower nibble of the first byte (used for identities)
+ */
+std::string bcdToString(const uint8_t* data, size_t len, bool skip_first_nibble = false);
+
+/**
+ * Convert integer to hex string
+ */
+template <typename T>
+std::string toHexString(T val) {
+    std::stringstream ss;
+    ss << std::hex << std::uppercase << std::setfill('0') << std::setw(sizeof(T) * 2)
+       << (uint64_t)val;
+    return ss.str();
+}
 
 /**
  * Convert bytes to base64

@@ -29,17 +29,21 @@ enum class ProtocolType {
     RTP,
     RTCP,
     GTP_C,
-    GTP_U,
-    PFCP,
-    DIAMETER,
+    GTP_U = 5,
+    PFCP,          // PFCP was 6 implicitly, now it will be 6 explicitly if GTP_U is 5.
+    DIAMETER = 7,  // DIAMETER was 7 implicitly, now it will be 7 explicitly.
     HTTP2,
     HTTP,
     DNS,
+    DHCP = 11,  // DHCP is new, assigned 11.
+    NGAP = 12,  // NGAP is new, assigned 12.
     SCTP,
     TCP,
     UDP,
     IP
 };
+
+// EnhancedSessionType moved to session/session_types.h
 
 std::string protocolTypeToString(ProtocolType proto);
 ProtocolType stringToProtocolType(const std::string& str);
@@ -232,6 +236,16 @@ struct DatabaseConfig {
     int busy_timeout_ms = 5000;
 };
 
+// UE Key Configuration
+struct UEKeyConfig {
+    std::string imsi;
+    std::string k_nas_enc;  // Hex string
+    std::string k_nas_int;  // Hex string
+    std::string k_amf;      // Hex string (optional)
+    int algorithm_enc = 0;  // 0=NEA0, 1=128-NEA1, 2=128-NEA2, 3=128-NEA3
+    int algorithm_int = 0;  // 0=NIA0, 1=128-NIA1, 2=128-NIA2, 3=128-NIA3
+};
+
 // Configuration
 struct Config {
     // Processing
@@ -270,6 +284,9 @@ struct Config {
 
     // Database
     DatabaseConfig database;
+
+    // UE Keys (for NAS decryption)
+    std::vector<UEKeyConfig> ue_keys;
 };
 
 }  // namespace callflow

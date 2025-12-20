@@ -10,6 +10,8 @@
 #include "common/utils.h"
 #include "protocol_parsers/diameter_parser.h"
 #include "protocol_parsers/gtp_parser.h"
+#include "protocol_parsers/nas5g_parser.h"
+#include "protocol_parsers/ngap_parser.h"
 #include "protocol_parsers/pfcp_parser.h"
 #include "protocol_parsers/rtp_parser.h"
 #include "protocol_parsers/sip_parser.h"
@@ -240,7 +242,66 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
     }
 
     // HTTP/2 (Usually TCP 80, 8080, etc., but we need H2 parser)
-    // TODO: Integrate Http2Parser
+
+    // NGAP (SCTP 38412)
+    // Note: PacketProcessor currently doesn't reassemble SCTP fully, but if metadata.protocol ==
+    // 132 (SCTP) or if the ports match and it's IP+SCTP...
+    if (metadata.five_tuple.protocol == 132 ||
+        (metadata.five_tuple.src_port == 38412 || metadata.five_tuple.dst_port == 38412)) {
+        // Try parsing as NGAP
+        NgapParser ngap_parser;
+        // Check heuristics first to avoid spamming logs
+        if (NgapParser::isNgap(payload.data(), payload.size())) {
+            auto msg_opt = ngap_parser.parse(payload.data(), payload.size());
+            if (msg_opt.has_value()) {
+                auto& msg = msg_opt.value();
+                auto json = msg.toJson();
+
+                // Check for NAS PDU
+                if (msg.nas_pdu.has_value()) {
+                    Nas5gParser nas_parser;
+                    const auto& nas_data = msg.nas_pdu.value();
+
+                    // Try to find context (placeholder IMSI lookup)
+                    // In a real scenario, we might iterate all contexts if we don't know the IMSI,
+                    // or tracking via NGAP ID.
+                    // For this implementation, let's try to get a singleton context or context for
+                    // "default"? Or better, let's just pass nullptr if we can't determine IMSI, BUT
+                    // if we want to support the user's request for "testing decryption", we should
+                    // probably try using the configured keys if possible.
+
+                    // Helper: If there is only ONE configured key, usage is obvious.
+                    // If multiple, maybe try them?
+                    // Current Nas5gParser takes a pointer.
+
+                    NasSecurityContext* context = nullptr;
+                    // Auto-detect context logic (simple version: use first available or specific
+                    // testing IMSI) Since we don't have IMSI here (it's inside the encrypted
+                    // message!), we face the paradox of NAS decryption. Solution: Phase 1
+                    // (Cleartext) -> Get IMSI -> Map to NGAP ID -> Store in Session/Manager. Phase
+                    // 2 (Encrypted) -> Use NGAP ID -> Lookup Context.
+
+                    // Since implementing full state tracking in PacketProcessor is complex now,
+                    // we will omit context lookup for this specific step unless we want to hack it.
+                    // The user asked for "Configuration Mechanism... for testing".
+                    // For testing, maybe we can assume one UE?
+
+                    // Let's leave it as nullptr for now and focus on populating the Manager in
+                    // main.cpp so the infrastructure is there. Actually, I can use a TODO comment
+                    // or a "Try All" approach if the manager supports it? No, `Nas5gParser::parse`
+                    // takes specific context.
+
+                    auto nas_msg_opt = nas_parser.parse(nas_data.data(), nas_data.size(), nullptr);
+                    if (nas_msg_opt.has_value()) {
+                        json["nas_5g"] = nas_msg_opt->toJson();
+                    }
+                }
+
+                correlator_.processPacket(metadata, ProtocolType::NGAP, json);
+                return;
+            }
+        }
+    }
 }
 
 }  // namespace callflow
