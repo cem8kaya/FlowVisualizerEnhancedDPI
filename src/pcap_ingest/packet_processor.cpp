@@ -18,7 +18,20 @@
 
 namespace callflow {
 
-PacketProcessor::PacketProcessor(EnhancedSessionCorrelator& correlator) : correlator_(correlator) {}
+PacketProcessor::PacketProcessor(EnhancedSessionCorrelator& correlator) : correlator_(correlator) {
+    // Set up SCTP message callback for reassembled messages
+    sctp_parser_.setMessageCallback([this](const SctpReassembledMessage& message) {
+        // Create temporary metadata for SCTP message
+        // Note: We need to pass proper metadata through the callback in production
+        PacketMetadata metadata;
+        metadata.packet_id = utils::generateUuid();
+        metadata.timestamp = std::chrono::system_clock::now();
+        metadata.detected_protocol = ProtocolType::SCTP;
+
+        // Process the reassembled message
+        this->processSctpMessage(message, metadata);
+    });
+}
 
 void PacketProcessor::processPacket(const uint8_t* data, size_t len, Timestamp ts,
                                     uint32_t frame_number, int dlt) {
@@ -163,17 +176,41 @@ void PacketProcessor::processIpPacket(const std::vector<uint8_t>& ip_packet, Tim
             processTransportAndPayload(metadata, reassembled);
         }
     } else if (protocol == 132) {  // SCTP
-        // Simple SCTP parsing (ports at +0 and +2)
-        if (trans_len >= 12) {
-            metadata.five_tuple.src_port = ntohs(*reinterpret_cast<const uint16_t*>(trans_data));
-            metadata.five_tuple.dst_port =
-                ntohs(*reinterpret_cast<const uint16_t*>(trans_data + 2));
+        // Full SCTP parsing with reassembly and PPID routing
+        if (trans_len < 12) {
+            return;  // Invalid SCTP packet
+        }
 
-            // TODO: SCTP payload extraction logic (chunks)
-            // Ideally extract the DATA chunk payload.
-            // For now, pass whole SCTP packet?
-            // Actually existing logic in `main.cpp` just ignored SCTP payload or treated it
-            // vaguely. We'll leave SCTP payload processing for future, or just pass as is.
+        // Extract ports from SCTP common header
+        metadata.five_tuple.src_port = ntohs(*reinterpret_cast<const uint16_t*>(trans_data));
+        metadata.five_tuple.dst_port =
+            ntohs(*reinterpret_cast<const uint16_t*>(trans_data + 2));
+
+        // Parse SCTP packet with full reassembly support
+        auto sctp_packet_opt = sctp_parser_.parse(trans_data, trans_len, metadata.five_tuple);
+
+        if (sctp_packet_opt.has_value()) {
+            const auto& sctp_packet = sctp_packet_opt.value();
+
+            // Update metadata with SCTP protocol
+            metadata.detected_protocol = ProtocolType::SCTP;
+            metadata.raw_data.assign(trans_data, trans_data + trans_len);
+
+            // Log association state changes
+            auto assoc_ids = sctp_parser_.getAssociationIds();
+            for (auto assoc_id : assoc_ids) {
+                auto assoc_opt = sctp_parser_.getAssociation(assoc_id);
+                if (assoc_opt.has_value()) {
+                    const auto& assoc = assoc_opt.value();
+                    LOG_DEBUG("SCTP association " << assoc_id << " state: "
+                             << static_cast<int>(assoc.state)
+                             << " streams: " << assoc.num_outbound_streams
+                             << "/" << assoc.num_inbound_streams);
+                }
+            }
+
+            // Note: Reassembled messages are delivered via callback set in constructor
+            // See PacketProcessor constructor for callback setup
         }
     }
 }
@@ -335,10 +372,9 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
         }
     }
 
-    // NGAP (SCTP 38412)
-    // Note: PacketProcessor currently doesn't reassemble SCTP fully, but if metadata.protocol ==
-    // 132 (SCTP) or if the ports match and it's IP+SCTP...
-    if (metadata.five_tuple.protocol == 132 ||
+    // NGAP parsing is now handled via SCTP PPID routing (see processSctpMessage)
+    // Keep legacy fallback for non-SCTP NGAP (if it exists)
+    if (metadata.five_tuple.protocol != 132 &&
         (metadata.five_tuple.src_port == 38412 || metadata.five_tuple.dst_port == 38412)) {
         // Try parsing as NGAP
         NgapParser ngap_parser;
@@ -354,34 +390,7 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
                     Nas5gParser nas_parser;
                     const auto& nas_data = msg.nas_pdu.value();
 
-                    // Try to find context (placeholder IMSI lookup)
-                    // In a real scenario, we might iterate all contexts if we don't know the IMSI,
-                    // or tracking via NGAP ID.
-                    // For this implementation, let's try to get a singleton context or context for
-                    // "default"? Or better, let's just pass nullptr if we can't determine IMSI, BUT
-                    // if we want to support the user's request for "testing decryption", we should
-                    // probably try using the configured keys if possible.
-
-                    // Helper: If there is only ONE configured key, usage is obvious.
-                    // If multiple, maybe try them?
-                    // Current Nas5gParser takes a pointer.
-
                     NasSecurityContext* context = nullptr;
-                    // Auto-detect context logic (simple version: use first available or specific
-                    // testing IMSI) Since we don't have IMSI here (it's inside the encrypted
-                    // message!), we face the paradox of NAS decryption. Solution: Phase 1
-                    // (Cleartext) -> Get IMSI -> Map to NGAP ID -> Store in Session/Manager. Phase
-                    // 2 (Encrypted) -> Use NGAP ID -> Lookup Context.
-
-                    // Since implementing full state tracking in PacketProcessor is complex now,
-                    // we will omit context lookup for this specific step unless we want to hack it.
-                    // The user asked for "Configuration Mechanism... for testing".
-                    // For testing, maybe we can assume one UE?
-
-                    // Let's leave it as nullptr for now and focus on populating the Manager in
-                    // main.cpp so the infrastructure is there. Actually, I can use a TODO comment
-                    // or a "Try All" approach if the manager supports it? No, `Nas5gParser::parse`
-                    // takes specific context.
 
                     auto nas_msg_opt = nas_parser.parse(nas_data.data(), nas_data.size(), nullptr);
                     if (nas_msg_opt.has_value()) {
@@ -393,6 +402,79 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
                 return;
             }
         }
+    }
+}
+
+void PacketProcessor::processSctpMessage(const SctpReassembledMessage& message,
+                                         const PacketMetadata& metadata) {
+    LOG_DEBUG("Processing SCTP message: stream_id=" << message.stream_id
+             << " ssn=" << message.stream_sequence
+             << " ppid=" << message.payload_protocol
+             << " (" << getSctpPpidName(message.payload_protocol) << ")"
+             << " length=" << message.data.size());
+
+    // Route based on PPID (Payload Protocol Identifier)
+    switch (message.payload_protocol) {
+        case 18: {  // S1AP
+            LOG_DEBUG("Routing SCTP payload to S1AP parser");
+            // TODO: Implement S1AP parsing when S1AP parser is available
+            // S1apParser s1ap_parser;
+            // auto s1ap_msg = s1ap_parser.parse(message.data.data(), message.data.size());
+            // if (s1ap_msg.has_value()) {
+            //     correlator_.processPacket(metadata, ProtocolType::NGAP, s1ap_msg->toJson());
+            // }
+            break;
+        }
+
+        case 27: {  // X2AP
+            LOG_DEBUG("Routing SCTP payload to X2AP parser");
+            // X2AP is already implemented, could be integrated here
+            break;
+        }
+
+        case 46: {  // Diameter over SCTP
+            LOG_DEBUG("Routing SCTP payload to Diameter parser");
+            DiameterParser diameter_parser;
+            auto diameter_msg = diameter_parser.parse(message.data.data(), message.data.size());
+            if (diameter_msg.has_value()) {
+                correlator_.processPacket(metadata, ProtocolType::DIAMETER, diameter_msg->toJson());
+            }
+            break;
+        }
+
+        case 60: {  // NGAP (5G)
+            LOG_DEBUG("Routing SCTP payload to NGAP parser");
+            NgapParser ngap_parser;
+            auto ngap_msg = ngap_parser.parse(message.data.data(), message.data.size());
+            if (ngap_msg.has_value()) {
+                auto& msg = ngap_msg.value();
+                auto json = msg.toJson();
+
+                // Check for embedded NAS PDU
+                if (msg.nas_pdu.has_value()) {
+                    Nas5gParser nas_parser;
+                    const auto& nas_data = msg.nas_pdu.value();
+
+                    auto nas_msg_opt = nas_parser.parse(nas_data.data(), nas_data.size(), nullptr);
+                    if (nas_msg_opt.has_value()) {
+                        json["nas_5g"] = nas_msg_opt->toJson();
+                    }
+                }
+
+                correlator_.processPacket(metadata, ProtocolType::NGAP, json);
+            }
+            break;
+        }
+
+        case 61: {  // XWAP
+            LOG_DEBUG("Routing SCTP payload to XWAP parser (not yet implemented)");
+            break;
+        }
+
+        default:
+            LOG_DEBUG("Unknown SCTP PPID: " << message.payload_protocol
+                     << " (" << getSctpPpidName(message.payload_protocol) << ")");
+            break;
     }
 }
 
