@@ -101,4 +101,23 @@ set_tests_properties(test_nas_parser PROPERTIES
     LABELS "unit"
 )
 
+# Diameter Base Protocol Tests
+add_executable(test_diameter_base
+    unit/test_diameter_base.cpp
+)
+
+target_link_libraries(test_diameter_base PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_diameter_base COMMAND test_diameter_base)
+
+set_tests_properties(test_diameter_base PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")

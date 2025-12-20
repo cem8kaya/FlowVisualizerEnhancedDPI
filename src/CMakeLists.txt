@@ -109,6 +109,10 @@ add_library(protocol_parsers STATIC
     protocol_parsers/pfcp_parser.cpp
     protocol_parsers/diameter_parser.cpp
     protocol_parsers/diameter_s6a_parser.cpp
+    protocol_parsers/diameter/diameter_types.cpp
+    protocol_parsers/diameter/diameter_base.cpp
+    protocol_parsers/diameter/diameter_avp_parser.cpp
+    protocol_parsers/diameter/diameter_session_manager.cpp
     protocol_parsers/http2_parser.cpp
     protocol_parsers/fiveg_sba_parser.cpp
     protocol_parsers/x2ap_parser.cpp
