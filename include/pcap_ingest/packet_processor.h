@@ -11,6 +11,7 @@
 #include "protocol_parsers/fiveg_sba_parser.h"
 #include "protocol_parsers/http2_parser.h"
 #include "session/session_correlator.h"
+#include "transport/sctp_parser.h"
 
 namespace callflow {
 
@@ -19,7 +20,8 @@ namespace callflow {
  * 1. Link Layer Stripping
  * 2. IP Defragmentation
  * 3. TCP Reassembly
- * 4. Protocol Parsing (via EnhancedSessionCorrelator handling)
+ * 4. SCTP Stream Reassembly
+ * 5. Protocol Parsing (via EnhancedSessionCorrelator handling)
  */
 class PacketProcessor {
 public:
@@ -41,6 +43,7 @@ private:
     LinkLayerParser link_parser_;
     IpReassembler ip_reassembler_;
     TcpReassembler tcp_reassembler_;
+    SctpParser sctp_parser_;
 
     // Stateful parsers
     // Map: FiveTuple -> Http2Connection
@@ -55,6 +58,12 @@ private:
                          uint32_t frame_number);
     void processTransportAndPayload(const PacketMetadata& metadata,
                                     const std::vector<uint8_t>& payload);
+
+    /**
+     * Process reassembled SCTP messages and route by PPID
+     */
+    void processSctpMessage(const SctpReassembledMessage& message,
+                           const PacketMetadata& metadata);
 };
 
 }  // namespace callflow
