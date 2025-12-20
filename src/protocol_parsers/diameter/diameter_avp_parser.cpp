@@ -1,9 +1,20 @@
 #include "protocol_parsers/diameter/diameter_avp_parser.h"
-#include "common/logger.h"
+
 #include <arpa/inet.h>
+
 #include <cstring>
-#include <sstream>
 #include <iomanip>
+#include <sstream>
+
+#include "common/logger.h"
+
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define be64toh(x) OSSwapBigToHostInt64(x)
+#define htobe64(x) OSSwapHostToBigInt64(x)
+#else
+#include <endian.h>
+#endif
 
 namespace callflow {
 namespace diameter {
@@ -25,8 +36,7 @@ uint64_t DiameterAVPParser::readUint64(const uint8_t* data) {
 }
 
 uint32_t DiameterAVPParser::readUint24(const uint8_t* data) {
-    return (static_cast<uint32_t>(data[0]) << 16) |
-           (static_cast<uint32_t>(data[1]) << 8) |
+    return (static_cast<uint32_t>(data[0]) << 16) | (static_cast<uint32_t>(data[1]) << 8) |
            static_cast<uint32_t>(data[2]);
 }
 
@@ -39,7 +49,8 @@ size_t DiameterAVPParser::calculatePadding(size_t length) {
 // AVP Parsing
 // ============================================================================
 
-std::shared_ptr<DiameterAVP> DiameterAVPParser::parseAVP(const uint8_t* data, size_t length, size_t& offset) {
+std::shared_ptr<DiameterAVP> DiameterAVPParser::parseAVP(const uint8_t* data, size_t length,
+                                                         size_t& offset) {
     // AVP header is at least 8 bytes (without vendor ID)
     if (offset + DIAMETER_AVP_HEADER_MIN_SIZE > length) {
         LOG_DEBUG("Not enough data for AVP header at offset " << offset);
@@ -106,7 +117,9 @@ std::shared_ptr<DiameterAVP> DiameterAVPParser::parseAVP(const uint8_t* data, si
     return avp;
 }
 
-std::vector<std::shared_ptr<DiameterAVP>> DiameterAVPParser::parseAVPs(const uint8_t* data, size_t length, size_t offset) {
+std::vector<std::shared_ptr<DiameterAVP>> DiameterAVPParser::parseAVPs(const uint8_t* data,
+                                                                       size_t length,
+                                                                       size_t offset) {
     std::vector<std::shared_ptr<DiameterAVP>> avps;
 
     while (offset < length) {
@@ -311,7 +324,8 @@ std::optional<std::string> DiameterAVPParser::parseUTF8String(const std::vector<
     return std::string(reinterpret_cast<const char*>(data.data()), data.size());
 }
 
-std::optional<std::string> DiameterAVPParser::parseDiameterIdentity(const std::vector<uint8_t>& data) {
+std::optional<std::string> DiameterAVPParser::parseDiameterIdentity(
+    const std::vector<uint8_t>& data) {
     // DiameterIdentity is just a UTF8String containing an FQDN
     return parseUTF8String(data);
 }
@@ -321,7 +335,8 @@ std::optional<std::string> DiameterAVPParser::parseDiameterURI(const std::vector
     return parseUTF8String(data);
 }
 
-std::optional<std::vector<std::shared_ptr<DiameterAVP>>> DiameterAVPParser::parseGrouped(const std::vector<uint8_t>& data) {
+std::optional<std::vector<std::shared_ptr<DiameterAVP>>> DiameterAVPParser::parseGrouped(
+    const std::vector<uint8_t>& data) {
     if (data.empty()) {
         return std::vector<std::shared_ptr<DiameterAVP>>();
     }
@@ -331,7 +346,8 @@ std::optional<std::vector<std::shared_ptr<DiameterAVP>>> DiameterAVPParser::pars
     return grouped_avps;
 }
 
-std::optional<std::array<uint8_t, 4>> DiameterAVPParser::parseIPv4Address(const std::vector<uint8_t>& data) {
+std::optional<std::array<uint8_t, 4>> DiameterAVPParser::parseIPv4Address(
+    const std::vector<uint8_t>& data) {
     // IPv4 address format: 2 bytes address family + 4 bytes address
     if (data.size() != 6) {
         return std::nullopt;
@@ -351,7 +367,8 @@ std::optional<std::array<uint8_t, 4>> DiameterAVPParser::parseIPv4Address(const 
     return addr;
 }
 
-std::optional<std::array<uint8_t, 16>> DiameterAVPParser::parseIPv6Address(const std::vector<uint8_t>& data) {
+std::optional<std::array<uint8_t, 16>> DiameterAVPParser::parseIPv6Address(
+    const std::vector<uint8_t>& data) {
     // IPv6 address format: 2 bytes address family + 16 bytes address
     if (data.size() != 18) {
         return std::nullopt;
@@ -384,19 +401,18 @@ std::optional<std::string> DiameterAVPParser::parseIPAddress(const std::vector<u
     if (af == 1 && data.size() == 6) {
         // IPv4
         std::ostringstream oss;
-        oss << static_cast<int>(data[2]) << "."
-            << static_cast<int>(data[3]) << "."
-            << static_cast<int>(data[4]) << "."
-            << static_cast<int>(data[5]);
+        oss << static_cast<int>(data[2]) << "." << static_cast<int>(data[3]) << "."
+            << static_cast<int>(data[4]) << "." << static_cast<int>(data[5]);
         return oss.str();
     } else if (af == 2 && data.size() == 18) {
         // IPv6
         std::ostringstream oss;
         oss << std::hex << std::setfill('0');
         for (size_t i = 2; i < 18; i += 2) {
-            if (i > 2) oss << ":";
-            oss << std::setw(2) << static_cast<int>(data[i])
-                << std::setw(2) << static_cast<int>(data[i + 1]);
+            if (i > 2)
+                oss << ":";
+            oss << std::setw(2) << static_cast<int>(data[i]) << std::setw(2)
+                << static_cast<int>(data[i + 1]);
         }
         return oss.str();
     }
@@ -404,7 +420,8 @@ std::optional<std::string> DiameterAVPParser::parseIPAddress(const std::vector<u
     return std::nullopt;
 }
 
-std::optional<std::chrono::system_clock::time_point> DiameterAVPParser::parseTime(const std::vector<uint8_t>& data) {
+std::optional<std::chrono::system_clock::time_point> DiameterAVPParser::parseTime(
+    const std::vector<uint8_t>& data) {
     auto ntp_time = parseUnsigned32(data);
     if (!ntp_time.has_value()) {
         return std::nullopt;
@@ -427,7 +444,8 @@ std::vector<uint8_t> DiameterAVPParser::parseOctetString(const std::vector<uint8
 // AVP Data Type Mapping
 // ============================================================================
 
-DiameterAVPDataType DiameterAVPParser::getAVPDataType(uint32_t code, std::optional<uint32_t> vendor_id) {
+DiameterAVPDataType DiameterAVPParser::getAVPDataType(uint32_t code,
+                                                      std::optional<uint32_t> vendor_id) {
     // Base protocol AVPs
     if (!vendor_id.has_value() || vendor_id.value() == 0) {
         switch (static_cast<DiameterAVPCode>(code)) {
@@ -526,7 +544,8 @@ DiameterAVPDataType DiameterAVPParser::getAVPDataType(uint32_t code, std::option
 
 bool DiameterAVPParser::validateAVP(const DiameterAVP& avp) {
     // Check minimum length
-    size_t min_header_size = avp.vendor_specific ? DIAMETER_AVP_HEADER_VENDOR_SIZE : DIAMETER_AVP_HEADER_MIN_SIZE;
+    size_t min_header_size =
+        avp.vendor_specific ? DIAMETER_AVP_HEADER_VENDOR_SIZE : DIAMETER_AVP_HEADER_MIN_SIZE;
     if (avp.length < min_header_size) {
         return false;
     }

@@ -1,4 +1,5 @@
 #include "protocol_parsers/diameter/diameter_types.h"
+
 #include <sstream>
 
 namespace callflow {
@@ -90,21 +91,36 @@ std::string getResultCodeName(uint32_t result_code) {
 
 std::string getAVPDataTypeName(DiameterAVPDataType type) {
     switch (type) {
-        case DiameterAVPDataType::OCTET_STRING: return "OctetString";
-        case DiameterAVPDataType::INTEGER32: return "Integer32";
-        case DiameterAVPDataType::INTEGER64: return "Integer64";
-        case DiameterAVPDataType::UNSIGNED32: return "Unsigned32";
-        case DiameterAVPDataType::UNSIGNED64: return "Unsigned64";
-        case DiameterAVPDataType::FLOAT32: return "Float32";
-        case DiameterAVPDataType::FLOAT64: return "Float64";
-        case DiameterAVPDataType::GROUPED: return "Grouped";
-        case DiameterAVPDataType::UTF8STRING: return "UTF8String";
-        case DiameterAVPDataType::DIAMETER_IDENTITY: return "DiameterIdentity";
-        case DiameterAVPDataType::DIAMETER_URI: return "DiameterURI";
-        case DiameterAVPDataType::ENUMERATED: return "Enumerated";
-        case DiameterAVPDataType::IP_ADDRESS: return "IPAddress";
-        case DiameterAVPDataType::TIME: return "Time";
-        default: return "Unknown";
+        case DiameterAVPDataType::OCTET_STRING:
+            return "OctetString";
+        case DiameterAVPDataType::INTEGER32:
+            return "Integer32";
+        case DiameterAVPDataType::INTEGER64:
+            return "Integer64";
+        case DiameterAVPDataType::UNSIGNED32:
+            return "Unsigned32";
+        case DiameterAVPDataType::UNSIGNED64:
+            return "Unsigned64";
+        case DiameterAVPDataType::FLOAT32:
+            return "Float32";
+        case DiameterAVPDataType::FLOAT64:
+            return "Float64";
+        case DiameterAVPDataType::GROUPED:
+            return "Grouped";
+        case DiameterAVPDataType::UTF8STRING:
+            return "UTF8String";
+        case DiameterAVPDataType::DIAMETER_IDENTITY:
+            return "DiameterIdentity";
+        case DiameterAVPDataType::DIAMETER_URI:
+            return "DiameterURI";
+        case DiameterAVPDataType::ENUMERATED:
+            return "Enumerated";
+        case DiameterAVPDataType::IP_ADDRESS:
+            return "IPAddress";
+        case DiameterAVPDataType::TIME:
+            return "Time";
+        default:
+            return "Unknown";
     }
 }
 
@@ -223,7 +239,7 @@ DiameterInterface getInterfaceFromApplicationID(uint32_t app_id) {
         case DiameterApplicationID::TGPP_SH:
             return DiameterInterface::SH;
         case DiameterApplicationID::TGPP_GX:
-        case DiameterApplicationID::TGPP_GY_RO:
+
             return DiameterInterface::GX;
         case DiameterApplicationID::TGPP_S6A_S6D:
             return DiameterInterface::S6A;
@@ -244,18 +260,30 @@ DiameterInterface getInterfaceFromApplicationID(uint32_t app_id) {
 
 std::string getInterfaceName(DiameterInterface interface) {
     switch (interface) {
-        case DiameterInterface::BASE: return "Base";
-        case DiameterInterface::CX: return "Cx";
-        case DiameterInterface::SH: return "Sh";
-        case DiameterInterface::S6A: return "S6a";
-        case DiameterInterface::S13: return "S13";
-        case DiameterInterface::GX: return "Gx";
-        case DiameterInterface::RX: return "Rx";
-        case DiameterInterface::GY: return "Gy";
-        case DiameterInterface::RO: return "Ro";
-        case DiameterInterface::SWX: return "SWx";
-        case DiameterInterface::S6B: return "S6b";
-        case DiameterInterface::SLG: return "SLg";
+        case DiameterInterface::BASE:
+            return "Base";
+        case DiameterInterface::CX:
+            return "Cx";
+        case DiameterInterface::SH:
+            return "Sh";
+        case DiameterInterface::S6A:
+            return "S6a";
+        case DiameterInterface::S13:
+            return "S13";
+        case DiameterInterface::GX:
+            return "Gx";
+        case DiameterInterface::RX:
+            return "Rx";
+        case DiameterInterface::GY:
+            return "Gy";
+        case DiameterInterface::RO:
+            return "Ro";
+        case DiameterInterface::SWX:
+            return "SWx";
+        case DiameterInterface::S6B:
+            return "S6b";
+        case DiameterInterface::SLG:
+            return "SLg";
         case DiameterInterface::UNKNOWN:
         default:
             return "Unknown";

@@ -1,5 +1,5 @@
-#include "protocol_parsers/diameter/diameter_session.h"
 #include "common/logger.h"
+#include "protocol_parsers/diameter/diameter_session.h"
 
 namespace callflow {
 namespace diameter {
@@ -11,7 +11,8 @@ namespace diameter {
 DiameterMessagePair::DiameterMessagePair(std::shared_ptr<DiameterMessage> req)
     : request(std::move(req)), request_time(std::chrono::system_clock::now()) {}
 
-void DiameterMessagePair::setAnswer(std::shared_ptr<DiameterMessage> ans, std::chrono::system_clock::time_point time) {
+void DiameterMessagePair::setAnswer(std::shared_ptr<DiameterMessage> ans,
+                                    std::chrono::system_clock::time_point time) {
     answer = std::move(ans);
     answer_time = time;
 
@@ -98,7 +99,8 @@ std::chrono::milliseconds DiameterSession::getAverageLatency() const {
         }
     }
 
-    return count > 0 ? total / count : std::chrono::milliseconds(0);
+    return count > 0 ? std::chrono::duration_cast<std::chrono::milliseconds>(total / count)
+                     : std::chrono::milliseconds(0);
 }
 
 void DiameterSession::markEnded() {
@@ -145,9 +147,7 @@ nlohmann::json DiameterSession::toJson() const {
 // ============================================================================
 
 std::optional<std::string> DiameterSessionManager::processMessage(
-    std::shared_ptr<DiameterMessage> msg,
-    std::chrono::system_clock::time_point timestamp
-) {
+    std::shared_ptr<DiameterMessage> msg, std::chrono::system_clock::time_point timestamp) {
     if (!msg) {
         return std::nullopt;
     }
@@ -208,7 +208,8 @@ std::optional<std::string> DiameterSessionManager::processMessage(
     return session_id;
 }
 
-std::optional<DiameterSession> DiameterSessionManager::findSession(const std::string& session_id) const {
+std::optional<DiameterSession> DiameterSessionManager::findSession(
+    const std::string& session_id) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = sessions_.find(session_id);
@@ -244,11 +245,9 @@ std::vector<DiameterSession> DiameterSessionManager::getAllSessions() const {
 }
 
 bool DiameterSessionManager::correlateRequestResponse(
-    std::shared_ptr<DiameterMessage> request,
-    std::shared_ptr<DiameterMessage> answer,
+    std::shared_ptr<DiameterMessage> request, std::shared_ptr<DiameterMessage> answer,
     std::chrono::system_clock::time_point request_time,
-    std::chrono::system_clock::time_point answer_time
-) {
+    std::chrono::system_clock::time_point answer_time) {
     if (!request || !answer) {
         return false;
     }
@@ -275,8 +274,7 @@ bool DiameterSessionManager::correlateRequestResponse(
 
     // Find the message pair and update it
     for (auto& pair : it->second.message_pairs) {
-        if (pair.request &&
-            pair.request->header.hop_by_hop_id == request->header.hop_by_hop_id &&
+        if (pair.request && pair.request->header.hop_by_hop_id == request->header.hop_by_hop_id &&
             !pair.isComplete()) {
             pair.setAnswer(answer, answer_time);
             return true;
@@ -365,7 +363,10 @@ DiameterSessionManager::Statistics DiameterSessionManager::getStatistics() const
         }
     }
 
-    stats.avg_latency = latency_count > 0 ? total_latency / latency_count : std::chrono::milliseconds(0);
+    stats.avg_latency =
+        latency_count > 0
+            ? std::chrono::duration_cast<std::chrono::milliseconds>(total_latency / latency_count)
+            : std::chrono::milliseconds(0);
 
     return stats;
 }
@@ -406,11 +407,9 @@ DiameterSession DiameterSessionManager::createSession(std::shared_ptr<DiameterMe
     return session;
 }
 
-void DiameterSessionManager::updateSession(
-    DiameterSession& session,
-    std::shared_ptr<DiameterMessage> msg,
-    std::chrono::system_clock::time_point timestamp
-) {
+void DiameterSessionManager::updateSession(DiameterSession& session,
+                                           std::shared_ptr<DiameterMessage> msg,
+                                           std::chrono::system_clock::time_point timestamp) {
     // Update session fields if not set
     if (session.origin_host.empty() && msg->origin_host.has_value()) {
         session.origin_host = msg->origin_host.value();
@@ -431,7 +430,8 @@ void DiameterSessionManager::updateSession(
     }
 
     // Check for session termination
-    if (msg->header.command_code == static_cast<uint32_t>(DiameterCommandCode::SESSION_TERMINATION) ||
+    if (msg->header.command_code ==
+            static_cast<uint32_t>(DiameterCommandCode::SESSION_TERMINATION) ||
         msg->header.command_code == static_cast<uint32_t>(DiameterCommandCode::ABORT_SESSION) ||
         msg->header.command_code == static_cast<uint32_t>(DiameterCommandCode::DISCONNECT_PEER)) {
         if (!msg->header.request) {  // Answer
@@ -440,7 +440,8 @@ void DiameterSessionManager::updateSession(
     }
 }
 
-std::optional<std::string> DiameterSessionManager::findRequestByHopByHop(uint32_t hop_by_hop_id) const {
+std::optional<std::string> DiameterSessionManager::findRequestByHopByHop(
+    uint32_t hop_by_hop_id) const {
     auto it = hop_to_session_.find(hop_by_hop_id);
     if (it != hop_to_session_.end()) {
         return it->second;
@@ -448,7 +449,8 @@ std::optional<std::string> DiameterSessionManager::findRequestByHopByHop(uint32_
     return std::nullopt;
 }
 
-void DiameterSessionManager::extractSubscriberInfo(DiameterSession& session, std::shared_ptr<DiameterMessage> msg) {
+void DiameterSessionManager::extractSubscriberInfo(DiameterSession& session,
+                                                   std::shared_ptr<DiameterMessage> msg) {
     // Look for IMSI and MSISDN in User-Name AVP (common in 3GPP)
     if (msg->session_id.has_value()) {
         const std::string& sid = msg->session_id.value();
@@ -470,7 +472,8 @@ void DiameterSessionManager::extractSubscriberInfo(DiameterSession& session, std
     if (user_name_avp && !session.imsi.has_value()) {
         std::string user_name = user_name_avp->getDataAsString();
         // IMSI format: digits only, 15 digits
-        if (user_name.length() == 15 && user_name.find_first_not_of("0123456789") == std::string::npos) {
+        if (user_name.length() == 15 &&
+            user_name.find_first_not_of("0123456789") == std::string::npos) {
             session.imsi = user_name;
         }
     }

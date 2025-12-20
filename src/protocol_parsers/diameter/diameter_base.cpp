@@ -1,7 +1,18 @@
 #include "protocol_parsers/diameter/diameter_base.h"
-#include "protocol_parsers/diameter/diameter_types.h"
-#include <cstring>
+
 #include <arpa/inet.h>
+
+#include <cstring>
+
+#include "protocol_parsers/diameter/diameter_types.h"
+
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define be64toh(x) OSSwapBigToHostInt64(x)
+#define htobe64(x) OSSwapHostToBigInt64(x)
+#else
+#include <endian.h>
+#endif
 
 namespace callflow {
 namespace diameter {
@@ -26,12 +37,10 @@ nlohmann::json DiameterHeader::toJson() const {
     nlohmann::json j;
     j["version"] = version;
     j["message_length"] = message_length;
-    j["flags"] = {
-        {"request", request},
-        {"proxyable", proxyable},
-        {"error", error},
-        {"potentially_retransmitted", potentially_retransmitted}
-    };
+    j["flags"] = {{"request", request},
+                  {"proxyable", proxyable},
+                  {"error", error},
+                  {"potentially_retransmitted", potentially_retransmitted}};
     j["command_code"] = command_code;
     j["command_name"] = getCommandName();
     j["application_id"] = application_id;
@@ -50,21 +59,14 @@ std::string DiameterHeader::getCommandName() const {
 // ============================================================================
 
 DiameterAVP::DiameterAVP()
-    : code(0),
-      vendor_specific(false),
-      mandatory(false),
-      protected_(false),
-      length(0) {}
+    : code(0), vendor_specific(false), mandatory(false), protected_(false), length(0) {}
 
 nlohmann::json DiameterAVP::toJson() const {
     nlohmann::json j;
     j["code"] = code;
     j["name"] = getAVPName();
     j["flags"] = {
-        {"vendor_specific", vendor_specific},
-        {"mandatory", mandatory},
-        {"protected", protected_}
-    };
+        {"vendor_specific", vendor_specific}, {"mandatory", mandatory}, {"protected", protected_}};
     j["length"] = length;
 
     if (vendor_id.has_value()) {
@@ -113,7 +115,8 @@ std::string DiameterAVP::getDataAsString() const {
 
     // Check if data is printable ASCII/UTF-8
     for (auto byte : data) {
-        if (byte == 0) break;  // Null terminator
+        if (byte == 0)
+            break;  // Null terminator
         if (byte < 0x20 && byte != 0x09 && byte != 0x0A && byte != 0x0D) {
             return "";  // Non-printable character
         }
@@ -176,26 +179,40 @@ std::optional<std::vector<std::shared_ptr<DiameterAVP>>> DiameterAVP::getGrouped
 std::string DiameterAVP::getAVPName() const {
     // Map common AVP codes to names
     switch (static_cast<DiameterAVPCode>(code)) {
-        case DiameterAVPCode::SESSION_ID: return "Session-Id";
-        case DiameterAVPCode::ORIGIN_HOST: return "Origin-Host";
-        case DiameterAVPCode::ORIGIN_REALM: return "Origin-Realm";
-        case DiameterAVPCode::DESTINATION_HOST: return "Destination-Host";
-        case DiameterAVPCode::DESTINATION_REALM: return "Destination-Realm";
-        case DiameterAVPCode::RESULT_CODE: return "Result-Code";
-        case DiameterAVPCode::USER_NAME: return "User-Name";
-        case DiameterAVPCode::AUTH_APPLICATION_ID: return "Auth-Application-Id";
-        case DiameterAVPCode::ACCT_APPLICATION_ID: return "Acct-Application-Id";
-        case DiameterAVPCode::VENDOR_ID: return "Vendor-Id";
-        case DiameterAVPCode::PRODUCT_NAME: return "Product-Name";
-        case DiameterAVPCode::FIRMWARE_REVISION: return "Firmware-Revision";
-        case DiameterAVPCode::HOST_IP_ADDRESS: return "Host-IP-Address";
+        case DiameterAVPCode::SESSION_ID:
+            return "Session-Id";
+        case DiameterAVPCode::ORIGIN_HOST:
+            return "Origin-Host";
+        case DiameterAVPCode::ORIGIN_REALM:
+            return "Origin-Realm";
+        case DiameterAVPCode::DESTINATION_HOST:
+            return "Destination-Host";
+        case DiameterAVPCode::DESTINATION_REALM:
+            return "Destination-Realm";
+        case DiameterAVPCode::RESULT_CODE:
+            return "Result-Code";
+        case DiameterAVPCode::USER_NAME:
+            return "User-Name";
+        case DiameterAVPCode::AUTH_APPLICATION_ID:
+            return "Auth-Application-Id";
+        case DiameterAVPCode::ACCT_APPLICATION_ID:
+            return "Acct-Application-Id";
+        case DiameterAVPCode::VENDOR_ID:
+            return "Vendor-Id";
+        case DiameterAVPCode::PRODUCT_NAME:
+            return "Product-Name";
+        case DiameterAVPCode::FIRMWARE_REVISION:
+            return "Firmware-Revision";
+        case DiameterAVPCode::HOST_IP_ADDRESS:
+            return "Host-IP-Address";
         default:
             return "AVP-" + std::to_string(code);
     }
 }
 
 size_t DiameterAVP::getDataLength() const {
-    size_t header_size = vendor_specific ? DIAMETER_AVP_HEADER_VENDOR_SIZE : DIAMETER_AVP_HEADER_MIN_SIZE;
+    size_t header_size =
+        vendor_specific ? DIAMETER_AVP_HEADER_VENDOR_SIZE : DIAMETER_AVP_HEADER_MIN_SIZE;
     return length > header_size ? (length - header_size) : 0;
 }
 
@@ -233,7 +250,7 @@ nlohmann::json DiameterMessage::toJson() const {
     }
     if (result_code.has_value()) {
         j["result_code"] = result_code.value();
-        j["result_code_name"] = getResultCodeName(result_code.value());
+        j["result_code_name"] = ::callflow::diameter::getResultCodeName(result_code.value());
         j["result_category"] = getResultCodeCategory(result_code.value());
     }
     if (auth_application_id.has_value()) {
@@ -292,7 +309,8 @@ std::vector<std::shared_ptr<DiameterAVP>> DiameterMessage::findAllAVPs(uint32_t 
 
 std::shared_ptr<DiameterAVP> DiameterMessage::findAVP(uint32_t code, uint32_t vendor_id) const {
     for (const auto& avp : avps) {
-        if (avp && avp->code == code && avp->vendor_id.has_value() && avp->vendor_id.value() == vendor_id) {
+        if (avp && avp->code == code && avp->vendor_id.has_value() &&
+            avp->vendor_id.value() == vendor_id) {
             return avp;
         }
     }
@@ -305,7 +323,8 @@ DiameterInterface DiameterMessage::getInterface() const {
 
 void DiameterMessage::extractCommonFields() {
     for (const auto& avp : avps) {
-        if (!avp) continue;
+        if (!avp)
+            continue;
 
         switch (static_cast<DiameterAVPCode>(avp->code)) {
             case DiameterAVPCode::SESSION_ID:
