@@ -8,7 +8,6 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
     git \
-
     libpcap-dev \
     libsqlite3-dev \
     libssl-dev \

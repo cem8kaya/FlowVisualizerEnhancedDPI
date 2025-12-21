@@ -1,9 +1,12 @@
 #include "protocol_parsers/gtpv1_parser.h"
-#include "common/logger.h"
-#include <cstring>
+
 #include <arpa/inet.h>
-#include <sstream>
+
+#include <cstring>
 #include <iomanip>
+#include <sstream>
+
+#include "common/logger.h"
 
 namespace callflow {
 
@@ -32,21 +35,34 @@ nlohmann::json GtpV1ExtensionHeader::toJson() const {
 
 std::string GtpV1ExtensionHeader::getTypeName() const {
     switch (type) {
-        case GtpV1ExtensionType::NO_MORE_EXTENSION_HEADERS: return "No-More-Extensions";
-        case GtpV1ExtensionType::MBMS_SUPPORT_INDICATION: return "MBMS-Support-Indication";
+        case GtpV1ExtensionType::NO_MORE_EXTENSION_HEADERS:
+            return "No-More-Extensions";
+        case GtpV1ExtensionType::MBMS_SUPPORT_INDICATION:
+            return "MBMS-Support-Indication";
         case GtpV1ExtensionType::MS_INFO_CHANGE_REPORTING_SUPPORT_INDICATION:
             return "MS-Info-Change-Reporting-Support";
-        case GtpV1ExtensionType::SERVICE_CLASS_INDICATOR: return "Service-Class-Indicator";
-        case GtpV1ExtensionType::UDP_PORT: return "UDP-Port";
-        case GtpV1ExtensionType::RAN_CONTAINER: return "RAN-Container";
-        case GtpV1ExtensionType::LONG_PDCP_PDU_NUMBER: return "Long-PDCP-PDU-Number";
-        case GtpV1ExtensionType::XW_RAN_CONTAINER: return "XW-RAN-Container";
-        case GtpV1ExtensionType::NR_RAN_CONTAINER: return "NR-RAN-Container";
-        case GtpV1ExtensionType::PDU_SESSION_CONTAINER: return "PDU-Session-Container";
-        case GtpV1ExtensionType::PDCP_PDU_NUMBER: return "PDCP-PDU-Number";
-        case GtpV1ExtensionType::SUSPEND_REQUEST: return "Suspend-Request";
-        case GtpV1ExtensionType::SUSPEND_RESPONSE: return "Suspend-Response";
-        default: return "Unknown-Extension-" + std::to_string(static_cast<uint8_t>(type));
+        case GtpV1ExtensionType::SERVICE_CLASS_INDICATOR:
+            return "Service-Class-Indicator";
+        case GtpV1ExtensionType::UDP_PORT:
+            return "UDP-Port";
+        case GtpV1ExtensionType::RAN_CONTAINER:
+            return "RAN-Container";
+        case GtpV1ExtensionType::LONG_PDCP_PDU_NUMBER:
+            return "Long-PDCP-PDU-Number";
+        case GtpV1ExtensionType::XW_RAN_CONTAINER:
+            return "XW-RAN-Container";
+        case GtpV1ExtensionType::NR_RAN_CONTAINER:
+            return "NR-RAN-Container";
+        case GtpV1ExtensionType::PDU_SESSION_CONTAINER:
+            return "PDU-Session-Container";
+        case GtpV1ExtensionType::PDCP_PDU_NUMBER:
+            return "PDCP-PDU-Number";
+        case GtpV1ExtensionType::SUSPEND_REQUEST:
+            return "Suspend-Request";
+        case GtpV1ExtensionType::SUSPEND_RESPONSE:
+            return "Suspend-Response";
+        default:
+            return "Unknown-Extension-" + std::to_string(static_cast<uint8_t>(type));
     }
 }
 
@@ -77,12 +93,18 @@ nlohmann::json EncapsulatedPacket::toJson() const {
 
 std::string EncapsulatedPacket::getProtocolName() const {
     switch (protocol) {
-        case 1: return "ICMP";
-        case 6: return "TCP";
-        case 17: return "UDP";
-        case 58: return "ICMPv6";
-        case 132: return "SCTP";
-        default: return "Unknown-" + std::to_string(protocol);
+        case 1:
+            return "ICMP";
+        case 6:
+            return "TCP";
+        case 17:
+            return "UDP";
+        case 58:
+            return "ICMPv6";
+        case 132:
+            return "SCTP";
+        default:
+            return "Unknown-" + std::to_string(protocol);
     }
 }
 
@@ -156,36 +178,66 @@ std::string GtpV1InformationElement::getDataAsString() const {
 
 std::string GtpV1InformationElement::getTypeName() const {
     switch (static_cast<GtpV1IeType>(type)) {
-        case GtpV1IeType::CAUSE: return "Cause";
-        case GtpV1IeType::IMSI: return "IMSI";
-        case GtpV1IeType::RAI: return "RAI";
-        case GtpV1IeType::TLLI: return "TLLI";
-        case GtpV1IeType::P_TMSI: return "P-TMSI";
-        case GtpV1IeType::QOS_PROFILE: return "QoS-Profile";
-        case GtpV1IeType::RECOVERY: return "Recovery";
-        case GtpV1IeType::SELECTION_MODE: return "Selection-Mode";
-        case GtpV1IeType::TEID_DATA_I: return "TEID-Data-I";
-        case GtpV1IeType::TEID_CONTROL_PLANE: return "TEID-Control-Plane";
-        case GtpV1IeType::TEID_DATA_II: return "TEID-Data-II";
-        case GtpV1IeType::TEARDOWN_IND: return "Teardown-Ind";
-        case GtpV1IeType::NSAPI: return "NSAPI";
-        case GtpV1IeType::CHARGING_ID: return "Charging-ID";
-        case GtpV1IeType::END_USER_ADDRESS: return "End-User-Address";
-        case GtpV1IeType::MM_CONTEXT: return "MM-Context";
-        case GtpV1IeType::PDP_CONTEXT: return "PDP-Context";
-        case GtpV1IeType::APN: return "APN";
-        case GtpV1IeType::PROTOCOL_CONFIG_OPTIONS: return "Protocol-Config-Options";
-        case GtpV1IeType::GSN_ADDRESS: return "GSN-Address";
-        case GtpV1IeType::MSISDN: return "MSISDN";
-        case GtpV1IeType::QOS: return "QoS";
-        case GtpV1IeType::TRAFFIC_FLOW_TEMPLATE: return "Traffic-Flow-Template";
-        case GtpV1IeType::RAT_TYPE: return "RAT-Type";
-        case GtpV1IeType::USER_LOCATION_INFO: return "User-Location-Info";
-        case GtpV1IeType::MS_TIME_ZONE: return "MS-Time-Zone";
-        case GtpV1IeType::IMEI_SV: return "IMEI-SV";
-        case GtpV1IeType::CHARGING_GATEWAY_ADDRESS: return "Charging-Gateway-Address";
-        case GtpV1IeType::PRIVATE_EXTENSION: return "Private-Extension";
-        default: return "Unknown-" + std::to_string(type);
+        case GtpV1IeType::CAUSE:
+            return "Cause";
+        case GtpV1IeType::IMSI:
+            return "IMSI";
+        case GtpV1IeType::RAI:
+            return "RAI";
+        case GtpV1IeType::TLLI:
+            return "TLLI";
+        case GtpV1IeType::P_TMSI:
+            return "P-TMSI";
+        case GtpV1IeType::QOS_PROFILE:
+            return "QoS-Profile";
+        case GtpV1IeType::RECOVERY:
+            return "Recovery";
+        case GtpV1IeType::SELECTION_MODE:
+            return "Selection-Mode";
+        case GtpV1IeType::TEID_DATA_I:
+            return "TEID-Data-I";
+        case GtpV1IeType::TEID_CONTROL_PLANE:
+            return "TEID-Control-Plane";
+        case GtpV1IeType::TEID_DATA_II:
+            return "TEID-Data-II";
+        case GtpV1IeType::TEARDOWN_IND:
+            return "Teardown-Ind";
+        case GtpV1IeType::NSAPI:
+            return "NSAPI";
+        case GtpV1IeType::CHARGING_ID:
+            return "Charging-ID";
+        case GtpV1IeType::END_USER_ADDRESS:
+            return "End-User-Address";
+        case GtpV1IeType::MM_CONTEXT:
+            return "MM-Context";
+        case GtpV1IeType::PDP_CONTEXT:
+            return "PDP-Context";
+        case GtpV1IeType::APN:
+            return "APN";
+        case GtpV1IeType::PROTOCOL_CONFIG_OPTIONS:
+            return "Protocol-Config-Options";
+        case GtpV1IeType::GSN_ADDRESS:
+            return "GSN-Address";
+        case GtpV1IeType::MSISDN:
+            return "MSISDN";
+        case GtpV1IeType::QOS:
+            return "QoS";
+        case GtpV1IeType::TRAFFIC_FLOW_TEMPLATE:
+            return "Traffic-Flow-Template";
+        case GtpV1IeType::RAT_TYPE:
+            return "RAT-Type";
+        case GtpV1IeType::USER_LOCATION_INFO:
+            return "User-Location-Info";
+        case GtpV1IeType::MS_TIME_ZONE:
+            return "MS-Time-Zone";
+        case GtpV1IeType::IMEI_SV:
+            return "IMEI-SV";
+        case GtpV1IeType::CHARGING_GATEWAY_ADDRESS:
+            return "Charging-Gateway-Address";
+        case GtpV1IeType::PRIVATE_EXTENSION:
+            return "Private-Extension";
+        default:
+            return "Unknown-" + std::to_string(type);
     }
 }
 
@@ -287,21 +339,36 @@ MessageType GtpV1Message::getMessageType() const {
 
 std::string GtpV1Message::getMessageTypeName() const {
     switch (static_cast<GtpV1MessageType>(header.message_type)) {
-        case GtpV1MessageType::ECHO_REQUEST: return "Echo-Request";
-        case GtpV1MessageType::ECHO_RESPONSE: return "Echo-Response";
-        case GtpV1MessageType::VERSION_NOT_SUPPORTED: return "Version-Not-Supported";
-        case GtpV1MessageType::CREATE_PDP_CONTEXT_REQUEST: return "Create-PDP-Context-Request";
-        case GtpV1MessageType::CREATE_PDP_CONTEXT_RESPONSE: return "Create-PDP-Context-Response";
-        case GtpV1MessageType::UPDATE_PDP_CONTEXT_REQUEST: return "Update-PDP-Context-Request";
-        case GtpV1MessageType::UPDATE_PDP_CONTEXT_RESPONSE: return "Update-PDP-Context-Response";
-        case GtpV1MessageType::DELETE_PDP_CONTEXT_REQUEST: return "Delete-PDP-Context-Request";
-        case GtpV1MessageType::DELETE_PDP_CONTEXT_RESPONSE: return "Delete-PDP-Context-Response";
-        case GtpV1MessageType::ERROR_INDICATION: return "Error-Indication";
-        case GtpV1MessageType::PDU_NOTIFICATION_REQUEST: return "PDU-Notification-Request";
-        case GtpV1MessageType::PDU_NOTIFICATION_RESPONSE: return "PDU-Notification-Response";
-        case GtpV1MessageType::G_PDU: return "G-PDU";
-        case GtpV1MessageType::END_MARKER: return "End-Marker";
-        default: return "Unknown-" + std::to_string(header.message_type);
+        case GtpV1MessageType::ECHO_REQUEST:
+            return "Echo-Request";
+        case GtpV1MessageType::ECHO_RESPONSE:
+            return "Echo-Response";
+        case GtpV1MessageType::VERSION_NOT_SUPPORTED:
+            return "Version-Not-Supported";
+        case GtpV1MessageType::CREATE_PDP_CONTEXT_REQUEST:
+            return "Create-PDP-Context-Request";
+        case GtpV1MessageType::CREATE_PDP_CONTEXT_RESPONSE:
+            return "Create-PDP-Context-Response";
+        case GtpV1MessageType::UPDATE_PDP_CONTEXT_REQUEST:
+            return "Update-PDP-Context-Request";
+        case GtpV1MessageType::UPDATE_PDP_CONTEXT_RESPONSE:
+            return "Update-PDP-Context-Response";
+        case GtpV1MessageType::DELETE_PDP_CONTEXT_REQUEST:
+            return "Delete-PDP-Context-Request";
+        case GtpV1MessageType::DELETE_PDP_CONTEXT_RESPONSE:
+            return "Delete-PDP-Context-Response";
+        case GtpV1MessageType::ERROR_INDICATION:
+            return "Error-Indication";
+        case GtpV1MessageType::PDU_NOTIFICATION_REQUEST:
+            return "PDU-Notification-Request";
+        case GtpV1MessageType::PDU_NOTIFICATION_RESPONSE:
+            return "PDU-Notification-Response";
+        case GtpV1MessageType::G_PDU:
+            return "G-PDU";
+        case GtpV1MessageType::END_MARKER:
+            return "End-Marker";
+        default:
+            return "Unknown-" + std::to_string(header.message_type);
     }
 }
 
@@ -338,9 +405,9 @@ bool GtpV1Parser::isGtpV1(const uint8_t* data, size_t len) {
     msg_len = ntohs(msg_len);
 
     // Message length should be reasonable
-    if (msg_len > 65535) {
-        return false;
-    }
+    // Message length should be reasonable
+    // Note: msg_len is uint16_t, so it cannot exceed 65535.
+    // The check (msg_len > 65535) was redundant and caused a compiler warning.
 
     return true;
 }
@@ -404,8 +471,8 @@ std::optional<GtpV1Message> GtpV1Parser::parse(const uint8_t* data, size_t len) 
             if (parseEncapsulatedPacket(data, total_len, offset, encap)) {
                 msg.encapsulated = encap;
                 LOG_DEBUG("Parsed GTPv1 G-PDU with encapsulated "
-                         << (encap.is_ipv4 ? "IPv4" : "IPv6")
-                         << " packet: " << encap.src_ip << " -> " << encap.dst_ip);
+                          << (encap.is_ipv4 ? "IPv4" : "IPv6") << " packet: " << encap.src_ip
+                          << " -> " << encap.dst_ip);
             } else {
                 LOG_DEBUG("Failed to parse encapsulated packet (may not be IP)");
             }
@@ -423,8 +490,8 @@ std::optional<GtpV1Message> GtpV1Parser::parse(const uint8_t* data, size_t len) 
     // Extract common fields
     extractCommonFields(msg);
 
-    LOG_DEBUG("Parsed GTPv1 message: " << msg.getMessageTypeName()
-              << " with " << msg.ies.size() << " IEs");
+    LOG_DEBUG("Parsed GTPv1 message: " << msg.getMessageTypeName() << " with " << msg.ies.size()
+                                       << " IEs");
 
     return msg;
 }
@@ -438,11 +505,11 @@ std::optional<GtpV1Header> GtpV1Parser::parseHeader(const uint8_t* data, size_t 
 
     // Byte 0: Flags
     uint8_t flags = data[0];
-    header.version = (flags >> 5) & 0x07;                  // Version (bits 5-7)
-    header.protocol_type = (flags >> 4) & 0x01;            // PT flag (bit 4)
-    header.extension_header = (flags & 0x04) != 0;         // E flag (bit 2)
-    header.sequence_number_flag = (flags & 0x02) != 0;     // S flag (bit 1)
-    header.n_pdu_number_flag = (flags & 0x01) != 0;        // PN flag (bit 0)
+    header.version = (flags >> 5) & 0x07;               // Version (bits 5-7)
+    header.protocol_type = (flags >> 4) & 0x01;         // PT flag (bit 4)
+    header.extension_header = (flags & 0x04) != 0;      // E flag (bit 2)
+    header.sequence_number_flag = (flags & 0x02) != 0;  // S flag (bit 1)
+    header.n_pdu_number_flag = (flags & 0x01) != 0;     // PN flag (bit 0)
 
     // Byte 1: Message Type
     header.message_type = data[1];
@@ -503,8 +570,8 @@ std::optional<GtpV1InformationElement> GtpV1Parser::parseIe(const uint8_t* data,
     // Get IE length based on type
     auto ie_len_opt = getIeLength(ie_type, data, len, offset);
     if (!ie_len_opt.has_value()) {
-        LOG_DEBUG("Failed to get IE length for type " << static_cast<int>(ie_type)
-                  << " at offset " << offset);
+        LOG_DEBUG("Failed to get IE length for type " << static_cast<int>(ie_type) << " at offset "
+                                                      << offset);
         return std::nullopt;
     }
 
@@ -512,8 +579,8 @@ std::optional<GtpV1InformationElement> GtpV1Parser::parseIe(const uint8_t* data,
 
     // Check if we have enough data
     if (offset + ie_len > len) {
-        LOG_DEBUG("Not enough data for IE at offset " << offset
-                  << ": need " << ie_len << " bytes, have " << (len - offset));
+        LOG_DEBUG("Not enough data for IE at offset " << offset << ": need " << ie_len
+                                                      << " bytes, have " << (len - offset));
         return std::nullopt;
     }
 
@@ -686,18 +753,15 @@ std::string GtpV1Parser::decodeGsnAddress(const std::vector<uint8_t>& data) {
 
     if (data.size() == 4) {
         // IPv4 address
-        oss << static_cast<int>(data[0]) << "."
-            << static_cast<int>(data[1]) << "."
-            << static_cast<int>(data[2]) << "."
-            << static_cast<int>(data[3]);
+        oss << static_cast<int>(data[0]) << "." << static_cast<int>(data[1]) << "."
+            << static_cast<int>(data[2]) << "." << static_cast<int>(data[3]);
     } else if (data.size() == 16) {
         // IPv6 address
         for (size_t i = 0; i < 16; i += 2) {
             if (i > 0) {
                 oss << ":";
             }
-            oss << std::hex << std::setfill('0') << std::setw(2)
-                << static_cast<int>(data[i])
+            oss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(data[i])
                 << std::setw(2) << static_cast<int>(data[i + 1]);
         }
     } else {
@@ -708,8 +772,8 @@ std::string GtpV1Parser::decodeGsnAddress(const std::vector<uint8_t>& data) {
     return oss.str();
 }
 
-std::optional<size_t> GtpV1Parser::getIeLength(uint8_t type, const uint8_t* data,
-                                               size_t len, size_t offset) {
+std::optional<size_t> GtpV1Parser::getIeLength(uint8_t type, const uint8_t* data, size_t len,
+                                               size_t offset) {
     auto ie_type = static_cast<GtpV1IeType>(type);
 
     // Fixed-length IEs (Type-Value)
@@ -784,8 +848,8 @@ std::optional<size_t> GtpV1Parser::getIeLength(uint8_t type, const uint8_t* data
 }
 
 bool GtpV1Parser::parseExtensionHeaders(const uint8_t* data, size_t len, size_t& offset,
-                                         uint8_t first_ext_type,
-                                         std::vector<GtpV1ExtensionHeader>& ext_headers) {
+                                        uint8_t first_ext_type,
+                                        std::vector<GtpV1ExtensionHeader>& ext_headers) {
     uint8_t next_type = first_ext_type;
 
     // Extension headers form a chain, each pointing to the next
@@ -833,7 +897,7 @@ bool GtpV1Parser::parseExtensionHeaders(const uint8_t* data, size_t len, size_t&
 }
 
 bool GtpV1Parser::parseEncapsulatedPacket(const uint8_t* data, size_t len, size_t offset,
-                                           EncapsulatedPacket& encap) {
+                                          EncapsulatedPacket& encap) {
     if (offset + 20 > len) {  // Minimum IP header size
         return false;
     }
