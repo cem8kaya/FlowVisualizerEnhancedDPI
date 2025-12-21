@@ -103,6 +103,7 @@ target_link_libraries(asn1_wrapper PUBLIC
 # Protocol parsers library
 add_library(protocol_parsers STATIC
     protocol_parsers/sip_parser.cpp
+    protocol_parsers/sip_3gpp_parser.cpp
     protocol_parsers/rtp_parser.cpp
     protocol_parsers/gtp_parser.cpp
     protocol_parsers/gtpv1_parser.cpp

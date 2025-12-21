@@ -272,4 +272,42 @@ set_tests_properties(test_gtp_teid_manager PROPERTIES
     LABELS "unit"
 )
 
+# SIP 3GPP Headers Tests
+add_executable(test_sip_3gpp_headers
+    unit/test_sip_3gpp_headers.cpp
+)
+
+target_link_libraries(test_sip_3gpp_headers PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_sip_3gpp_headers COMMAND test_sip_3gpp_headers)
+
+set_tests_properties(test_sip_3gpp_headers PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# SIP VoLTE/VoNR Integration Tests
+add_executable(test_sip_volte_vonr
+    unit/test_sip_volte_vonr.cpp
+)
+
+target_link_libraries(test_sip_volte_vonr PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_sip_volte_vonr COMMAND test_sip_volte_vonr)
+
+set_tests_properties(test_sip_volte_vonr PROPERTIES
+    TIMEOUT 30
+    LABELS "integration"
+)
+
 message(STATUS "Unit tests configured successfully")
