@@ -215,4 +215,61 @@ set_tests_properties(test_diameter_sh PROPERTIES
     LABELS "unit"
 )
 
+# GTPv2 IE Parser Tests
+add_executable(test_gtpv2_ie_parser
+    unit/test_gtpv2_ie_parser.cpp
+)
+
+target_link_libraries(test_gtpv2_ie_parser PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gtpv2_ie_parser COMMAND test_gtpv2_ie_parser)
+
+set_tests_properties(test_gtpv2_ie_parser PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# GTPv2 Bearer Context Tests
+add_executable(test_gtpv2_bearer_context
+    unit/test_gtpv2_bearer_context.cpp
+)
+
+target_link_libraries(test_gtpv2_bearer_context PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gtpv2_bearer_context COMMAND test_gtpv2_bearer_context)
+
+set_tests_properties(test_gtpv2_bearer_context PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# GTP TEID Manager Tests
+add_executable(test_gtp_teid_manager
+    unit/test_gtp_teid_manager.cpp
+)
+
+target_link_libraries(test_gtp_teid_manager PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gtp_teid_manager COMMAND test_gtp_teid_manager)
+
+set_tests_properties(test_gtp_teid_manager PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
