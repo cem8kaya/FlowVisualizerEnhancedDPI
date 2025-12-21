@@ -106,6 +106,9 @@ add_library(protocol_parsers STATIC
     protocol_parsers/rtp_parser.cpp
     protocol_parsers/gtp_parser.cpp
     protocol_parsers/gtpv1_parser.cpp
+    protocol_parsers/gtp/gtpv2_types.cpp
+    protocol_parsers/gtp/gtpv2_ie_parser.cpp
+    protocol_parsers/gtp/gtp_teid_manager.cpp
     protocol_parsers/pfcp_parser.cpp
     protocol_parsers/diameter_parser.cpp
     protocol_parsers/diameter_s6a_parser.cpp
