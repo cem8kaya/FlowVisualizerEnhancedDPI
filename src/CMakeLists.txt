@@ -41,7 +41,22 @@ target_link_libraries(session_correlation PUBLIC
     callflow_common
 )
 
-
+# Procedure state machines library
+add_library(procedure_correlation STATIC
+    correlation/procedure_state_machine.cpp
+    correlation/lte_attach_machine.cpp
+    correlation/x2_handover_machine.cpp
+    correlation/volte_call_machine.cpp
+    correlation/fiveg_registration_machine.cpp
+    correlation/procedure_detector.cpp
+)
+target_include_directories(procedure_correlation PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(procedure_correlation PUBLIC
+    callflow_common
+    session_correlation
+)
 
 
 # nDPI engine wrapper
@@ -254,6 +269,7 @@ target_link_libraries(callflowd PRIVATE
     protocol_parsers
     event_extractor
     session_correlation
+    procedure_correlation
 )
 
 if(NOT NEED_NDPI_BUILD)
