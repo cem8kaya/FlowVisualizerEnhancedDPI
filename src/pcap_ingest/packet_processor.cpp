@@ -10,6 +10,7 @@
 #include "common/utils.h"
 #include "protocol_parsers/diameter_parser.h"
 #include "protocol_parsers/gtp_parser.h"
+#include "protocol_parsers/gtpv1_parser.h"
 #include "protocol_parsers/nas5g_parser.h"
 #include "protocol_parsers/ngap_parser.h"
 #include "protocol_parsers/pfcp_parser.h"
@@ -241,9 +242,21 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
         }
     }
 
-    // GTP-U (UDP 2152) -> Tunnels.
-    // Inner packet parsing is needed for GTP-U (Recursive?)
-    // Existing logic just identified GTP-U but didn't parse inner fully/recursively in `main.cpp`.
+    // GTP-U (UDP 2152) - User plane tunneling (GTPv1)
+    if (metadata.five_tuple.protocol == IPPROTO_UDP &&
+        (metadata.five_tuple.src_port == 2152 || metadata.five_tuple.dst_port == 2152)) {
+        GtpV1Parser parser;
+        auto msg = parser.parse(payload.data(), payload.size());
+        if (msg.has_value()) {
+            // Process the GTP-U packet
+            correlator_.processPacket(metadata, ProtocolType::GTP_U, msg->toJson());
+
+            // If there's an encapsulated packet, we could recursively process it
+            // For now, the encapsulated packet info is included in the JSON
+            // TODO: Consider recursive processing of inner packet for deeper analysis
+            return;
+        }
+    }
 
     // Diameter (TCP/UDP 3868)
     if (metadata.five_tuple.src_port == 3868 || metadata.five_tuple.dst_port == 3868) {

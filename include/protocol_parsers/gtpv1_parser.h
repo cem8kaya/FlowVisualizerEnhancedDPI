@@ -83,6 +83,55 @@ enum class GtpV1MessageType : uint8_t {
 };
 
 /**
+ * GTPv1 Extension Header types (3GPP TS 29.281)
+ */
+enum class GtpV1ExtensionType : uint8_t {
+    NO_MORE_EXTENSION_HEADERS = 0x00,
+    MBMS_SUPPORT_INDICATION = 0x01,
+    MS_INFO_CHANGE_REPORTING_SUPPORT_INDICATION = 0x02,
+    SERVICE_CLASS_INDICATOR = 0x20,
+    UDP_PORT = 0x40,
+    RAN_CONTAINER = 0x81,
+    LONG_PDCP_PDU_NUMBER = 0x82,
+    XW_RAN_CONTAINER = 0x83,
+    NR_RAN_CONTAINER = 0x84,
+    PDU_SESSION_CONTAINER = 0x85,
+    PDCP_PDU_NUMBER = 0xC0,
+    SUSPEND_REQUEST = 0xC1,
+    SUSPEND_RESPONSE = 0xC2
+};
+
+/**
+ * GTPv1 Extension Header structure
+ */
+struct GtpV1ExtensionHeader {
+    GtpV1ExtensionType type;
+    uint8_t length;  // In 4-byte units
+    std::vector<uint8_t> content;
+    std::optional<uint8_t> next_extension_header_type;
+
+    nlohmann::json toJson() const;
+    std::string getTypeName() const;
+};
+
+/**
+ * Encapsulated packet information (for G-PDU)
+ */
+struct EncapsulatedPacket {
+    bool is_ipv4;
+    std::string src_ip;
+    std::string dst_ip;
+    uint8_t protocol;  // TCP=6, UDP=17, ICMP=1
+    std::optional<uint16_t> src_port;
+    std::optional<uint16_t> dst_port;
+    size_t payload_offset;  // Offset to payload in original data
+    size_t payload_length;
+
+    nlohmann::json toJson() const;
+    std::string getProtocolName() const;
+};
+
+/**
  * GTPv1 Information Element types (3GPP TS 29.060)
  */
 enum class GtpV1IeType : uint8_t {
@@ -265,8 +314,9 @@ struct GtpV1InformationElement {
 struct GtpV1Message {
     GtpV1Header header;
     std::vector<GtpV1InformationElement> ies;
+    std::vector<GtpV1ExtensionHeader> extension_headers;
 
-    // Common extracted fields
+    // Common extracted fields (for control plane messages)
     std::optional<std::string> imsi;
     std::optional<std::string> apn;
     std::optional<std::string> msisdn;
@@ -276,6 +326,10 @@ struct GtpV1Message {
     std::optional<uint8_t> nsapi;
     std::vector<uint8_t> qos_profile;
     std::optional<std::string> gsn_address;
+
+    // User plane data (for G-PDU messages)
+    std::vector<uint8_t> user_data;  // Raw encapsulated payload
+    std::optional<EncapsulatedPacket> encapsulated;  // Parsed inner packet
 
     nlohmann::json toJson() const;
 
@@ -364,6 +418,19 @@ private:
      */
     static std::optional<size_t> getIeLength(uint8_t type, const uint8_t* data,
                                              size_t len, size_t offset);
+
+    /**
+     * Parse extension header chain
+     */
+    bool parseExtensionHeaders(const uint8_t* data, size_t len, size_t& offset,
+                               uint8_t first_ext_type,
+                               std::vector<GtpV1ExtensionHeader>& ext_headers);
+
+    /**
+     * Parse encapsulated IP packet (for G-PDU)
+     */
+    bool parseEncapsulatedPacket(const uint8_t* data, size_t len, size_t offset,
+                                 EncapsulatedPacket& encap);
 };
 
 }  // namespace callflow
