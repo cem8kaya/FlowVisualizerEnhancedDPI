@@ -154,6 +154,7 @@ struct SessionMessageRef {
     SessionCorrelationKey correlation_key;  // Extracted correlation keys
     uint32_t sequence_in_session;           // Sequence number within session
     uint32_t payload_length;                // Length of payload (for byte counts)
+    nlohmann::json parsed_data;             // Parsed protocol data for state machines
 
     // 5-tuple info for UI display
     std::string src_ip;

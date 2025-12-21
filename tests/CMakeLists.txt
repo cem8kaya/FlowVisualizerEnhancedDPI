@@ -310,4 +310,24 @@ set_tests_properties(test_sip_volte_vonr PROPERTIES
     LABELS "integration"
 )
 
+# LTE Attach State Machine Tests
+add_executable(test_lte_attach_machine
+    unit/test_lte_attach_machine.cpp
+)
+
+target_link_libraries(test_lte_attach_machine PRIVATE
+    callflow_common
+    session_correlation
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_lte_attach_machine COMMAND test_lte_attach_machine)
+
+set_tests_properties(test_lte_attach_machine PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
