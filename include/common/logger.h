@@ -57,21 +57,21 @@ private:
 
 #define LOG_TRACE(...)                                                                            \
     LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
-                      LOG_STREAM)(callflow::LogLevel::TRACE, __VA_ARGS__)
+                      LOG_STREAM, DUMMY_ARG)(callflow::LogLevel::TRACE, __VA_ARGS__)
 #define LOG_DEBUG(...)                                                                            \
     LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
-                      LOG_STREAM)(callflow::LogLevel::DEBUG, __VA_ARGS__)
+                      LOG_STREAM, DUMMY_ARG)(callflow::LogLevel::DEBUG, __VA_ARGS__)
 #define LOG_INFO(...)                                                                             \
     LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
-                      LOG_STREAM)(callflow::LogLevel::INFO, __VA_ARGS__)
+                      LOG_STREAM, DUMMY_ARG)(callflow::LogLevel::INFO, __VA_ARGS__)
 #define LOG_WARN(...)                                                                             \
     LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
-                      LOG_STREAM)(callflow::LogLevel::WARN, __VA_ARGS__)
+                      LOG_STREAM, DUMMY_ARG)(callflow::LogLevel::WARN, __VA_ARGS__)
 #define LOG_ERROR(...)                                                                            \
     LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
-                      LOG_STREAM)(callflow::LogLevel::ERROR, __VA_ARGS__)
+                      LOG_STREAM, DUMMY_ARG)(callflow::LogLevel::ERROR, __VA_ARGS__)
 #define LOG_FATAL(...)                                                                            \
     LOG_MACRO_CHOOSER(__VA_ARGS__, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, LOG_FMT, \
-                      LOG_STREAM)(callflow::LogLevel::FATAL, __VA_ARGS__)
+                      LOG_STREAM, DUMMY_ARG)(callflow::LogLevel::FATAL, __VA_ARGS__)
 
 }  // namespace callflow

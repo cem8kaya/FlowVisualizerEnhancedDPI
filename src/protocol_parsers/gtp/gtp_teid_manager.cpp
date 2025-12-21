@@ -1,6 +1,8 @@
 #include "protocol_parsers/gtp/gtp_teid_manager.h"
-#include "common/logger.h"
+
 #include <chrono>
+
+#include "common/logger.h"
 
 namespace callflow {
 namespace gtp {
@@ -60,7 +62,7 @@ void GtpTEIDManager::registerTunnel(const GtpTunnel& tunnel) {
     }
 
     if (primary_teid == 0) {
-        LOG_WARNING("Cannot register tunnel with zero TEID");
+        LOG_WARN("Cannot register tunnel with zero TEID");
         return;
     }
 
@@ -69,10 +71,9 @@ void GtpTEIDManager::registerTunnel(const GtpTunnel& tunnel) {
     if (it != teid_to_tunnel_.end()) {
         LOG_DEBUG("Updating existing tunnel for TEID 0x" << std::hex << primary_teid << std::dec);
     } else {
-        LOG_DEBUG("Registering new tunnel for TEID 0x" << std::hex << primary_teid << std::dec
-                  << ", IMSI=" << tunnel.imsi
-                  << ", UE IP=" << tunnel.ue_ip
-                  << ", APN=" << tunnel.apn);
+        LOG_DEBUG("Registering new tunnel for TEID 0x"
+                  << std::hex << primary_teid << std::dec << ", IMSI=" << tunnel.imsi
+                  << ", UE IP=" << tunnel.ue_ip << ", APN=" << tunnel.apn);
         total_tunnels_created_++;
     }
 
@@ -109,7 +110,7 @@ void GtpTEIDManager::updateTunnel(uint32_t teid, const GtpTunnel& tunnel) {
 
     auto it = teid_to_tunnel_.find(teid);
     if (it == teid_to_tunnel_.end()) {
-        LOG_WARNING("Cannot update non-existent tunnel for TEID 0x" << std::hex << teid << std::dec);
+        LOG_WARN("Cannot update non-existent tunnel for TEID 0x" << std::hex << teid << std::dec);
         return;
     }
 
@@ -262,7 +263,8 @@ nlohmann::json GtpTEIDManager::getStatistics() const {
     j["total_lookup_hits"] = total_lookup_hits_;
 
     if (total_lookups_ > 0) {
-        j["lookup_hit_rate"] = static_cast<double>(total_lookup_hits_) / static_cast<double>(total_lookups_);
+        j["lookup_hit_rate"] =
+            static_cast<double>(total_lookup_hits_) / static_cast<double>(total_lookups_);
     } else {
         j["lookup_hit_rate"] = 0.0;
     }
