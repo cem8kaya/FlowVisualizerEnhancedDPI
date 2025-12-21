@@ -8,6 +8,85 @@
 namespace callflow {
 
 // ============================================================================
+// GtpV1ExtensionHeader Methods
+// ============================================================================
+
+nlohmann::json GtpV1ExtensionHeader::toJson() const {
+    nlohmann::json j;
+    j["type"] = static_cast<uint8_t>(type);
+    j["type_name"] = getTypeName();
+    j["length"] = length;
+
+    // Represent content as hex array
+    j["content_hex"] = nlohmann::json::array();
+    for (auto byte : content) {
+        j["content_hex"].push_back(byte);
+    }
+
+    if (next_extension_header_type.has_value()) {
+        j["next_extension_header_type"] = next_extension_header_type.value();
+    }
+
+    return j;
+}
+
+std::string GtpV1ExtensionHeader::getTypeName() const {
+    switch (type) {
+        case GtpV1ExtensionType::NO_MORE_EXTENSION_HEADERS: return "No-More-Extensions";
+        case GtpV1ExtensionType::MBMS_SUPPORT_INDICATION: return "MBMS-Support-Indication";
+        case GtpV1ExtensionType::MS_INFO_CHANGE_REPORTING_SUPPORT_INDICATION:
+            return "MS-Info-Change-Reporting-Support";
+        case GtpV1ExtensionType::SERVICE_CLASS_INDICATOR: return "Service-Class-Indicator";
+        case GtpV1ExtensionType::UDP_PORT: return "UDP-Port";
+        case GtpV1ExtensionType::RAN_CONTAINER: return "RAN-Container";
+        case GtpV1ExtensionType::LONG_PDCP_PDU_NUMBER: return "Long-PDCP-PDU-Number";
+        case GtpV1ExtensionType::XW_RAN_CONTAINER: return "XW-RAN-Container";
+        case GtpV1ExtensionType::NR_RAN_CONTAINER: return "NR-RAN-Container";
+        case GtpV1ExtensionType::PDU_SESSION_CONTAINER: return "PDU-Session-Container";
+        case GtpV1ExtensionType::PDCP_PDU_NUMBER: return "PDCP-PDU-Number";
+        case GtpV1ExtensionType::SUSPEND_REQUEST: return "Suspend-Request";
+        case GtpV1ExtensionType::SUSPEND_RESPONSE: return "Suspend-Response";
+        default: return "Unknown-Extension-" + std::to_string(static_cast<uint8_t>(type));
+    }
+}
+
+// ============================================================================
+// EncapsulatedPacket Methods
+// ============================================================================
+
+nlohmann::json EncapsulatedPacket::toJson() const {
+    nlohmann::json j;
+    j["is_ipv4"] = is_ipv4;
+    j["src_ip"] = src_ip;
+    j["dst_ip"] = dst_ip;
+    j["protocol"] = protocol;
+    j["protocol_name"] = getProtocolName();
+
+    if (src_port.has_value()) {
+        j["src_port"] = src_port.value();
+    }
+    if (dst_port.has_value()) {
+        j["dst_port"] = dst_port.value();
+    }
+
+    j["payload_offset"] = payload_offset;
+    j["payload_length"] = payload_length;
+
+    return j;
+}
+
+std::string EncapsulatedPacket::getProtocolName() const {
+    switch (protocol) {
+        case 1: return "ICMP";
+        case 6: return "TCP";
+        case 17: return "UDP";
+        case 58: return "ICMPv6";
+        case 132: return "SCTP";
+        default: return "Unknown-" + std::to_string(protocol);
+    }
+}
+
+// ============================================================================
 // GtpV1Header Methods
 // ============================================================================
 
@@ -164,6 +243,26 @@ nlohmann::json GtpV1Message::toJson() const {
     j["ies"] = ies_json;
     j["ie_count"] = ies.size();
 
+    // Add extension headers
+    if (!extension_headers.empty()) {
+        nlohmann::json ext_headers_json = nlohmann::json::array();
+        for (const auto& ext : extension_headers) {
+            ext_headers_json.push_back(ext.toJson());
+        }
+        j["extension_headers"] = ext_headers_json;
+        j["extension_header_count"] = extension_headers.size();
+    }
+
+    // Add user plane data
+    if (!user_data.empty()) {
+        j["user_data_length"] = user_data.size();
+    }
+
+    // Add encapsulated packet info
+    if (encapsulated.has_value()) {
+        j["encapsulated"] = encapsulated.value().toJson();
+    }
+
     return j;
 }
 
@@ -279,8 +378,38 @@ std::optional<GtpV1Message> GtpV1Parser::parse(const uint8_t* data, size_t len) 
         return std::nullopt;
     }
 
-    // For G-PDU messages, we don't parse IEs (user plane data)
+    size_t offset = header_len;
+
+    // Parse extension headers if present
+    if (msg.header.extension_header && msg.header.next_extension_header.has_value() &&
+        msg.header.next_extension_header.value() != 0) {
+        if (!parseExtensionHeaders(data, total_len, offset,
+                                   msg.header.next_extension_header.value(),
+                                   msg.extension_headers)) {
+            LOG_WARN("Failed to parse GTPv1 extension headers, continuing anyway");
+            // Don't fail - extension headers are optional
+        }
+    }
+
+    // For G-PDU messages, extract user plane data
     if (msg.isUserPlane()) {
+        // Extract user data payload
+        if (offset < total_len) {
+            size_t payload_len = total_len - offset;
+            msg.user_data.resize(payload_len);
+            std::memcpy(msg.user_data.data(), data + offset, payload_len);
+
+            // Parse encapsulated IP packet
+            EncapsulatedPacket encap;
+            if (parseEncapsulatedPacket(data, total_len, offset, encap)) {
+                msg.encapsulated = encap;
+                LOG_DEBUG("Parsed GTPv1 G-PDU with encapsulated "
+                         << (encap.is_ipv4 ? "IPv4" : "IPv6")
+                         << " packet: " << encap.src_ip << " -> " << encap.dst_ip);
+            } else {
+                LOG_DEBUG("Failed to parse encapsulated packet (may not be IP)");
+            }
+        }
         LOG_DEBUG("Parsed GTPv1 G-PDU message (user plane data)");
         return msg;
     }
@@ -652,6 +781,149 @@ std::optional<size_t> GtpV1Parser::getIeLength(uint8_t type, const uint8_t* data
 
     // Total IE size = type (1 byte) + length field (2 bytes) + data
     return 1 + 2 + ie_len;
+}
+
+bool GtpV1Parser::parseExtensionHeaders(const uint8_t* data, size_t len, size_t& offset,
+                                         uint8_t first_ext_type,
+                                         std::vector<GtpV1ExtensionHeader>& ext_headers) {
+    uint8_t next_type = first_ext_type;
+
+    // Extension headers form a chain, each pointing to the next
+    while (next_type != 0 && offset < len) {
+        // Need at least 2 bytes: length (1) + content + next_type (1)
+        if (offset + 2 > len) {
+            LOG_DEBUG("Not enough data for extension header at offset " << offset);
+            return false;
+        }
+
+        GtpV1ExtensionHeader ext;
+        ext.type = static_cast<GtpV1ExtensionType>(next_type);
+
+        // First byte is length in 4-byte units (excluding first 2 bytes)
+        ext.length = data[offset];
+
+        if (ext.length == 0) {
+            LOG_WARN("GTPv1 extension header with zero length at offset " << offset);
+            return false;
+        }
+
+        // Total extension header size in bytes
+        size_t ext_total_len = ext.length * 4;
+
+        if (offset + ext_total_len > len) {
+            LOG_DEBUG("Extension header extends beyond packet boundary");
+            return false;
+        }
+
+        // Content is everything except first byte (length) and last byte (next_type)
+        if (ext_total_len >= 2) {
+            ext.content.resize(ext_total_len - 2);
+            std::memcpy(ext.content.data(), data + offset + 1, ext_total_len - 2);
+        }
+
+        // Last byte is next extension header type
+        next_type = data[offset + ext_total_len - 1];
+        ext.next_extension_header_type = next_type;
+
+        ext_headers.push_back(ext);
+        offset += ext_total_len;
+    }
+
+    return true;
+}
+
+bool GtpV1Parser::parseEncapsulatedPacket(const uint8_t* data, size_t len, size_t offset,
+                                           EncapsulatedPacket& encap) {
+    if (offset + 20 > len) {  // Minimum IP header size
+        return false;
+    }
+
+    const uint8_t* ip_data = data + offset;
+    size_t ip_len = len - offset;
+
+    uint8_t version = (ip_data[0] >> 4) & 0x0F;
+
+    if (version == 4) {
+        // IPv4 packet
+        encap.is_ipv4 = true;
+
+        if (ip_len < 20) {
+            return false;
+        }
+
+        // Extract IP addresses (bytes 12-15: src, 16-19: dst)
+        char src_ip_str[INET_ADDRSTRLEN];
+        char dst_ip_str[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, ip_data + 12, src_ip_str, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, ip_data + 16, dst_ip_str, INET_ADDRSTRLEN);
+        encap.src_ip = src_ip_str;
+        encap.dst_ip = dst_ip_str;
+
+        // Extract protocol (byte 9)
+        encap.protocol = ip_data[9];
+
+        // Calculate IP header length (IHL field in lower 4 bits of byte 0)
+        uint8_t ihl = (ip_data[0] & 0x0F) * 4;
+
+        if (ihl < 20 || offset + ihl > len) {
+            return false;  // Invalid IHL
+        }
+
+        // Extract ports for TCP/UDP
+        if ((encap.protocol == 6 || encap.protocol == 17) && offset + ihl + 4 <= len) {
+            // TCP and UDP both have src_port and dst_port in first 4 bytes
+            uint16_t src_port, dst_port;
+            std::memcpy(&src_port, ip_data + ihl, 2);
+            std::memcpy(&dst_port, ip_data + ihl + 2, 2);
+            encap.src_port = ntohs(src_port);
+            encap.dst_port = ntohs(dst_port);
+        }
+
+        encap.payload_offset = offset + ihl;
+        encap.payload_length = ip_len - ihl;
+
+    } else if (version == 6) {
+        // IPv6 packet
+        encap.is_ipv4 = false;
+
+        if (ip_len < 40) {  // IPv6 header is always 40 bytes
+            return false;
+        }
+
+        // Extract IP addresses (bytes 8-23: src, 24-39: dst)
+        char src_ip_str[INET6_ADDRSTRLEN];
+        char dst_ip_str[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, ip_data + 8, src_ip_str, INET6_ADDRSTRLEN);
+        inet_ntop(AF_INET6, ip_data + 24, dst_ip_str, INET6_ADDRSTRLEN);
+        encap.src_ip = src_ip_str;
+        encap.dst_ip = dst_ip_str;
+
+        // Extract next header (byte 6)
+        encap.protocol = ip_data[6];
+
+        // For simplicity, assume no IPv6 extension headers
+        // In production, you'd need to parse the extension header chain
+        size_t ipv6_hdr_len = 40;
+
+        // Extract ports for TCP/UDP
+        if ((encap.protocol == 6 || encap.protocol == 17) && offset + ipv6_hdr_len + 4 <= len) {
+            uint16_t src_port, dst_port;
+            std::memcpy(&src_port, ip_data + ipv6_hdr_len, 2);
+            std::memcpy(&dst_port, ip_data + ipv6_hdr_len + 2, 2);
+            encap.src_port = ntohs(src_port);
+            encap.dst_port = ntohs(dst_port);
+        }
+
+        encap.payload_offset = offset + ipv6_hdr_len;
+        encap.payload_length = ip_len - ipv6_hdr_len;
+
+    } else {
+        // Unknown IP version
+        LOG_DEBUG("Unknown IP version in encapsulated packet: " << static_cast<int>(version));
+        return false;
+    }
+
+    return true;
 }
 
 }  // namespace callflow
