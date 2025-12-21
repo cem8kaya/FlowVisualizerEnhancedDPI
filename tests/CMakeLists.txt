@@ -330,4 +330,64 @@ set_tests_properties(test_lte_attach_machine PROPERTIES
     LABELS "unit"
 )
 
+# Tunnel Lifecycle Tests
+add_executable(test_tunnel_lifecycle
+    unit/test_tunnel_lifecycle.cpp
+)
+
+target_link_libraries(test_tunnel_lifecycle PRIVATE
+    callflow_common
+    session_correlation
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_tunnel_lifecycle COMMAND test_tunnel_lifecycle)
+
+set_tests_properties(test_tunnel_lifecycle PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Keep-Alive Aggregation Tests
+add_executable(test_keepalive_aggregation
+    unit/test_keepalive_aggregation.cpp
+)
+
+target_link_libraries(test_keepalive_aggregation PRIVATE
+    callflow_common
+    session_correlation
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_keepalive_aggregation COMMAND test_keepalive_aggregation)
+
+set_tests_properties(test_keepalive_aggregation PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Handover Detection Tests
+add_executable(test_handover_detection
+    unit/test_handover_detection.cpp
+)
+
+target_link_libraries(test_handover_detection PRIVATE
+    callflow_common
+    session_correlation
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_handover_detection COMMAND test_handover_detection)
+
+set_tests_properties(test_handover_detection PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")

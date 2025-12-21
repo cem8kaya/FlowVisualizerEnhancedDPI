@@ -49,6 +49,9 @@ add_library(procedure_correlation STATIC
     correlation/volte_call_machine.cpp
     correlation/fiveg_registration_machine.cpp
     correlation/procedure_detector.cpp
+    correlation/keepalive_aggregator.cpp
+    correlation/tunnel_manager.cpp
+    correlation/handover_detector.cpp
 )
 target_include_directories(procedure_correlation PUBLIC
     ${PROJECT_SOURCE_DIR}/include
