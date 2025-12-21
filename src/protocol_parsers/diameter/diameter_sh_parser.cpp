@@ -1,6 +1,6 @@
-#include "protocol_parsers/diameter/diameter_sh.h"
-#include "protocol_parsers/diameter/diameter_avp_parser.h"
 #include "common/logger.h"
+#include "protocol_parsers/diameter/diameter_avp_parser.h"
+#include "protocol_parsers/diameter/diameter_sh.h"
 
 namespace callflow {
 namespace diameter {
@@ -362,8 +362,7 @@ std::optional<DiameterShMessage> DiameterShParser::parse(const DiameterMessage& 
             break;
 
         default:
-            Logger::warning("Unknown Sh command code: " +
-                          std::to_string(msg.header.command_code));
+            LOG_WARN("Unknown Sh command code: {}", msg.header.command_code);
             break;
     }
 
@@ -378,7 +377,8 @@ UserDataRequest DiameterShParser::parseUDR(const DiameterMessage& msg) {
     UserDataRequest udr;
 
     // User-Identity (Mandatory, can be multiple)
-    auto user_id_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::USER_IDENTITY), DIAMETER_VENDOR_3GPP);
+    auto user_id_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::USER_IDENTITY), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : user_id_avps) {
         auto identity = parseUserIdentity(avp);
         if (identity.has_value()) {
@@ -387,7 +387,8 @@ UserDataRequest DiameterShParser::parseUDR(const DiameterMessage& msg) {
     }
 
     // Data-Reference (Mandatory, can be multiple)
-    auto data_ref_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::DATA_REFERENCE), DIAMETER_VENDOR_3GPP);
+    auto data_ref_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::DATA_REFERENCE), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : data_ref_avps) {
         auto val = avp->getDataAsUint32();
         if (val.has_value()) {
@@ -396,13 +397,15 @@ UserDataRequest DiameterShParser::parseUDR(const DiameterMessage& msg) {
     }
 
     // Service-Indication
-    auto service_ind_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::SERVICE_INDICATION), DIAMETER_VENDOR_3GPP);
+    auto service_ind_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::SERVICE_INDICATION), DIAMETER_VENDOR_3GPP);
     if (service_ind_avp) {
         udr.service_indication = service_ind_avp->getDataAsString();
     }
 
     // Identity-Set
-    auto identity_set_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::IDENTITY_SET), DIAMETER_VENDOR_3GPP);
+    auto identity_set_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::IDENTITY_SET), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : identity_set_avps) {
         auto val = avp->getDataAsUint32();
         if (val.has_value()) {
@@ -411,7 +414,8 @@ UserDataRequest DiameterShParser::parseUDR(const DiameterMessage& msg) {
     }
 
     // Requested-Domain
-    auto req_domain_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::REQUESTED_DOMAIN), DIAMETER_VENDOR_3GPP);
+    auto req_domain_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::REQUESTED_DOMAIN), DIAMETER_VENDOR_3GPP);
     if (req_domain_avp) {
         auto val = req_domain_avp->getDataAsUint32();
         if (val.has_value()) {
@@ -420,7 +424,8 @@ UserDataRequest DiameterShParser::parseUDR(const DiameterMessage& msg) {
     }
 
     // Current-Location
-    auto curr_loc_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::CURRENT_LOCATION), DIAMETER_VENDOR_3GPP);
+    auto curr_loc_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::CURRENT_LOCATION), DIAMETER_VENDOR_3GPP);
     if (curr_loc_avp) {
         auto val = curr_loc_avp->getDataAsUint32();
         if (val.has_value()) {
@@ -429,7 +434,8 @@ UserDataRequest DiameterShParser::parseUDR(const DiameterMessage& msg) {
     }
 
     // Supported-Features
-    auto supported_features_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
+    auto supported_features_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : supported_features_avps) {
         auto feature = parseSupportedFeatures(avp);
         if (feature.has_value()) {
@@ -438,13 +444,15 @@ UserDataRequest DiameterShParser::parseUDR(const DiameterMessage& msg) {
     }
 
     // Requested-Nodes
-    auto req_nodes_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::REQUESTED_NODES), DIAMETER_VENDOR_3GPP);
+    auto req_nodes_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::REQUESTED_NODES), DIAMETER_VENDOR_3GPP);
     if (req_nodes_avp) {
         udr.requested_nodes = req_nodes_avp->getDataAsUint32();
     }
 
     // UDR-Flags
-    auto udr_flags_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::UDR_FLAGS), DIAMETER_VENDOR_3GPP);
+    auto udr_flags_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::UDR_FLAGS), DIAMETER_VENDOR_3GPP);
     if (udr_flags_avp) {
         udr.udr_flags = udr_flags_avp->getDataAsUint32();
     }
@@ -461,7 +469,8 @@ UserDataAnswer DiameterShParser::parseUDA(const DiameterMessage& msg) {
         auto grouped_avps = exp_result_avp->getGroupedAVPs();
         if (grouped_avps.has_value()) {
             for (const auto& sub_avp : grouped_avps.value()) {
-                if (sub_avp->code == static_cast<uint32_t>(DiameterAVPCode::EXPERIMENTAL_RESULT_CODE)) {
+                if (sub_avp->code ==
+                    static_cast<uint32_t>(DiameterAVPCode::EXPERIMENTAL_RESULT_CODE)) {
                     uda.experimental_result_code = sub_avp->getDataAsUint32();
                 }
             }
@@ -469,13 +478,15 @@ UserDataAnswer DiameterShParser::parseUDA(const DiameterMessage& msg) {
     }
 
     // User-Data
-    auto user_data_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::USER_DATA), DIAMETER_VENDOR_3GPP);
+    auto user_data_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::USER_DATA), DIAMETER_VENDOR_3GPP);
     if (user_data_avp) {
         uda.user_data = parseUserData(user_data_avp);
     }
 
     // Supported-Features
-    auto supported_features_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
+    auto supported_features_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : supported_features_avps) {
         auto feature = parseSupportedFeatures(avp);
         if (feature.has_value()) {
@@ -484,7 +495,8 @@ UserDataAnswer DiameterShParser::parseUDA(const DiameterMessage& msg) {
     }
 
     // Wildcarded-Public-Identity
-    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY), DIAMETER_VENDOR_3GPP);
+    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY),
+                                    DIAMETER_VENDOR_3GPP);
     if (wildcard_avp) {
         uda.wildcarded_public_identity = wildcard_avp->getDataAsString();
     }
@@ -496,7 +508,8 @@ ProfileUpdateRequest DiameterShParser::parsePUR(const DiameterMessage& msg) {
     ProfileUpdateRequest pur;
 
     // User-Identity (Mandatory)
-    auto user_id_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::USER_IDENTITY), DIAMETER_VENDOR_3GPP);
+    auto user_id_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::USER_IDENTITY), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : user_id_avps) {
         auto identity = parseUserIdentity(avp);
         if (identity.has_value()) {
@@ -505,13 +518,15 @@ ProfileUpdateRequest DiameterShParser::parsePUR(const DiameterMessage& msg) {
     }
 
     // User-Data
-    auto user_data_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::USER_DATA), DIAMETER_VENDOR_3GPP);
+    auto user_data_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::USER_DATA), DIAMETER_VENDOR_3GPP);
     if (user_data_avp) {
         pur.user_data = parseUserData(user_data_avp);
     }
 
     // Data-Reference
-    auto data_ref_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::DATA_REFERENCE), DIAMETER_VENDOR_3GPP);
+    auto data_ref_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::DATA_REFERENCE), DIAMETER_VENDOR_3GPP);
     if (data_ref_avp) {
         auto val = data_ref_avp->getDataAsUint32();
         if (val.has_value()) {
@@ -520,19 +535,22 @@ ProfileUpdateRequest DiameterShParser::parsePUR(const DiameterMessage& msg) {
     }
 
     // Service-Indication
-    auto service_ind_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::SERVICE_INDICATION), DIAMETER_VENDOR_3GPP);
+    auto service_ind_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::SERVICE_INDICATION), DIAMETER_VENDOR_3GPP);
     if (service_ind_avp) {
         pur.service_indication = service_ind_avp->getDataAsString();
     }
 
     // Repository-Data-ID
-    auto repo_data_id_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::REPOSITORY_DATA_ID), DIAMETER_VENDOR_3GPP);
+    auto repo_data_id_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::REPOSITORY_DATA_ID), DIAMETER_VENDOR_3GPP);
     if (repo_data_id_avp) {
         pur.repository_data_id = parseRepositoryDataID(repo_data_id_avp);
     }
 
     // Supported-Features
-    auto supported_features_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
+    auto supported_features_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : supported_features_avps) {
         auto feature = parseSupportedFeatures(avp);
         if (feature.has_value()) {
@@ -541,7 +559,8 @@ ProfileUpdateRequest DiameterShParser::parsePUR(const DiameterMessage& msg) {
     }
 
     // Wildcarded-Public-Identity
-    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY), DIAMETER_VENDOR_3GPP);
+    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY),
+                                    DIAMETER_VENDOR_3GPP);
     if (wildcard_avp) {
         pur.wildcarded_public_identity = wildcard_avp->getDataAsString();
     }
@@ -558,7 +577,8 @@ ProfileUpdateAnswer DiameterShParser::parsePUA(const DiameterMessage& msg) {
         auto grouped_avps = exp_result_avp->getGroupedAVPs();
         if (grouped_avps.has_value()) {
             for (const auto& sub_avp : grouped_avps.value()) {
-                if (sub_avp->code == static_cast<uint32_t>(DiameterAVPCode::EXPERIMENTAL_RESULT_CODE)) {
+                if (sub_avp->code ==
+                    static_cast<uint32_t>(DiameterAVPCode::EXPERIMENTAL_RESULT_CODE)) {
                     pua.experimental_result_code = sub_avp->getDataAsUint32();
                 }
             }
@@ -566,13 +586,15 @@ ProfileUpdateAnswer DiameterShParser::parsePUA(const DiameterMessage& msg) {
     }
 
     // Repository-Data-ID
-    auto repo_data_id_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::REPOSITORY_DATA_ID), DIAMETER_VENDOR_3GPP);
+    auto repo_data_id_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::REPOSITORY_DATA_ID), DIAMETER_VENDOR_3GPP);
     if (repo_data_id_avp) {
         pua.repository_data_id = parseRepositoryDataID(repo_data_id_avp);
     }
 
     // Supported-Features
-    auto supported_features_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
+    auto supported_features_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : supported_features_avps) {
         auto feature = parseSupportedFeatures(avp);
         if (feature.has_value()) {
@@ -581,7 +603,8 @@ ProfileUpdateAnswer DiameterShParser::parsePUA(const DiameterMessage& msg) {
     }
 
     // Wildcarded-Public-Identity
-    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY), DIAMETER_VENDOR_3GPP);
+    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY),
+                                    DIAMETER_VENDOR_3GPP);
     if (wildcard_avp) {
         pua.wildcarded_public_identity = wildcard_avp->getDataAsString();
     }
@@ -593,7 +616,8 @@ SubscribeNotificationsRequest DiameterShParser::parseSNR(const DiameterMessage& 
     SubscribeNotificationsRequest snr;
 
     // User-Identity (Mandatory)
-    auto user_id_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::USER_IDENTITY), DIAMETER_VENDOR_3GPP);
+    auto user_id_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::USER_IDENTITY), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : user_id_avps) {
         auto identity = parseUserIdentity(avp);
         if (identity.has_value()) {
@@ -602,7 +626,8 @@ SubscribeNotificationsRequest DiameterShParser::parseSNR(const DiameterMessage& 
     }
 
     // Subs-Req-Type
-    auto subs_type_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::SUBS_REQ_TYPE), DIAMETER_VENDOR_3GPP);
+    auto subs_type_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::SUBS_REQ_TYPE), DIAMETER_VENDOR_3GPP);
     if (subs_type_avp) {
         auto val = subs_type_avp->getDataAsUint32();
         if (val.has_value()) {
@@ -611,7 +636,8 @@ SubscribeNotificationsRequest DiameterShParser::parseSNR(const DiameterMessage& 
     }
 
     // Data-Reference (can be multiple)
-    auto data_ref_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::DATA_REFERENCE), DIAMETER_VENDOR_3GPP);
+    auto data_ref_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::DATA_REFERENCE), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : data_ref_avps) {
         auto val = avp->getDataAsUint32();
         if (val.has_value()) {
@@ -620,13 +646,15 @@ SubscribeNotificationsRequest DiameterShParser::parseSNR(const DiameterMessage& 
     }
 
     // Service-Indication
-    auto service_ind_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::SERVICE_INDICATION), DIAMETER_VENDOR_3GPP);
+    auto service_ind_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::SERVICE_INDICATION), DIAMETER_VENDOR_3GPP);
     if (service_ind_avp) {
         snr.service_indication = service_ind_avp->getDataAsString();
     }
 
     // Send-Data-Indication
-    auto send_data_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::SEND_DATA_INDICATION), DIAMETER_VENDOR_3GPP);
+    auto send_data_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::SEND_DATA_INDICATION), DIAMETER_VENDOR_3GPP);
     if (send_data_avp) {
         auto val = send_data_avp->getDataAsUint32();
         if (val.has_value()) {
@@ -635,13 +663,15 @@ SubscribeNotificationsRequest DiameterShParser::parseSNR(const DiameterMessage& 
     }
 
     // Server-Name
-    auto server_name_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::SERVER_NAME), DIAMETER_VENDOR_3GPP);
+    auto server_name_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::SERVER_NAME), DIAMETER_VENDOR_3GPP);
     if (server_name_avp) {
         snr.server_name = server_name_avp->getDataAsString();
     }
 
     // Supported-Features
-    auto supported_features_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
+    auto supported_features_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : supported_features_avps) {
         auto feature = parseSupportedFeatures(avp);
         if (feature.has_value()) {
@@ -650,7 +680,8 @@ SubscribeNotificationsRequest DiameterShParser::parseSNR(const DiameterMessage& 
     }
 
     // DSAI-Tag (can be multiple)
-    auto dsai_tag_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::DSAI_TAG), DIAMETER_VENDOR_3GPP);
+    auto dsai_tag_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::DSAI_TAG), DIAMETER_VENDOR_3GPP);
     if (!dsai_tag_avps.empty()) {
         std::vector<std::string> tags;
         for (const auto& avp : dsai_tag_avps) {
@@ -660,13 +691,15 @@ SubscribeNotificationsRequest DiameterShParser::parseSNR(const DiameterMessage& 
     }
 
     // Expiry-Time
-    auto expiry_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::EXPIRY_TIME), DIAMETER_VENDOR_3GPP);
+    auto expiry_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::EXPIRY_TIME), DIAMETER_VENDOR_3GPP);
     if (expiry_avp) {
         snr.expiry_time = expiry_avp->getDataAsUint32();
     }
 
     // Session-Priority
-    auto session_prio_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::SESSION_PRIORITY), DIAMETER_VENDOR_3GPP);
+    auto session_prio_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::SESSION_PRIORITY), DIAMETER_VENDOR_3GPP);
     if (session_prio_avp) {
         snr.session_priority = session_prio_avp->getDataAsUint32();
     }
@@ -683,7 +716,8 @@ SubscribeNotificationsAnswer DiameterShParser::parseSNA(const DiameterMessage& m
         auto grouped_avps = exp_result_avp->getGroupedAVPs();
         if (grouped_avps.has_value()) {
             for (const auto& sub_avp : grouped_avps.value()) {
-                if (sub_avp->code == static_cast<uint32_t>(DiameterAVPCode::EXPERIMENTAL_RESULT_CODE)) {
+                if (sub_avp->code ==
+                    static_cast<uint32_t>(DiameterAVPCode::EXPERIMENTAL_RESULT_CODE)) {
                     sna.experimental_result_code = sub_avp->getDataAsUint32();
                 }
             }
@@ -691,19 +725,22 @@ SubscribeNotificationsAnswer DiameterShParser::parseSNA(const DiameterMessage& m
     }
 
     // User-Data
-    auto user_data_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::USER_DATA), DIAMETER_VENDOR_3GPP);
+    auto user_data_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::USER_DATA), DIAMETER_VENDOR_3GPP);
     if (user_data_avp) {
         sna.user_data = parseUserData(user_data_avp);
     }
 
     // Expiry-Time
-    auto expiry_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::EXPIRY_TIME), DIAMETER_VENDOR_3GPP);
+    auto expiry_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::EXPIRY_TIME), DIAMETER_VENDOR_3GPP);
     if (expiry_avp) {
         sna.expiry_time = expiry_avp->getDataAsUint32();
     }
 
     // Supported-Features
-    auto supported_features_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
+    auto supported_features_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : supported_features_avps) {
         auto feature = parseSupportedFeatures(avp);
         if (feature.has_value()) {
@@ -712,7 +749,8 @@ SubscribeNotificationsAnswer DiameterShParser::parseSNA(const DiameterMessage& m
     }
 
     // Wildcarded-Public-Identity
-    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY), DIAMETER_VENDOR_3GPP);
+    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY),
+                                    DIAMETER_VENDOR_3GPP);
     if (wildcard_avp) {
         sna.wildcarded_public_identity = wildcard_avp->getDataAsString();
     }
@@ -724,7 +762,8 @@ PushNotificationRequest DiameterShParser::parsePNR(const DiameterMessage& msg) {
     PushNotificationRequest pnr;
 
     // User-Identity (Mandatory)
-    auto user_id_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::USER_IDENTITY), DIAMETER_VENDOR_3GPP);
+    auto user_id_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::USER_IDENTITY), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : user_id_avps) {
         auto identity = parseUserIdentity(avp);
         if (identity.has_value()) {
@@ -733,13 +772,15 @@ PushNotificationRequest DiameterShParser::parsePNR(const DiameterMessage& msg) {
     }
 
     // User-Data
-    auto user_data_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::USER_DATA), DIAMETER_VENDOR_3GPP);
+    auto user_data_avp =
+        msg.findAVP(static_cast<uint32_t>(ShAVPCode::USER_DATA), DIAMETER_VENDOR_3GPP);
     if (user_data_avp) {
         pnr.user_data = parseUserData(user_data_avp);
     }
 
     // Supported-Features
-    auto supported_features_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
+    auto supported_features_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : supported_features_avps) {
         auto feature = parseSupportedFeatures(avp);
         if (feature.has_value()) {
@@ -748,7 +789,8 @@ PushNotificationRequest DiameterShParser::parsePNR(const DiameterMessage& msg) {
     }
 
     // Wildcarded-Public-Identity
-    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY), DIAMETER_VENDOR_3GPP);
+    auto wildcard_avp = msg.findAVP(static_cast<uint32_t>(ShAVPCode::WILDCARDED_PUBLIC_IDENTITY),
+                                    DIAMETER_VENDOR_3GPP);
     if (wildcard_avp) {
         pnr.wildcarded_public_identity = wildcard_avp->getDataAsString();
     }
@@ -765,7 +807,8 @@ PushNotificationAnswer DiameterShParser::parsePNA(const DiameterMessage& msg) {
         auto grouped_avps = exp_result_avp->getGroupedAVPs();
         if (grouped_avps.has_value()) {
             for (const auto& sub_avp : grouped_avps.value()) {
-                if (sub_avp->code == static_cast<uint32_t>(DiameterAVPCode::EXPERIMENTAL_RESULT_CODE)) {
+                if (sub_avp->code ==
+                    static_cast<uint32_t>(DiameterAVPCode::EXPERIMENTAL_RESULT_CODE)) {
                     pna.experimental_result_code = sub_avp->getDataAsUint32();
                 }
             }
@@ -773,7 +816,8 @@ PushNotificationAnswer DiameterShParser::parsePNA(const DiameterMessage& msg) {
     }
 
     // Supported-Features
-    auto supported_features_avps = msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
+    auto supported_features_avps =
+        msg.findAllAVPs(static_cast<uint32_t>(ShAVPCode::SUPPORTED_FEATURES), DIAMETER_VENDOR_3GPP);
     for (const auto& avp : supported_features_avps) {
         auto feature = parseSupportedFeatures(avp);
         if (feature.has_value()) {
@@ -788,9 +832,7 @@ PushNotificationAnswer DiameterShParser::parsePNA(const DiameterMessage& msg) {
 // AVP Parsers (Grouped/Complex Types)
 // ============================================================================
 
-std::optional<UserIdentity> DiameterShParser::parseUserIdentity(
-    std::shared_ptr<DiameterAVP> avp) {
-
+std::optional<UserIdentity> DiameterShParser::parseUserIdentity(std::shared_ptr<DiameterAVP> avp) {
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -817,7 +859,6 @@ std::optional<UserIdentity> DiameterShParser::parseUserIdentity(
 
 std::optional<RepositoryDataID> DiameterShParser::parseRepositoryDataID(
     std::shared_ptr<DiameterAVP> avp) {
-
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;
@@ -846,7 +887,6 @@ std::optional<RepositoryDataID> DiameterShParser::parseRepositoryDataID(
 
 std::optional<SupportedFeatures> DiameterShParser::parseSupportedFeatures(
     std::shared_ptr<DiameterAVP> avp) {
-
     auto grouped_avps = avp->getGroupedAVPs();
     if (!grouped_avps.has_value()) {
         return std::nullopt;

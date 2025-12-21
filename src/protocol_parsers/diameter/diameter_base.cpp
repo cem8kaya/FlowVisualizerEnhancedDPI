@@ -307,6 +307,18 @@ std::vector<std::shared_ptr<DiameterAVP>> DiameterMessage::findAllAVPs(uint32_t 
     return result;
 }
 
+std::vector<std::shared_ptr<DiameterAVP>> DiameterMessage::findAllAVPs(uint32_t code,
+                                                                       uint32_t vendor_id) const {
+    std::vector<std::shared_ptr<DiameterAVP>> result;
+    for (const auto& avp : avps) {
+        if (avp && avp->code == code && avp->vendor_id.has_value() &&
+            avp->vendor_id.value() == vendor_id) {
+            result.push_back(avp);
+        }
+    }
+    return result;
+}
+
 std::shared_ptr<DiameterAVP> DiameterMessage::findAVP(uint32_t code, uint32_t vendor_id) const {
     for (const auto& avp : avps) {
         if (avp && avp->code == code && avp->vendor_id.has_value() &&

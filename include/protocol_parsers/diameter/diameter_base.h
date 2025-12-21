@@ -1,8 +1,9 @@
 #pragma once
 
-#include "diameter_types.h"
-#include <nlohmann/json.hpp>
 #include <memory>
+#include <nlohmann/json.hpp>
+
+#include "diameter_types.h"
 
 namespace callflow {
 namespace diameter {
@@ -15,19 +16,19 @@ struct DiameterAVP;
 // ============================================================================
 
 struct DiameterHeader {
-    uint8_t version;              // Version (must be 1)
-    uint32_t message_length : 24; // Message length including header (3 bytes)
+    uint8_t version;               // Version (must be 1)
+    uint32_t message_length : 24;  // Message length including header (3 bytes)
 
     // Flags (1 byte)
-    bool request;                 // R bit (Request)
-    bool proxyable;               // P bit (Proxyable)
-    bool error;                   // E bit (Error)
-    bool potentially_retransmitted; // T bit (Potentially retransmitted)
+    bool request;                    // R bit (Request)
+    bool proxyable;                  // P bit (Proxyable)
+    bool error;                      // E bit (Error)
+    bool potentially_retransmitted;  // T bit (Potentially retransmitted)
 
-    uint32_t command_code : 24;   // Command code (3 bytes)
-    uint32_t application_id;      // Application ID (4 bytes)
-    uint32_t hop_by_hop_id;       // Hop-by-Hop Identifier (4 bytes)
-    uint32_t end_to_end_id;       // End-to-End Identifier (4 bytes)
+    uint32_t command_code : 24;  // Command code (3 bytes)
+    uint32_t application_id;     // Application ID (4 bytes)
+    uint32_t hop_by_hop_id;      // Hop-by-Hop Identifier (4 bytes)
+    uint32_t end_to_end_id;      // End-to-End Identifier (4 bytes)
 
     DiameterHeader();
 
@@ -62,30 +63,30 @@ struct DiameterHeader {
 // ============================================================================
 
 struct DiameterAVP {
-    uint32_t code;                // AVP code (4 bytes)
+    uint32_t code;  // AVP code (4 bytes)
 
     // Flags (1 byte)
-    bool vendor_specific;         // V bit (Vendor-Specific)
-    bool mandatory;               // M bit (Mandatory)
-    bool protected_;              // P bit (Protected) - renamed to avoid keyword
+    bool vendor_specific;  // V bit (Vendor-Specific)
+    bool mandatory;        // M bit (Mandatory)
+    bool protected_;       // P bit (Protected) - renamed to avoid keyword
 
-    uint32_t length : 24;         // AVP length including header (3 bytes)
+    uint32_t length : 24;               // AVP length including header (3 bytes)
     std::optional<uint32_t> vendor_id;  // Vendor ID (4 bytes, only if V flag set)
-    std::vector<uint8_t> data;    // AVP data
+    std::vector<uint8_t> data;          // AVP data
 
     // Decoded value (populated by AVP parser)
-    std::variant<
-        std::monostate,           // Not decoded
-        int32_t,                  // INTEGER32
-        int64_t,                  // INTEGER64
-        uint32_t,                 // UNSIGNED32
-        uint64_t,                 // UNSIGNED64
-        float,                    // FLOAT32
-        double,                   // FLOAT64
-        std::string,              // UTF8String, DiameterIdentity, DiameterURI
-        std::vector<uint8_t>,     // OctetString, IPAddress
-        std::vector<std::shared_ptr<DiameterAVP>>  // Grouped AVP
-    > decoded_value;
+    std::variant<std::monostate,        // Not decoded
+                 int32_t,               // INTEGER32
+                 int64_t,               // INTEGER64
+                 uint32_t,              // UNSIGNED32
+                 uint64_t,              // UNSIGNED64
+                 float,                 // FLOAT32
+                 double,                // FLOAT64
+                 std::string,           // UTF8String, DiameterIdentity, DiameterURI
+                 std::vector<uint8_t>,  // OctetString, IPAddress
+                 std::vector<std::shared_ptr<DiameterAVP>>  // Grouped AVP
+                 >
+        decoded_value;
 
     DiameterAVP();
 
@@ -219,6 +220,11 @@ struct DiameterMessage {
      * Find all AVPs with given code
      */
     std::vector<std::shared_ptr<DiameterAVP>> findAllAVPs(uint32_t code) const;
+
+    /**
+     * Find all AVPs with given code and vendor ID
+     */
+    std::vector<std::shared_ptr<DiameterAVP>> findAllAVPs(uint32_t code, uint32_t vendor_id) const;
 
     /**
      * Find AVP by code and vendor ID
