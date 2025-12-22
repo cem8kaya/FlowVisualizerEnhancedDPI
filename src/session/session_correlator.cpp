@@ -637,7 +637,6 @@ void EnhancedSessionCorrelator::mergeSessions(const std::string& session_id1,
     LOG_INFO("Merged session " << session_id2 << " into " << session_id1);
 }
 
-}  // namespace callflow
 
 callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorrelationKey(
     const nlohmann::json& parsed_data, ProtocolType protocol) const {
@@ -849,3 +848,5 @@ callflow::EnhancedSessionCorrelator::getAllSessions() const {
     }
     return result;
 }
+
+}  // namespace callflow
