@@ -38,6 +38,7 @@ struct FlowSession {
     SessionId session_id;
     SessionType type;
     std::string session_key;  // Call-ID, DIAMETER Session-ID, GTP TEID, etc.
+    std::string imsi;         // Extracted or correlated IMSI
 
     Timestamp start_time;
     Timestamp end_time;
@@ -50,6 +51,18 @@ struct FlowSession {
     // Convert to JSON
     nlohmann::json toJson(bool include_events = true) const;
     nlohmann::json toSummaryJson() const;
+};
+
+/**
+ * Master Session for VoLTE (Community Correlation)
+ */
+struct FlowVolteMasterSession {
+    std::string master_uuid;
+    std::string imsi;
+    std::string msisdn;
+    std::shared_ptr<FlowSession> gtp_anchor;                // Pointer to the GTP session
+    std::vector<std::shared_ptr<FlowSession>> sip_legs;     // Associated SIP calls
+    std::vector<std::shared_ptr<FlowSession>> diameter_tx;  // Associated Diameter transactions
 };
 
 /**
@@ -86,11 +99,20 @@ public:
      */
     size_t getSessionCount() const;
 
+    /**
+     * Export sessions grouped by Community Correlation (VoLTE Master Session)
+     */
+    nlohmann::json exportMasterSessions();
+
 private:
     Config config_;
     mutable std::mutex mutex_;
 
     std::map<std::string, std::shared_ptr<FlowSession>> sessions_;  // Key: session_key
+
+    // Correlation Maps (Anchor Logic)
+    std::unordered_map<std::string, std::string> ip_to_imsi_map_;      // IP -> IMSI
+    std::unordered_map<std::string, std::string> msisdn_to_imsi_map_;  // MSISDN -> IMSI
 
     std::shared_ptr<FlowSession> getOrCreateSession(const std::string& session_key,
                                                     SessionType type, Timestamp ts);
@@ -99,6 +121,10 @@ private:
     void addEventToSession(std::shared_ptr<FlowSession> session, const PacketMetadata& packet,
                            ProtocolType protocol, const nlohmann::json& parsed_data);
     void updateMetrics(std::shared_ptr<FlowSession> session, const PacketMetadata& packet);
+
+    // Helper to link session using "Anchor" logic
+    void linkSessionMetadata(std::shared_ptr<FlowSession> session, const PacketMetadata& packet,
+                             const nlohmann::json& parsed_data);
 };
 
 }  // namespace callflow

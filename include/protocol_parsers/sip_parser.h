@@ -118,6 +118,11 @@ struct SipMessage {
     std::optional<std::string> event;
     std::optional<SipSubscriptionState> subscription_state;
 
+    // NEW: Correlation & Context headers
+    std::optional<std::string> reason;      // RFC 3326
+    std::vector<std::string> diversion;     // RFC 5876
+    std::vector<std::string> history_info;  // RFC 7044
+
     // Convert to JSON
     nlohmann::json toJson() const;
 };

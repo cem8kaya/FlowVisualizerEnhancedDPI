@@ -1,9 +1,10 @@
 #pragma once
 
-#include "common/types.h"
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <vector>
-#include <nlohmann/json.hpp>
+
+#include "common/types.h"
 
 namespace callflow {
 
@@ -63,13 +64,13 @@ enum class GtpIeType : uint8_t {
  * GTP header structure (GTPv2-C)
  */
 struct GtpHeader {
-    uint8_t version;              // Version (3 bits)
-    bool piggybacking;            // P flag
-    bool teid_present;            // T flag
-    uint8_t message_type;         // Message type (1 byte)
-    uint16_t message_length;      // Message length (2 bytes, excluding initial 4 bytes)
-    uint32_t teid;                // Tunnel Endpoint Identifier (4 bytes, if T flag)
-    uint32_t sequence_number;     // Sequence number (3 bytes)
+    uint8_t version;           // Version (3 bits)
+    bool piggybacking;         // P flag
+    bool teid_present;         // T flag
+    uint8_t message_type;      // Message type (1 byte)
+    uint16_t message_length;   // Message length (2 bytes, excluding initial 4 bytes)
+    uint32_t teid;             // Tunnel Endpoint Identifier (4 bytes, if T flag)
+    uint32_t sequence_number;  // Sequence number (3 bytes)
 
     nlohmann::json toJson() const;
 };
@@ -78,10 +79,10 @@ struct GtpHeader {
  * GTP Information Element structure
  */
 struct GtpInformationElement {
-    uint8_t type;                 // IE type (1 byte)
-    uint16_t length;              // IE length (2 bytes)
-    uint8_t instance;             // Instance (4 bits)
-    std::vector<uint8_t> data;    // IE data
+    uint8_t type;               // IE type (1 byte)
+    uint16_t length;            // IE length (2 bytes)
+    uint8_t instance;           // Instance (4 bits)
+    std::vector<uint8_t> data;  // IE data
 
     nlohmann::json toJson() const;
 
@@ -114,6 +115,8 @@ struct GtpMessage {
     std::optional<std::string> msisdn;
     std::optional<uint32_t> cause;
     std::optional<uint32_t> f_teid;
+    std::optional<std::vector<uint8_t>> user_location_info;  // ULI
+    std::optional<uint8_t> rat_type;                         // RAT Type
 
     nlohmann::json toJson() const;
 
@@ -164,8 +167,7 @@ private:
     /**
      * Parse single IE
      */
-    std::optional<GtpInformationElement> parseIe(const uint8_t* data, size_t len,
-                                                 size_t& offset);
+    std::optional<GtpInformationElement> parseIe(const uint8_t* data, size_t len, size_t& offset);
 
     /**
      * Extract common fields from IEs

@@ -234,6 +234,19 @@ struct Session {
 };
 
 /**
+ * Master Session for VoLTE (Community Correlation)
+ * Aggregates sessions by IMSI
+ */
+struct VolteMasterSession {
+    std::string master_uuid;
+    std::string imsi;
+    std::string msisdn;
+    Session* gtp_anchor;                // Pointer to the GTP session
+    std::vector<Session*> sip_legs;     // Associated SIP calls
+    std::vector<Session*> diameter_tx;  // Associated Diameter transactions
+};
+
+/**
  * Session Statistics
  * Aggregated statistics for a session
  */

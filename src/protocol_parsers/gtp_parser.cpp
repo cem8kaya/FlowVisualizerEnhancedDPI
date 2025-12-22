@@ -1,9 +1,12 @@
 #include "protocol_parsers/gtp_parser.h"
-#include "common/logger.h"
-#include <cstring>
+
 #include <arpa/inet.h>
-#include <sstream>
+
+#include <cstring>
 #include <iomanip>
+#include <sstream>
+
+#include "common/logger.h"
 
 namespace callflow {
 
@@ -78,27 +81,48 @@ std::optional<uint32_t> GtpInformationElement::getDataAsUint32() const {
 
 std::string GtpInformationElement::getTypeName() const {
     switch (static_cast<GtpIeType>(type)) {
-        case GtpIeType::IMSI: return "IMSI";
-        case GtpIeType::CAUSE: return "Cause";
-        case GtpIeType::RECOVERY: return "Recovery";
-        case GtpIeType::APN: return "APN";
-        case GtpIeType::AMBR: return "AMBR";
-        case GtpIeType::EBI: return "EBI";
-        case GtpIeType::IP_ADDRESS: return "IP-Address";
-        case GtpIeType::MEI: return "MEI";
-        case GtpIeType::MSISDN: return "MSISDN";
-        case GtpIeType::INDICATION: return "Indication";
-        case GtpIeType::PCO: return "PCO";
-        case GtpIeType::PAA: return "PAA";
-        case GtpIeType::BEARER_QOS: return "Bearer-QoS";
-        case GtpIeType::CHARGING_ID: return "Charging-ID";
-        case GtpIeType::BEARER_CONTEXT: return "Bearer-Context";
-        case GtpIeType::F_TEID: return "F-TEID";
-        case GtpIeType::ULI: return "ULI";
-        case GtpIeType::SERVING_NETWORK: return "Serving-Network";
-        case GtpIeType::RAT_TYPE: return "RAT-Type";
-        case GtpIeType::APN_RESTRICTION: return "APN-Restriction";
-        default: return "Unknown-" + std::to_string(type);
+        case GtpIeType::IMSI:
+            return "IMSI";
+        case GtpIeType::CAUSE:
+            return "Cause";
+        case GtpIeType::RECOVERY:
+            return "Recovery";
+        case GtpIeType::APN:
+            return "APN";
+        case GtpIeType::AMBR:
+            return "AMBR";
+        case GtpIeType::EBI:
+            return "EBI";
+        case GtpIeType::IP_ADDRESS:
+            return "IP-Address";
+        case GtpIeType::MEI:
+            return "MEI";
+        case GtpIeType::MSISDN:
+            return "MSISDN";
+        case GtpIeType::INDICATION:
+            return "Indication";
+        case GtpIeType::PCO:
+            return "PCO";
+        case GtpIeType::PAA:
+            return "PAA";
+        case GtpIeType::BEARER_QOS:
+            return "Bearer-QoS";
+        case GtpIeType::CHARGING_ID:
+            return "Charging-ID";
+        case GtpIeType::BEARER_CONTEXT:
+            return "Bearer-Context";
+        case GtpIeType::F_TEID:
+            return "F-TEID";
+        case GtpIeType::ULI:
+            return "ULI";
+        case GtpIeType::SERVING_NETWORK:
+            return "Serving-Network";
+        case GtpIeType::RAT_TYPE:
+            return "RAT-Type";
+        case GtpIeType::APN_RESTRICTION:
+            return "APN-Restriction";
+        default:
+            return "Unknown-" + std::to_string(type);
     }
 }
 
@@ -126,6 +150,12 @@ nlohmann::json GtpMessage::toJson() const {
     }
     if (f_teid.has_value()) {
         j["teid"] = f_teid.value();  // Expose as "teid" for session correlation
+    }
+    if (user_location_info.has_value()) {
+        j["uli_raw"] = user_location_info.value();  // Raw bytes for now
+    }
+    if (rat_type.has_value()) {
+        j["rat_type"] = rat_type.value();
     }
 
     // Add IEs
@@ -160,27 +190,48 @@ MessageType GtpMessage::getMessageType() const {
 
 std::string GtpMessage::getMessageTypeName() const {
     switch (static_cast<GtpMessageType>(header.message_type)) {
-        case GtpMessageType::ECHO_REQUEST: return "Echo-Request";
-        case GtpMessageType::ECHO_RESPONSE: return "Echo-Response";
-        case GtpMessageType::CREATE_SESSION_REQUEST: return "Create-Session-Request";
-        case GtpMessageType::CREATE_SESSION_RESPONSE: return "Create-Session-Response";
-        case GtpMessageType::MODIFY_BEARER_REQUEST: return "Modify-Bearer-Request";
-        case GtpMessageType::MODIFY_BEARER_RESPONSE: return "Modify-Bearer-Response";
-        case GtpMessageType::DELETE_SESSION_REQUEST: return "Delete-Session-Request";
-        case GtpMessageType::DELETE_SESSION_RESPONSE: return "Delete-Session-Response";
-        case GtpMessageType::MODIFY_BEARER_COMMAND: return "Modify-Bearer-Command";
-        case GtpMessageType::MODIFY_BEARER_FAILURE_INDICATION: return "Modify-Bearer-Failure-Indication";
-        case GtpMessageType::DELETE_BEARER_COMMAND: return "Delete-Bearer-Command";
-        case GtpMessageType::DELETE_BEARER_FAILURE_INDICATION: return "Delete-Bearer-Failure-Indication";
-        case GtpMessageType::BEARER_RESOURCE_COMMAND: return "Bearer-Resource-Command";
-        case GtpMessageType::BEARER_RESOURCE_FAILURE_INDICATION: return "Bearer-Resource-Failure-Indication";
-        case GtpMessageType::CREATE_BEARER_REQUEST: return "Create-Bearer-Request";
-        case GtpMessageType::CREATE_BEARER_RESPONSE: return "Create-Bearer-Response";
-        case GtpMessageType::UPDATE_BEARER_REQUEST: return "Update-Bearer-Request";
-        case GtpMessageType::UPDATE_BEARER_RESPONSE: return "Update-Bearer-Response";
-        case GtpMessageType::DELETE_BEARER_REQUEST: return "Delete-Bearer-Request";
-        case GtpMessageType::DELETE_BEARER_RESPONSE: return "Delete-Bearer-Response";
-        default: return "Unknown-" + std::to_string(header.message_type);
+        case GtpMessageType::ECHO_REQUEST:
+            return "Echo-Request";
+        case GtpMessageType::ECHO_RESPONSE:
+            return "Echo-Response";
+        case GtpMessageType::CREATE_SESSION_REQUEST:
+            return "Create-Session-Request";
+        case GtpMessageType::CREATE_SESSION_RESPONSE:
+            return "Create-Session-Response";
+        case GtpMessageType::MODIFY_BEARER_REQUEST:
+            return "Modify-Bearer-Request";
+        case GtpMessageType::MODIFY_BEARER_RESPONSE:
+            return "Modify-Bearer-Response";
+        case GtpMessageType::DELETE_SESSION_REQUEST:
+            return "Delete-Session-Request";
+        case GtpMessageType::DELETE_SESSION_RESPONSE:
+            return "Delete-Session-Response";
+        case GtpMessageType::MODIFY_BEARER_COMMAND:
+            return "Modify-Bearer-Command";
+        case GtpMessageType::MODIFY_BEARER_FAILURE_INDICATION:
+            return "Modify-Bearer-Failure-Indication";
+        case GtpMessageType::DELETE_BEARER_COMMAND:
+            return "Delete-Bearer-Command";
+        case GtpMessageType::DELETE_BEARER_FAILURE_INDICATION:
+            return "Delete-Bearer-Failure-Indication";
+        case GtpMessageType::BEARER_RESOURCE_COMMAND:
+            return "Bearer-Resource-Command";
+        case GtpMessageType::BEARER_RESOURCE_FAILURE_INDICATION:
+            return "Bearer-Resource-Failure-Indication";
+        case GtpMessageType::CREATE_BEARER_REQUEST:
+            return "Create-Bearer-Request";
+        case GtpMessageType::CREATE_BEARER_RESPONSE:
+            return "Create-Bearer-Response";
+        case GtpMessageType::UPDATE_BEARER_REQUEST:
+            return "Update-Bearer-Request";
+        case GtpMessageType::UPDATE_BEARER_RESPONSE:
+            return "Update-Bearer-Response";
+        case GtpMessageType::DELETE_BEARER_REQUEST:
+            return "Delete-Bearer-Request";
+        case GtpMessageType::DELETE_BEARER_RESPONSE:
+            return "Delete-Bearer-Response";
+        default:
+            return "Unknown-" + std::to_string(header.message_type);
     }
 }
 
@@ -250,8 +301,8 @@ std::optional<GtpMessage> GtpParser::parse(const uint8_t* data, size_t len) {
     // Extract common fields
     extractCommonFields(msg);
 
-    LOG_DEBUG("Parsed GTP message: " << msg.getMessageTypeName()
-              << " with " << msg.ies.size() << " IEs");
+    LOG_DEBUG("Parsed GTP message: " << msg.getMessageTypeName() << " with " << msg.ies.size()
+                                     << " IEs");
 
     return msg;
 }
@@ -265,9 +316,9 @@ std::optional<GtpHeader> GtpParser::parseHeader(const uint8_t* data, size_t len)
 
     // Byte 0: Flags
     uint8_t flags = data[0];
-    header.version = (flags >> 5) & 0x07;          // Version (bits 5-7)
-    header.piggybacking = (flags & 0x10) != 0;     // P flag (bit 4)
-    header.teid_present = (flags & 0x08) != 0;     // T flag (bit 3)
+    header.version = (flags >> 5) & 0x07;       // Version (bits 5-7)
+    header.piggybacking = (flags & 0x10) != 0;  // P flag (bit 4)
+    header.teid_present = (flags & 0x08) != 0;  // T flag (bit 3)
 
     // Byte 1: Message Type
     header.message_type = data[1];
@@ -288,8 +339,8 @@ std::optional<GtpHeader> GtpParser::parseHeader(const uint8_t* data, size_t len)
 
         // Bytes 8-10: Sequence Number (24 bits)
         header.sequence_number = (static_cast<uint32_t>(data[8]) << 16) |
-                                (static_cast<uint32_t>(data[9]) << 8) |
-                                static_cast<uint32_t>(data[10]);
+                                 (static_cast<uint32_t>(data[9]) << 8) |
+                                 static_cast<uint32_t>(data[10]);
         // Byte 11: Spare
     } else {
         // No TEID
@@ -297,8 +348,8 @@ std::optional<GtpHeader> GtpParser::parseHeader(const uint8_t* data, size_t len)
 
         // Bytes 4-6: Sequence Number (24 bits)
         header.sequence_number = (static_cast<uint32_t>(data[4]) << 16) |
-                                (static_cast<uint32_t>(data[5]) << 8) |
-                                static_cast<uint32_t>(data[6]);
+                                 (static_cast<uint32_t>(data[5]) << 8) |
+                                 static_cast<uint32_t>(data[6]);
         // Byte 7: Spare
     }
 
@@ -378,6 +429,14 @@ void GtpParser::extractCommonFields(GtpMessage& msg) {
                     uint32_t teid;
                     std::memcpy(&teid, ie.data.data() + 1, 4);
                     msg.f_teid = ntohl(teid);
+                }
+                break;
+            case GtpIeType::ULI:
+                msg.user_location_info = ie.data;
+                break;
+            case GtpIeType::RAT_TYPE:
+                if (!ie.data.empty()) {
+                    msg.rat_type = ie.data[0];
                 }
                 break;
             default:

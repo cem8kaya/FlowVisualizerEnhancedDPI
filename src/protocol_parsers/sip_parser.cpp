@@ -282,6 +282,19 @@ nlohmann::json SipMessage::toJson() const {
         j["subscription_state"] = ss;
     }
 
+    // NEW: Correlation & Context headers
+    if (reason.has_value()) {
+        j["reason_header"] = reason.value();
+    }
+
+    if (!diversion.empty()) {
+        j["diversion"] = diversion;
+    }
+
+    if (!history_info.empty()) {
+        j["history_info"] = history_info;
+    }
+
     // SDP (enhanced for IMS)
     if (sdp.has_value()) {
         nlohmann::json sdp_json;
@@ -585,6 +598,12 @@ void SipParser::parseHeaders(const std::vector<std::string>& lines, SipMessage& 
             msg.content_type = value;
         } else if (name == "Authorization") {
             msg.authorization = value;
+        } else if (name == "Reason") {
+            msg.reason = value;
+        } else if (name == "Diversion") {
+            msg.diversion.push_back(value);
+        } else if (name == "History-Info") {
+            msg.history_info.push_back(value);
         }
 
         // Store all headers
