@@ -14,7 +14,7 @@ namespace callflow {
  * Determine handover type from message context
  */
 std::string detectHandoverType(const SessionMessageRef& msg,
-                                const SessionMessageRef* prev_msg = nullptr) {
+                                const SessionMessageRef* /*prev_msg*/ = nullptr) {
     // Check protocol type
     if (msg.protocol == ProtocolType::X2AP) {
         return "X2";

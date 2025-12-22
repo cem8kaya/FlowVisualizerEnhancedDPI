@@ -38,6 +38,7 @@ public:
      * Configuration for tunnel management
      */
     struct Config {
+        Config() = default;
         std::chrono::seconds activity_timeout{7200};      // 2 hours
         std::chrono::seconds echo_timeout_multiplier{3};  // 3x interval
         std::chrono::seconds stale_timeout_multiplier{5}; // 5x interval

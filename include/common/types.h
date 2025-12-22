@@ -36,7 +36,9 @@ enum class ProtocolType {
     HTTP,
     DNS,
     DHCP = 11,  // DHCP is new, assigned 11.
-    NGAP = 12,  // NGAP is new, assigned 12.
+    NGAP = 12,
+    S1AP,
+    X2AP,  // NGAP is new, assigned 12.
     SCTP,
     TCP,
     UDP,
@@ -155,6 +157,9 @@ enum class MessageType {
     NGAP_PDU_SESSION_RESOURCE_SETUP_RESP,
     NGAP_PDU_SESSION_RESOURCE_RELEASE,
     NGAP_HANDOVER_PREPARATION,
+    NGAP_HANDOVER_REQUEST,
+    NGAP_HANDOVER_REQUEST_ACK,
+    NGAP_HANDOVER_NOTIFY,
     NGAP_PATH_SWITCH_REQUEST,
     NGAP_PATH_SWITCH_REQUEST_ACK,
     NGAP_NG_SETUP,

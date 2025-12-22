@@ -390,7 +390,6 @@ void Nas5gParser::extractIEs(Nas5gMessage& msg) {
         // 2. UE Security Capability (TLV 2-? depending on standard version, usually length byte)
         else if (iei == 0x2E) {
             if (offset + 1 < len) {
-                uint8_t ie_len = data[offset + 1];
                 offset += 2;
                 if (offset + ie_len <= len) {
                     ie.name = "UE Security Capability";
@@ -407,7 +406,6 @@ void Nas5gParser::extractIEs(Nas5gMessage& msg) {
         // 3. DNN (TLV) - 0x25
         else if (iei == 0x25) {
             if (offset + 1 < len) {
-                uint8_t ie_len = data[offset + 1];
                 // TV / T types (Fixed Length IEs or Type Only)
                 if ((iei & 0xF0) == 0x90 ||
                     (iei & 0xF0) == 0xA0) {  // Example: Type 1 TV (half octet)
@@ -522,12 +520,14 @@ std::optional<std::string> Nas5gParser::decodeMobileIdentity(const uint8_t* data
 }
 
 std::optional<std::string> Nas5gParser::decodeSupci(const uint8_t* data, size_t len) {
+    (void)data; (void)len;
     if (len < 4)
         return std::nullopt;
     return "SUCI (Encrypted)";
 }
 
 std::optional<std::string> Nas5gParser::decode5gGuti(const uint8_t* data, size_t len) {
+    (void)data; (void)len;
     return "5G-GUTI";
 }
 
