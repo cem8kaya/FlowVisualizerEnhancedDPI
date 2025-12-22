@@ -485,10 +485,6 @@ EnhancedSessionType EnhancedSessionCorrelator::detectSessionType(const Session& 
     bool has_sip = false;
     bool has_rtp = false;
 
-    bool has_attach_request = false;
-    bool has_registration_request = false;
-    bool has_pdu_session_establish = false;
-    bool has_handover_request = false;
 
     for (const auto& msg : all_messages) {
         // Check protocols
@@ -549,7 +545,7 @@ bool EnhancedSessionCorrelator::isSessionStartMessage(const SessionMessageRef& m
         case MessageType::NAS5G_REGISTRATION_REQUEST:
         case MessageType::NAS5G_PDU_SESSION_ESTABLISHMENT_REQUEST:
         case MessageType::X2AP_HANDOVER_PREPARATION:
-        case MessageType::NGAP_PDU_SESSION_RESOURCE_SETUP:
+        case MessageType::NGAP_PDU_SESSION_RESOURCE_SETUP_REQ:
             return true;
         default:
             return false;
