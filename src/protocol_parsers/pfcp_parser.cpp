@@ -214,8 +214,8 @@ bool PfcpParser::isPfcp(const uint8_t* data, size_t len) {
     // Check message type (valid PFCP message types)
     uint8_t msg_type = data[1];
     return (msg_type == 1 || msg_type == 2 ||  // Heartbeat
-            msg_type >= 3 && msg_type <= 15 ||  // Node management
-            msg_type >= 50 && msg_type <= 57);  // Session management
+            (msg_type >= 3 && msg_type <= 15) ||  // Node management
+            (msg_type >= 50 && msg_type <= 57));  // Session management
 }
 
 std::optional<PfcpMessage> PfcpParser::parse(const uint8_t* data, size_t len) {

@@ -107,8 +107,8 @@ std::string bytesToBase64(const uint8_t* data, size_t len) {
 
 std::vector<uint8_t> base64ToBytes(const std::string& base64) {
     // Simplified implementation - assumes valid base64 input
+    (void)base64;  // TODO: Implement full base64 decoding
     std::vector<uint8_t> result;
-    // TODO: Implement full base64 decoding
     return result;
 }
 

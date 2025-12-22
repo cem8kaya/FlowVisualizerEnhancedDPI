@@ -1,5 +1,14 @@
 #pragma once
 
+// Suppress GNU extension warning for variadic macros
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+
 #include <fmt/core.h>
 #include <fmt/ostream.h>
 
@@ -75,3 +84,9 @@ private:
                       LOG_STREAM, DUMMY_ARG)(callflow::LogLevel::FATAL, __VA_ARGS__)
 
 }  // namespace callflow
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

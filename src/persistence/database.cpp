@@ -885,6 +885,7 @@ Timestamp DatabaseManager::unixToTimestamp(int64_t unix_ms) {
 
 std::string DatabaseManager::buildSessionWhereClause(const SessionFilter& filter,
                                                      std::vector<std::string>& params) {
+    (void)params;  // Currently not used - conditions are built inline
     std::vector<std::string> conditions;
 
     if (filter.job_id) {

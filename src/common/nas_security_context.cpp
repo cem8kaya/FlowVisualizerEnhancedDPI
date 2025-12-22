@@ -98,6 +98,11 @@ bool NasSecurityContext::verifyIntegrity(const std::vector<uint8_t>& payload, ui
 std::pair<std::vector<uint8_t>, std::vector<uint8_t>> NasSecurityContext::deriveNasKeys(
     const std::vector<uint8_t>& k_master, NasCipheringAlgorithm enc_alg,
     NasIntegrityAlgorithm int_alg) {
+    // Suppress unused parameter warnings - these will be used when full KDF is implemented
+    (void)k_master;
+    (void)enc_alg;
+    (void)int_alg;
+
     // Simplified key derivation (KDF)
     // S = FC || P0 || L0 || P1 || L1
     // FC = 0x69

@@ -99,6 +99,7 @@ bool FiveGRegistrationMachine::processMessage(const SessionMessageRef& msg) {
 }
 
 void FiveGRegistrationMachine::transitionTo(State new_state, const SessionMessageRef& msg) {
+    (void)msg;  // Parameter used for interface consistency but not needed here
     LOG_DEBUG("5G Registration state: {} -> {}", stateToString(current_state_),
              stateToString(new_state));
     current_state_ = new_state;

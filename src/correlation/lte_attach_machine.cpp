@@ -232,6 +232,7 @@ bool LteAttachMachine::processMessage(const SessionMessageRef& msg) {
 }
 
 void LteAttachMachine::transitionTo(State new_state, const SessionMessageRef& msg) {
+    (void)msg;  // Parameter used for interface consistency but not needed here
     LOG_DEBUG("LTE Attach state: {} -> {}", stateToString(current_state_),
              stateToString(new_state));
     current_state_ = new_state;
