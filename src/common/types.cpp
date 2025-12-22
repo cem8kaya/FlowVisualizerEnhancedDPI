@@ -264,8 +264,10 @@ std::string messageTypeToString(MessageType type) {
             return "NGAP Downlink NAS Transport";
         case MessageType::NGAP_UPLINK_NAS_TRANSPORT:
             return "NGAP Uplink NAS Transport";
-        case MessageType::NGAP_PDU_SESSION_RESOURCE_SETUP:
-            return "NGAP PDU Session Resource Setup";
+        case MessageType::NGAP_PDU_SESSION_RESOURCE_SETUP_REQ:
+            return "NGAP PDU Session Resource Setup Request";
+        case MessageType::NGAP_PDU_SESSION_RESOURCE_SETUP_RESP:
+            return "NGAP PDU Session Resource Setup Response";
         case MessageType::NGAP_PDU_SESSION_RESOURCE_RELEASE:
             return "NGAP PDU Session Resource Release";
         case MessageType::NGAP_HANDOVER_PREPARATION:
