@@ -98,12 +98,12 @@ void TunnelManager::createTunnel(const SessionMessageRef& msg) {
 
     // Extract QCI from parsed data
     if (msg.parsed_data.contains("bearer_contexts") &&
-        msg.parsed_data["bearer_contexts"].is_array() &&
-        !msg.parsed_data["bearer_contexts"].empty()) {
+        msg.parsed_data.at("bearer_contexts").is_array() &&
+        !msg.parsed_data.at("bearer_contexts").empty()) {
 
-        auto& bearer = msg.parsed_data["bearer_contexts"][0];
+        auto& bearer = msg.parsed_data.at("bearer_contexts").at(0);
         if (bearer.contains("qci")) {
-            tunnel.qci = bearer["qci"].get<uint8_t>();
+            tunnel.qci = bearer.at("qci").get<uint8_t>();
         }
     }
 
@@ -494,11 +494,11 @@ std::optional<uint32_t> TunnelManager::extractTeid(const SessionMessageRef& msg)
 
     // Try parsed data
     if (msg.parsed_data.contains("teid")) {
-        return msg.parsed_data["teid"].get<uint32_t>();
+        return msg.parsed_data.at("teid").get<uint32_t>();
     }
 
     if (msg.parsed_data.contains("teid_c")) {
-        return msg.parsed_data["teid_c"].get<uint32_t>();
+        return msg.parsed_data.at("teid_c").get<uint32_t>();
     }
 
     return std::nullopt;
@@ -513,23 +513,23 @@ std::optional<TunnelManager::TeidPair> TunnelManager::extractTeidPair(
 
     // Extract from bearer contexts
     if (msg.parsed_data.contains("bearer_contexts") &&
-        msg.parsed_data["bearer_contexts"].is_array() &&
-        !msg.parsed_data["bearer_contexts"].empty()) {
+        msg.parsed_data.at("bearer_contexts").is_array() &&
+        !msg.parsed_data.at("bearer_contexts").empty()) {
 
-        auto& bearer = msg.parsed_data["bearer_contexts"][0];
+        auto& bearer = msg.parsed_data.at("bearer_contexts").at(0);
 
         if (bearer.contains("s1u_enb_fteid")) {
-            auto& fteid = bearer["s1u_enb_fteid"];
+            auto& fteid = bearer.at("s1u_enb_fteid");
             if (fteid.contains("teid")) {
-                pair.uplink = fteid["teid"].get<uint32_t>();
+                pair.uplink = fteid.at("teid").get<uint32_t>();
                 found_uplink = true;
             }
         }
 
         if (bearer.contains("s1u_sgw_fteid")) {
-            auto& fteid = bearer["s1u_sgw_fteid"];
+            auto& fteid = bearer.at("s1u_sgw_fteid");
             if (fteid.contains("teid")) {
-                pair.downlink = fteid["teid"].get<uint32_t>();
+                pair.downlink = fteid.at("teid").get<uint32_t>();
                 found_downlink = true;
             }
         }
@@ -548,7 +548,7 @@ std::optional<std::string> TunnelManager::extractImsi(const SessionMessageRef& m
     }
 
     if (msg.parsed_data.contains("imsi")) {
-        return msg.parsed_data["imsi"].get<std::string>();
+        return msg.parsed_data.at("imsi").get<std::string>();
     }
 
     return std::nullopt;
@@ -609,14 +609,14 @@ void TunnelManager::detectHandover(const SessionMessageRef& msg) {
 
     // Extract eNB IPs if available
     if (msg.parsed_data.contains("bearer_contexts") &&
-        msg.parsed_data["bearer_contexts"].is_array() &&
-        !msg.parsed_data["bearer_contexts"].empty()) {
+        msg.parsed_data.at("bearer_contexts").is_array() &&
+        !msg.parsed_data.at("bearer_contexts").empty()) {
 
-        auto& bearer = msg.parsed_data["bearer_contexts"][0];
+        auto& bearer = msg.parsed_data.at("bearer_contexts").at(0);
 
         if (bearer.contains("s1u_enb_fteid") &&
-            bearer["s1u_enb_fteid"].contains("ipv4")) {
-            handover.new_enb_ip = bearer["s1u_enb_fteid"]["ipv4"].get<std::string>();
+            bearer.at("s1u_enb_fteid").contains("ipv4")) {
+            handover.new_enb_ip = bearer.at("s1u_enb_fteid").at("ipv4").get<std::string>();
         }
     }
 
