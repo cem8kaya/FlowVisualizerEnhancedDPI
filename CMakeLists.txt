@@ -83,25 +83,36 @@ endif()
 include(FetchContent)
 
 # JSON library (nlohmann/json - header only)
-set(JSON_BuildTests OFF CACHE INTERNAL "")
-set(JSON_Install OFF CACHE INTERNAL "")
+# Try to find system package first
+find_package(nlohmann_json 3.11.0 QUIET)
+if(NOT nlohmann_json_FOUND)
+    set(JSON_BuildTests OFF CACHE INTERNAL "")
+    set(JSON_Install OFF CACHE INTERNAL "")
 
-FetchContent_Declare(
-    json
-    URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(json)
-message(STATUS "nlohmann/json fetched successfully")
+    FetchContent_Declare(
+        json
+        URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(json)
+    message(STATUS "nlohmann/json fetched successfully")
+else()
+    message(STATUS "Using system nlohmann/json")
+endif()
 
 # fmt library for logging
-FetchContent_Declare(
-    fmt
-    URL https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(fmt)
-message(STATUS "fmt fetched for logging")
+find_package(fmt QUIET)
+if(NOT fmt_FOUND)
+    FetchContent_Declare(
+        fmt
+        URL https://github.com/fmtlib/fmt/releases/download/10.1.1/fmt-10.1.1.zip
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(fmt)
+    message(STATUS "fmt fetched for logging")
+else()
+    message(STATUS "Using system fmt")
+endif()
 
 # cpp-httplib (header only HTTP server/client library)
 if(BUILD_API_SERVER)
@@ -139,45 +150,60 @@ endif()
 
 # Google Test for unit testing
 if(BUILD_TESTS)
-    FetchContent_Declare(
-        googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG v1.14.0
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    # Prevent GoogleTest from overriding compiler/linker options
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
-    message(STATUS "GoogleTest fetched for unit testing")
+    find_package(GTest QUIET)
+    if(NOT GTest_FOUND)
+        FetchContent_Declare(
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.14.0
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        )
+        # Prevent GoogleTest from overriding compiler/linker options
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(googletest)
+        message(STATUS "GoogleTest fetched for unit testing")
+    else()
+        message(STATUS "Using system GTest")
+    endif()
 endif()
 
 # Google Benchmark for performance testing
 if(BUILD_BENCHMARKS)
-    FetchContent_Declare(
-        benchmark
-        GIT_REPOSITORY https://github.com/google/benchmark.git
-        GIT_TAG v1.8.3
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
-    set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(benchmark)
-    message(STATUS "Google Benchmark fetched for performance testing")
+    find_package(benchmark QUIET)
+    if(NOT benchmark_FOUND)
+        FetchContent_Declare(
+            benchmark
+            GIT_REPOSITORY https://github.com/google/benchmark.git
+            GIT_TAG v1.8.3
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        )
+        set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+        set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(benchmark)
+        message(STATUS "Google Benchmark fetched for performance testing")
+    else()
+        message(STATUS "Using system benchmark")
+    endif()
 endif()
 
 # yaml-cpp for configuration parsing
-FetchContent_Declare(
-    yaml-cpp
-    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-    GIT_TAG 0.8.0
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
-set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
-set(YAML_CPP_INSTALL OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(yaml-cpp)
-message(STATUS "yaml-cpp fetched for configuration parsing")
+find_package(yaml-cpp QUIET)
+if(NOT yaml-cpp_FOUND)
+    FetchContent_Declare(
+        yaml-cpp
+        GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+        GIT_TAG 0.8.0
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_INSTALL OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(yaml-cpp)
+    message(STATUS "yaml-cpp fetched for configuration parsing")
+else()
+    message(STATUS "Using system yaml-cpp")
+endif()
 
 # Add subdirectories
 add_subdirectory(src)
