@@ -64,13 +64,12 @@ set_tests_properties(test_sctp_parser PROPERTIES
 
 # S1AP Parser Tests
 add_executable(test_s1ap_parser
-    unit/test_s1ap_parser.cpp
+    unit/protocol_parsers/test_s1ap_parser.cpp
 )
 
 target_link_libraries(test_s1ap_parser PRIVATE
     callflow_common
     protocol_parsers
-    asn1_wrapper
     GTest::gtest
     GTest::gtest_main
 )

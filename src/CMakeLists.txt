@@ -152,7 +152,8 @@ add_library(protocol_parsers STATIC
     protocol_parsers/ngap_parser.cpp
     protocol_parsers/nas5g_parser.cpp
     protocol_parsers/nas_parser.cpp
-    protocol_parsers/s1ap_parser.cpp
+    protocol_parsers/s1ap/s1ap_parser.cpp
+    protocol_parsers/s1ap/s1ap_ie_parser.cpp
 
 )
 target_include_directories(protocol_parsers PUBLIC
