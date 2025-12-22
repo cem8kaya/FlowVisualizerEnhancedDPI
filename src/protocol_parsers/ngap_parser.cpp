@@ -97,7 +97,7 @@ MessageType NgapMessage::getMessageType() const {
         case NgapProcedureCode::UPLINK_NAS_TRANSPORT:
             return MessageType::NGAP_UPLINK_NAS_TRANSPORT;
         case NgapProcedureCode::PDU_SESSION_RESOURCE_SETUP:
-            return MessageType::NGAP_PDU_SESSION_RESOURCE_SETUP;
+            return MessageType::NGAP_PDU_SESSION_RESOURCE_SETUP_REQ;
         case NgapProcedureCode::PDU_SESSION_RESOURCE_RELEASE:
             return MessageType::NGAP_PDU_SESSION_RESOURCE_RELEASE;
         case NgapProcedureCode::HANDOVER_PREPARATION:
