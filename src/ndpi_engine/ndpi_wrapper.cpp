@@ -57,6 +57,12 @@ ProtocolType NdpiWrapper::classifyPacket(const uint8_t* data, size_t len, const 
         return ProtocolType::UNKNOWN;
     }
 
+#ifndef NDPI_INCLUDE_DIR
+    // Suppress unused parameter warnings when nDPI is not available
+    (void)data;
+    (void)len;
+#endif
+
 #ifdef NDPI_INCLUDE_DIR
     if (ndpi_struct_ && len > 0 && flow_cache_) {
         auto* ndpi_struct = static_cast<struct ndpi_detection_module_struct*>(ndpi_struct_);

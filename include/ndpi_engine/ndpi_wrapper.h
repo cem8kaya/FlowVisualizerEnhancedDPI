@@ -50,7 +50,7 @@ private:
      */
     ProtocolType fallbackClassification(const FiveTuple& ft);
 
-    void* ndpi_struct_;  // Opaque pointer to nDPI structure
+    [[maybe_unused]] void* ndpi_struct_;  // Opaque pointer to nDPI structure
     bool initialized_;
     std::unique_ptr<NdpiFlowCache> flow_cache_;  // Flow cache for performance
 };

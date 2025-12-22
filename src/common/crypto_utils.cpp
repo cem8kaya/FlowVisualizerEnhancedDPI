@@ -2,9 +2,9 @@
 
 #include <arpa/inet.h>
 #include <openssl/aes.h>
-#include <openssl/cmac.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/params.h>
 
 #include <cstring>
 #include <vector>
@@ -139,30 +139,41 @@ std::vector<uint8_t> CryptoUtils::aes128cmac(const std::vector<uint8_t>& data,
     // Message
     buffer.insert(buffer.end(), data.begin(), data.end());
 
-    // AES CMAC using OpenSSL CMAC_* API (Deprecated in 3.0 but widely available)
-    CMAC_CTX* ctx = CMAC_CTX_new();
+    // AES CMAC using OpenSSL 3.0+ EVP_MAC API
+    EVP_MAC* mac = EVP_MAC_fetch(nullptr, "CMAC", nullptr);
+    if (!mac) {
+        return {};
+    }
+
+    EVP_MAC_CTX* ctx = EVP_MAC_CTX_new(mac);
+    EVP_MAC_free(mac);
     if (!ctx) {
         return {};
     }
 
-    if (!CMAC_Init(ctx, key.data(), key.size(), EVP_aes_128_cbc(), nullptr)) {
-        CMAC_CTX_free(ctx);
+    // Set up parameters for CMAC with AES-128
+    OSSL_PARAM params[2];
+    params[0] = OSSL_PARAM_construct_utf8_string("cipher", const_cast<char*>("AES-128-CBC"), 0);
+    params[1] = OSSL_PARAM_construct_end();
+
+    if (!EVP_MAC_init(ctx, key.data(), key.size(), params)) {
+        EVP_MAC_CTX_free(ctx);
         return {};
     }
 
-    if (!CMAC_Update(ctx, buffer.data(), buffer.size())) {
-        CMAC_CTX_free(ctx);
+    if (!EVP_MAC_update(ctx, buffer.data(), buffer.size())) {
+        EVP_MAC_CTX_free(ctx);
         return {};
     }
 
     size_t mac_len = 0;
     std::vector<uint8_t> result(16);
-    if (!CMAC_Final(ctx, result.data(), &mac_len)) {
-        CMAC_CTX_free(ctx);
+    if (!EVP_MAC_final(ctx, result.data(), &mac_len, result.size())) {
+        EVP_MAC_CTX_free(ctx);
         return {};
     }
 
-    CMAC_CTX_free(ctx);
+    EVP_MAC_CTX_free(ctx);
 
     // Truncate to first 4 bytes (NAS MAC is 32-bit)
     result.resize(4);

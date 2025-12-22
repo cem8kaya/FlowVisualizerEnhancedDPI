@@ -248,6 +248,8 @@ bool DiameterSessionManager::correlateRequestResponse(
     std::shared_ptr<DiameterMessage> request, std::shared_ptr<DiameterMessage> answer,
     std::chrono::system_clock::time_point request_time,
     std::chrono::system_clock::time_point answer_time) {
+    (void)request_time;  // Used for interface consistency, timing tracked internally
+    (void)answer_time;   // Used for interface consistency, timing tracked internally
     if (!request || !answer) {
         return false;
     }

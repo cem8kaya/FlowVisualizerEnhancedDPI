@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <thread>
+
 #include "correlation/lte_attach_machine.h"
 #include "correlation/procedure_state_machine.h"
 #include "session/session_types.h"
