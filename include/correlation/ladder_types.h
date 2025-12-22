@@ -77,9 +77,9 @@ struct LadderEvent {
     std::string from_participant;        // Source participant ID
     std::string to_participant;          // Destination participant ID
     std::string interface;               // 3GPP interface (e.g., "S1-MME", "S11")
-    ProtocolType protocol;               // Protocol type
+    callflow::ProtocolType protocol;               // Protocol type
     std::string protocol_name;           // Human-readable protocol name
-    MessageType message_type;            // Message type enum
+    callflow::MessageType message_type;            // Message type enum
     std::string message;                 // Human-readable message name
 
     MessageDirection direction;          // Message direction
