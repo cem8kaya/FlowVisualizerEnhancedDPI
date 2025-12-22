@@ -390,6 +390,7 @@ void Nas5gParser::extractIEs(Nas5gMessage& msg) {
         // 2. UE Security Capability (TLV 2-? depending on standard version, usually length byte)
         else if (iei == 0x2E) {
             if (offset + 1 < len) {
+                uint8_t ie_len = data[offset + 1];
                 offset += 2;
                 if (offset + ie_len <= len) {
                     ie.name = "UE Security Capability";
