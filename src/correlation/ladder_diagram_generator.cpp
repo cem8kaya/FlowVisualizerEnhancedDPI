@@ -86,7 +86,7 @@ LadderDiagram LadderDiagramGenerator::generateFromSession(
     // Generate title from session type if not provided
     std::string diagram_title = title;
     if (diagram_title.empty()) {
-        diagram_title = sessionTypeToString(session.session_type);
+        diagram_title = callflow::sessionTypeToString(session.session_type);
 
         // Add IMSI if available
         if (session.correlation_key.imsi.has_value()) {
@@ -142,11 +142,6 @@ LadderEvent LadderDiagramGenerator::createLadderEvent(
     // Extract details
     if (!msg.parsed_data.empty()) {
         event.details = extractMessageDetails(msg);
-    }
-
-    // Set procedure information from correlation key
-    if (msg.correlation_key.procedure_type.has_value()) {
-        event.procedure = procedureTypeToString(msg.correlation_key.procedure_type.value());
     }
 
     // Set correlation ID
@@ -220,6 +215,8 @@ std::string LadderDiagramGenerator::identifyGtpInterface(
     ParticipantType src_type,
     ParticipantType dst_type
 ) {
+    (void)msg; // Suppress unused parameter warning
+
     // S11: MME <-> S-GW
     if ((src_type == ParticipantType::MME && dst_type == ParticipantType::SGW) ||
         (src_type == ParticipantType::SGW && dst_type == ParticipantType::MME)) {
@@ -298,8 +295,6 @@ bool LadderDiagramGenerator::isRequest(callflow::MessageType msg_type) {
         // PFCP Requests
         case callflow::MessageType::PFCP_HEARTBEAT_REQ:
         case callflow::MessageType::PFCP_ASSOCIATION_SETUP_REQ:
-        case callflow::MessageType::PFCP_ASSOCIATION_UPDATE_REQ:
-        case callflow::MessageType::PFCP_ASSOCIATION_RELEASE_REQ:
         case callflow::MessageType::PFCP_SESSION_ESTABLISHMENT_REQ:
         case callflow::MessageType::PFCP_SESSION_MODIFICATION_REQ:
         case callflow::MessageType::PFCP_SESSION_DELETION_REQ:
@@ -319,9 +314,6 @@ bool LadderDiagramGenerator::isRequest(callflow::MessageType msg_type) {
         case callflow::MessageType::SIP_OPTIONS:
         case callflow::MessageType::SIP_UPDATE:
         case callflow::MessageType::SIP_PRACK:
-        case callflow::MessageType::SIP_INFO:
-        case callflow::MessageType::SIP_SUBSCRIBE:
-        case callflow::MessageType::SIP_NOTIFY:
 
         // S1AP/NGAP Requests (most are indications, but some are request-like)
         case callflow::MessageType::S1AP_INITIAL_UE_MESSAGE:
@@ -347,8 +339,6 @@ bool LadderDiagramGenerator::isResponse(callflow::MessageType msg_type) {
         // PFCP Responses
         case callflow::MessageType::PFCP_HEARTBEAT_RESP:
         case callflow::MessageType::PFCP_ASSOCIATION_SETUP_RESP:
-        case callflow::MessageType::PFCP_ASSOCIATION_UPDATE_RESP:
-        case callflow::MessageType::PFCP_ASSOCIATION_RELEASE_RESP:
         case callflow::MessageType::PFCP_SESSION_ESTABLISHMENT_RESP:
         case callflow::MessageType::PFCP_SESSION_MODIFICATION_RESP:
         case callflow::MessageType::PFCP_SESSION_DELETION_RESP:
@@ -360,13 +350,8 @@ bool LadderDiagramGenerator::isResponse(callflow::MessageType msg_type) {
         case callflow::MessageType::DIAMETER_RAA:
 
         // SIP Responses
-        case callflow::MessageType::SIP_100_TRYING:
-        case callflow::MessageType::SIP_180_RINGING:
-        case callflow::MessageType::SIP_183_SESSION_PROGRESS:
-        case callflow::MessageType::SIP_200_OK:
-        case callflow::MessageType::SIP_486_BUSY_HERE:
-        case callflow::MessageType::SIP_487_REQUEST_TERMINATED:
-        case callflow::MessageType::SIP_603_DECLINE:
+        case callflow::MessageType::SIP_TRYING:
+        case callflow::MessageType::SIP_RINGING:
             return true;
 
         default:
@@ -396,10 +381,8 @@ std::optional<callflow::MessageType> LadderDiagramGenerator::getRequestForRespon
         case callflow::MessageType::DIAMETER_AAA:
             return callflow::MessageType::DIAMETER_AAR;
 
-        case callflow::MessageType::SIP_200_OK:
-        case callflow::MessageType::SIP_100_TRYING:
-        case callflow::MessageType::SIP_180_RINGING:
-        case callflow::MessageType::SIP_183_SESSION_PROGRESS:
+        case callflow::MessageType::SIP_TRYING:
+        case callflow::MessageType::SIP_RINGING:
             // SIP responses can be for multiple request types
             // Would need more context to determine exact request
             return callflow::MessageType::SIP_INVITE;
