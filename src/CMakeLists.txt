@@ -52,6 +52,9 @@ add_library(procedure_correlation STATIC
     correlation/keepalive_aggregator.cpp
     correlation/tunnel_manager.cpp
     correlation/handover_detector.cpp
+    correlation/ladder_types.cpp
+    correlation/participant_detector.cpp
+    correlation/ladder_diagram_generator.cpp
 )
 target_include_directories(procedure_correlation PUBLIC
     ${PROJECT_SOURCE_DIR}/include

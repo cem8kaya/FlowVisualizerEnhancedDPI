@@ -390,4 +390,44 @@ set_tests_properties(test_handover_detection PROPERTIES
     LABELS "unit"
 )
 
+# Participant Detection Tests
+add_executable(test_participant_detection
+    unit/test_participant_detection.cpp
+)
+
+target_link_libraries(test_participant_detection PRIVATE
+    callflow_common
+    session_correlation
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_participant_detection COMMAND test_participant_detection)
+
+set_tests_properties(test_participant_detection PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Ladder Diagram Generator Tests
+add_executable(test_ladder_generator
+    unit/test_ladder_generator.cpp
+)
+
+target_link_libraries(test_ladder_generator PRIVATE
+    callflow_common
+    session_correlation
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_ladder_generator COMMAND test_ladder_generator)
+
+set_tests_properties(test_ladder_generator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
