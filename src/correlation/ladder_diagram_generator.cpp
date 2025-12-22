@@ -1,5 +1,6 @@
 #include "../../include/correlation/ladder_diagram_generator.h"
-#include "../../include/common/message_type_names.h"
+#include "../../include/common/types.h"
+#include "../../include/correlation/procedure_state_machine.h"
 #include <algorithm>
 #include <random>
 #include <sstream>
@@ -13,7 +14,7 @@ LadderDiagramGenerator::LadderDiagramGenerator() {
 }
 
 LadderDiagram LadderDiagramGenerator::generate(
-    std::vector<SessionMessageRef> messages,
+    std::vector<callflow::SessionMessageRef> messages,
     const std::string& session_id,
     const std::string& title
 ) {
@@ -28,7 +29,7 @@ LadderDiagram LadderDiagramGenerator::generate(
 
     // Sort messages by timestamp
     std::sort(messages.begin(), messages.end(),
-        [](const SessionMessageRef& a, const SessionMessageRef& b) {
+        [](const callflow::SessionMessageRef& a, const callflow::SessionMessageRef& b) {
             return a.timestamp < b.timestamp;
         });
 
@@ -76,11 +77,11 @@ LadderDiagram LadderDiagramGenerator::generate(
 }
 
 LadderDiagram LadderDiagramGenerator::generateFromSession(
-    const Session& session,
+    const callflow::Session& session,
     const std::string& title
 ) {
     // Get all messages from the session
-    std::vector<SessionMessageRef> messages = session.getAllMessages();
+    std::vector<callflow::SessionMessageRef> messages = session.getAllMessages();
 
     // Generate title from session type if not provided
     std::string diagram_title = title;
@@ -105,7 +106,7 @@ void LadderDiagramGenerator::addParticipantMapping(
 }
 
 LadderEvent LadderDiagramGenerator::createLadderEvent(
-    const SessionMessageRef& msg,
+    const callflow::SessionMessageRef& msg,
     const std::string& from_participant,
     const std::string& to_participant
 ) {
@@ -161,7 +162,7 @@ LadderEvent LadderDiagramGenerator::createLadderEvent(
     return event;
 }
 
-std::string LadderDiagramGenerator::identifyInterface(const SessionMessageRef& msg) {
+std::string LadderDiagramGenerator::identifyInterface(const callflow::SessionMessageRef& msg) {
     // Get participant types for source and destination
     auto src_info = participant_detector_->getParticipant(msg.src_ip);
     auto dst_info = participant_detector_->getParticipant(msg.dst_ip);
@@ -171,10 +172,10 @@ std::string LadderDiagramGenerator::identifyInterface(const SessionMessageRef& m
 
     // Check protocol-specific interfaces
     switch (msg.protocol) {
-        case ProtocolType::S1AP:
+        case callflow::ProtocolType::S1AP:
             return "S1-MME";
 
-        case ProtocolType::GTP_U:
+        case callflow::ProtocolType::GTP_U:
             if (src_type == ParticipantType::ENODEB || dst_type == ParticipantType::ENODEB) {
                 return "S1-U";
             } else if (src_type == ParticipantType::SGW || dst_type == ParticipantType::SGW) {
@@ -182,31 +183,31 @@ std::string LadderDiagramGenerator::identifyInterface(const SessionMessageRef& m
             }
             return "GTP-U";
 
-        case ProtocolType::GTP_C:
+        case callflow::ProtocolType::GTP_C:
             return identifyGtpInterface(msg, src_type, dst_type);
 
-        case ProtocolType::NGAP:
+        case callflow::ProtocolType::NGAP:
             return "N2";
 
-        case ProtocolType::PFCP:
+        case callflow::ProtocolType::PFCP:
             return "N4";
 
-        case ProtocolType::DIAMETER:
+        case callflow::ProtocolType::DIAMETER:
             return identifyDiameterInterface(msg);
 
-        case ProtocolType::SIP:
-        case ProtocolType::RTP:
-        case ProtocolType::RTCP:
+        case callflow::ProtocolType::SIP:
+        case callflow::ProtocolType::RTP:
+        case callflow::ProtocolType::RTCP:
             return "IMS";
 
-        case ProtocolType::HTTP2:
+        case callflow::ProtocolType::HTTP2:
             // 5G Service Based Architecture
             return "SBI";
 
-        case ProtocolType::DNS:
+        case callflow::ProtocolType::DNS:
             return "DNS";
 
-        case ProtocolType::DHCP:
+        case callflow::ProtocolType::DHCP:
             return "DHCP";
 
         default:
@@ -215,7 +216,7 @@ std::string LadderDiagramGenerator::identifyInterface(const SessionMessageRef& m
 }
 
 std::string LadderDiagramGenerator::identifyGtpInterface(
-    const SessionMessageRef& msg,
+    const callflow::SessionMessageRef& msg,
     ParticipantType src_type,
     ParticipantType dst_type
 ) {
@@ -237,7 +238,7 @@ std::string LadderDiagramGenerator::identifyGtpInterface(
     return "GTP-C";
 }
 
-std::string LadderDiagramGenerator::identifyDiameterInterface(const SessionMessageRef& msg) {
+std::string LadderDiagramGenerator::identifyDiameterInterface(const callflow::SessionMessageRef& msg) {
     // Try to extract Application-ID from parsed data
     if (msg.parsed_data.contains("application_id")) {
         uint32_t app_id = msg.parsed_data["application_id"].get<uint32_t>();
@@ -272,7 +273,7 @@ std::string LadderDiagramGenerator::identifyDiameterInterface(const SessionMessa
     return "DIAMETER";
 }
 
-MessageDirection LadderDiagramGenerator::determineDirection(const SessionMessageRef& msg) {
+MessageDirection LadderDiagramGenerator::determineDirection(const callflow::SessionMessageRef& msg) {
     if (isRequest(msg.message_type)) {
         return MessageDirection::REQUEST;
     } else if (isResponse(msg.message_type)) {
@@ -283,48 +284,48 @@ MessageDirection LadderDiagramGenerator::determineDirection(const SessionMessage
     return MessageDirection::INDICATION;
 }
 
-bool LadderDiagramGenerator::isRequest(MessageType msg_type) {
+bool LadderDiagramGenerator::isRequest(callflow::MessageType msg_type) {
     // List of request message types
     switch (msg_type) {
         // GTP-C Requests
-        case MessageType::GTP_CREATE_SESSION_REQUEST:
-        case MessageType::GTP_MODIFY_BEARER_REQUEST:
-        case MessageType::GTP_DELETE_SESSION_REQUEST:
-        case MessageType::GTP_CREATE_BEARER_REQUEST:
-        case MessageType::GTP_DELETE_BEARER_REQUEST:
-        case MessageType::GTP_ECHO_REQUEST:
+        case callflow::MessageType::GTP_CREATE_SESSION_REQ:
+        case callflow::MessageType::GTP_MODIFY_BEARER_REQ:
+        case callflow::MessageType::GTP_DELETE_SESSION_REQ:
+        case callflow::MessageType::GTP_CREATE_BEARER_REQ:
+        case callflow::MessageType::GTP_DELETE_BEARER_REQ:
+        case callflow::MessageType::GTP_ECHO_REQ:
 
         // PFCP Requests
-        case MessageType::PFCP_HEARTBEAT_REQUEST:
-        case MessageType::PFCP_ASSOCIATION_SETUP_REQUEST:
-        case MessageType::PFCP_ASSOCIATION_UPDATE_REQUEST:
-        case MessageType::PFCP_ASSOCIATION_RELEASE_REQUEST:
-        case MessageType::PFCP_SESSION_ESTABLISHMENT_REQUEST:
-        case MessageType::PFCP_SESSION_MODIFICATION_REQUEST:
-        case MessageType::PFCP_SESSION_DELETION_REQUEST:
-        case MessageType::PFCP_SESSION_REPORT_REQUEST:
+        case callflow::MessageType::PFCP_HEARTBEAT_REQ:
+        case callflow::MessageType::PFCP_ASSOCIATION_SETUP_REQ:
+        case callflow::MessageType::PFCP_ASSOCIATION_UPDATE_REQ:
+        case callflow::MessageType::PFCP_ASSOCIATION_RELEASE_REQ:
+        case callflow::MessageType::PFCP_SESSION_ESTABLISHMENT_REQ:
+        case callflow::MessageType::PFCP_SESSION_MODIFICATION_REQ:
+        case callflow::MessageType::PFCP_SESSION_DELETION_REQ:
+        case callflow::MessageType::PFCP_SESSION_REPORT_REQ:
 
         // Diameter Requests (Command Code with Request bit set)
-        case MessageType::DIAMETER_CCR:
-        case MessageType::DIAMETER_AAR:
-        case MessageType::DIAMETER_RAR:
+        case callflow::MessageType::DIAMETER_CCR:
+        case callflow::MessageType::DIAMETER_AAR:
+        case callflow::MessageType::DIAMETER_RAR:
 
         // SIP Requests
-        case MessageType::SIP_INVITE:
-        case MessageType::SIP_ACK:
-        case MessageType::SIP_BYE:
-        case MessageType::SIP_CANCEL:
-        case MessageType::SIP_REGISTER:
-        case MessageType::SIP_OPTIONS:
-        case MessageType::SIP_UPDATE:
-        case MessageType::SIP_PRACK:
-        case MessageType::SIP_INFO:
-        case MessageType::SIP_SUBSCRIBE:
-        case MessageType::SIP_NOTIFY:
+        case callflow::MessageType::SIP_INVITE:
+        case callflow::MessageType::SIP_ACK:
+        case callflow::MessageType::SIP_BYE:
+        case callflow::MessageType::SIP_CANCEL:
+        case callflow::MessageType::SIP_REGISTER:
+        case callflow::MessageType::SIP_OPTIONS:
+        case callflow::MessageType::SIP_UPDATE:
+        case callflow::MessageType::SIP_PRACK:
+        case callflow::MessageType::SIP_INFO:
+        case callflow::MessageType::SIP_SUBSCRIBE:
+        case callflow::MessageType::SIP_NOTIFY:
 
         // S1AP/NGAP Requests (most are indications, but some are request-like)
-        case MessageType::S1AP_INITIAL_UE_MESSAGE:
-        case MessageType::NGAP_INITIAL_UE_MESSAGE:
+        case callflow::MessageType::S1AP_INITIAL_UE_MESSAGE:
+        case callflow::MessageType::NGAP_INITIAL_UE_MESSAGE:
             return true;
 
         default:
@@ -332,40 +333,40 @@ bool LadderDiagramGenerator::isRequest(MessageType msg_type) {
     }
 }
 
-bool LadderDiagramGenerator::isResponse(MessageType msg_type) {
+bool LadderDiagramGenerator::isResponse(callflow::MessageType msg_type) {
     // List of response message types
     switch (msg_type) {
         // GTP-C Responses
-        case MessageType::GTP_CREATE_SESSION_RESPONSE:
-        case MessageType::GTP_MODIFY_BEARER_RESPONSE:
-        case MessageType::GTP_DELETE_SESSION_RESPONSE:
-        case MessageType::GTP_CREATE_BEARER_RESPONSE:
-        case MessageType::GTP_DELETE_BEARER_RESPONSE:
-        case MessageType::GTP_ECHO_RESPONSE:
+        case callflow::MessageType::GTP_CREATE_SESSION_RESP:
+        case callflow::MessageType::GTP_MODIFY_BEARER_RESP:
+        case callflow::MessageType::GTP_DELETE_SESSION_RESP:
+        case callflow::MessageType::GTP_CREATE_BEARER_RESP:
+        case callflow::MessageType::GTP_DELETE_BEARER_RESP:
+        case callflow::MessageType::GTP_ECHO_RESP:
 
         // PFCP Responses
-        case MessageType::PFCP_HEARTBEAT_RESPONSE:
-        case MessageType::PFCP_ASSOCIATION_SETUP_RESPONSE:
-        case MessageType::PFCP_ASSOCIATION_UPDATE_RESPONSE:
-        case MessageType::PFCP_ASSOCIATION_RELEASE_RESPONSE:
-        case MessageType::PFCP_SESSION_ESTABLISHMENT_RESPONSE:
-        case MessageType::PFCP_SESSION_MODIFICATION_RESPONSE:
-        case MessageType::PFCP_SESSION_DELETION_RESPONSE:
-        case MessageType::PFCP_SESSION_REPORT_RESPONSE:
+        case callflow::MessageType::PFCP_HEARTBEAT_RESP:
+        case callflow::MessageType::PFCP_ASSOCIATION_SETUP_RESP:
+        case callflow::MessageType::PFCP_ASSOCIATION_UPDATE_RESP:
+        case callflow::MessageType::PFCP_ASSOCIATION_RELEASE_RESP:
+        case callflow::MessageType::PFCP_SESSION_ESTABLISHMENT_RESP:
+        case callflow::MessageType::PFCP_SESSION_MODIFICATION_RESP:
+        case callflow::MessageType::PFCP_SESSION_DELETION_RESP:
+        case callflow::MessageType::PFCP_SESSION_REPORT_RESP:
 
         // Diameter Responses
-        case MessageType::DIAMETER_CCA:
-        case MessageType::DIAMETER_AAA:
-        case MessageType::DIAMETER_RAA:
+        case callflow::MessageType::DIAMETER_CCA:
+        case callflow::MessageType::DIAMETER_AAA:
+        case callflow::MessageType::DIAMETER_RAA:
 
         // SIP Responses
-        case MessageType::SIP_100_TRYING:
-        case MessageType::SIP_180_RINGING:
-        case MessageType::SIP_183_SESSION_PROGRESS:
-        case MessageType::SIP_200_OK:
-        case MessageType::SIP_486_BUSY_HERE:
-        case MessageType::SIP_487_REQUEST_TERMINATED:
-        case MessageType::SIP_603_DECLINE:
+        case callflow::MessageType::SIP_100_TRYING:
+        case callflow::MessageType::SIP_180_RINGING:
+        case callflow::MessageType::SIP_183_SESSION_PROGRESS:
+        case callflow::MessageType::SIP_200_OK:
+        case callflow::MessageType::SIP_486_BUSY_HERE:
+        case callflow::MessageType::SIP_487_REQUEST_TERMINATED:
+        case callflow::MessageType::SIP_603_DECLINE:
             return true;
 
         default:
@@ -373,35 +374,35 @@ bool LadderDiagramGenerator::isResponse(MessageType msg_type) {
     }
 }
 
-std::optional<MessageType> LadderDiagramGenerator::getRequestForResponse(MessageType response_type) {
+std::optional<callflow::MessageType> LadderDiagramGenerator::getRequestForResponse(callflow::MessageType response_type) {
     // Map responses to their corresponding requests
     switch (response_type) {
-        case MessageType::GTP_CREATE_SESSION_RESPONSE:
-            return MessageType::GTP_CREATE_SESSION_REQUEST;
-        case MessageType::GTP_MODIFY_BEARER_RESPONSE:
-            return MessageType::GTP_MODIFY_BEARER_REQUEST;
-        case MessageType::GTP_DELETE_SESSION_RESPONSE:
-            return MessageType::GTP_DELETE_SESSION_REQUEST;
-        case MessageType::GTP_ECHO_RESPONSE:
-            return MessageType::GTP_ECHO_REQUEST;
+        case callflow::MessageType::GTP_CREATE_SESSION_RESP:
+            return callflow::MessageType::GTP_CREATE_SESSION_REQ;
+        case callflow::MessageType::GTP_MODIFY_BEARER_RESP:
+            return callflow::MessageType::GTP_MODIFY_BEARER_REQ;
+        case callflow::MessageType::GTP_DELETE_SESSION_RESP:
+            return callflow::MessageType::GTP_DELETE_SESSION_REQ;
+        case callflow::MessageType::GTP_ECHO_RESP:
+            return callflow::MessageType::GTP_ECHO_REQ;
 
-        case MessageType::PFCP_HEARTBEAT_RESPONSE:
-            return MessageType::PFCP_HEARTBEAT_REQUEST;
-        case MessageType::PFCP_SESSION_ESTABLISHMENT_RESPONSE:
-            return MessageType::PFCP_SESSION_ESTABLISHMENT_REQUEST;
+        case callflow::MessageType::PFCP_HEARTBEAT_RESP:
+            return callflow::MessageType::PFCP_HEARTBEAT_REQ;
+        case callflow::MessageType::PFCP_SESSION_ESTABLISHMENT_RESP:
+            return callflow::MessageType::PFCP_SESSION_ESTABLISHMENT_REQ;
 
-        case MessageType::DIAMETER_CCA:
-            return MessageType::DIAMETER_CCR;
-        case MessageType::DIAMETER_AAA:
-            return MessageType::DIAMETER_AAR;
+        case callflow::MessageType::DIAMETER_CCA:
+            return callflow::MessageType::DIAMETER_CCR;
+        case callflow::MessageType::DIAMETER_AAA:
+            return callflow::MessageType::DIAMETER_AAR;
 
-        case MessageType::SIP_200_OK:
-        case MessageType::SIP_100_TRYING:
-        case MessageType::SIP_180_RINGING:
-        case MessageType::SIP_183_SESSION_PROGRESS:
+        case callflow::MessageType::SIP_200_OK:
+        case callflow::MessageType::SIP_100_TRYING:
+        case callflow::MessageType::SIP_180_RINGING:
+        case callflow::MessageType::SIP_183_SESSION_PROGRESS:
             // SIP responses can be for multiple request types
             // Would need more context to determine exact request
-            return MessageType::SIP_INVITE;
+            return callflow::MessageType::SIP_INVITE;
 
         default:
             return std::nullopt;
@@ -574,7 +575,7 @@ std::string LadderDiagramGenerator::generateUuid() {
     return ss.str();
 }
 
-nlohmann::json LadderDiagramGenerator::extractMessageDetails(const SessionMessageRef& msg) {
+nlohmann::json LadderDiagramGenerator::extractMessageDetails(const callflow::SessionMessageRef& msg) {
     // Return a subset of parsed_data that's relevant for the ladder diagram
     nlohmann::json details;
 
@@ -606,11 +607,11 @@ nlohmann::json LadderDiagramGenerator::extractMessageDetails(const SessionMessag
     return details.empty() ? msg.parsed_data : details;
 }
 
-std::string LadderDiagramGenerator::getMessageName(MessageType msg_type) {
+std::string LadderDiagramGenerator::getMessageName(callflow::MessageType msg_type) {
     return messageTypeToString(msg_type);
 }
 
-std::string LadderDiagramGenerator::getProtocolName(ProtocolType protocol) {
+std::string LadderDiagramGenerator::getProtocolName(callflow::ProtocolType protocol) {
     return protocolTypeToString(protocol);
 }
 

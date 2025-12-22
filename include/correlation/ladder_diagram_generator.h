@@ -37,7 +37,7 @@ public:
      * @return Complete ladder diagram
      */
     LadderDiagram generate(
-        std::vector<SessionMessageRef> messages,
+        std::vector<callflow::SessionMessageRef> messages,
         const std::string& session_id = "",
         const std::string& title = ""
     );
@@ -49,7 +49,7 @@ public:
      * @return Complete ladder diagram
      */
     LadderDiagram generateFromSession(
-        const Session& session,
+        const callflow::Session& session,
         const std::string& title = ""
     );
 
@@ -83,35 +83,35 @@ private:
 
     // Convert SessionMessageRef to LadderEvent
     LadderEvent createLadderEvent(
-        const SessionMessageRef& msg,
+        const callflow::SessionMessageRef& msg,
         const std::string& from_participant,
         const std::string& to_participant
     );
 
     // Identify 3GPP interface from message
-    std::string identifyInterface(const SessionMessageRef& msg);
+    std::string identifyInterface(const callflow::SessionMessageRef& msg);
 
     // Identify interface from GTP message
     std::string identifyGtpInterface(
-        const SessionMessageRef& msg,
+        const callflow::SessionMessageRef& msg,
         ParticipantType src_type,
         ParticipantType dst_type
     );
 
     // Identify interface from Diameter message
-    std::string identifyDiameterInterface(const SessionMessageRef& msg);
+    std::string identifyDiameterInterface(const callflow::SessionMessageRef& msg);
 
     // Determine message direction
-    MessageDirection determineDirection(const SessionMessageRef& msg);
+    MessageDirection determineDirection(const callflow::SessionMessageRef& msg);
 
     // Check if message is a request
-    bool isRequest(MessageType msg_type);
+    bool isRequest(callflow::MessageType msg_type);
 
     // Check if message is a response
-    bool isResponse(MessageType msg_type);
+    bool isResponse(callflow::MessageType msg_type);
 
     // Get request type for a response
-    std::optional<MessageType> getRequestForResponse(MessageType response_type);
+    std::optional<callflow::MessageType> getRequestForResponse(callflow::MessageType response_type);
 
     // Calculate latencies between request-response pairs
     void calculateLatencies(std::vector<LadderEvent>& events);
@@ -131,13 +131,13 @@ private:
     std::string generateUuid();
 
     // Extract details from message for JSON
-    nlohmann::json extractMessageDetails(const SessionMessageRef& msg);
+    nlohmann::json extractMessageDetails(const callflow::SessionMessageRef& msg);
 
     // Get human-readable message name
-    std::string getMessageName(MessageType msg_type);
+    std::string getMessageName(callflow::MessageType msg_type);
 
     // Get human-readable protocol name
-    std::string getProtocolName(ProtocolType protocol);
+    std::string getProtocolName(callflow::ProtocolType protocol);
 
     // Counter for event IDs
     uint64_t event_counter_ = 0;

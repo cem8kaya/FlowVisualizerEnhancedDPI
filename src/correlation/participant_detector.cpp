@@ -33,7 +33,7 @@ ParticipantDetector::ParticipantDetector() {
 }
 
 ParticipantInfo ParticipantDetector::detectParticipant(
-    const SessionMessageRef& msg,
+    const callflow::SessionMessageRef& msg,
     bool is_source
 ) {
     std::string ip = is_source ? msg.src_ip : msg.dst_ip;
@@ -70,7 +70,7 @@ ParticipantInfo ParticipantDetector::detectParticipant(
     }
 
     // Try to detect from Diameter application
-    if (type == ParticipantType::UNKNOWN && msg.protocol == ProtocolType::DIAMETER) {
+    if (type == ParticipantType::UNKNOWN && msg.protocol == callflow::ProtocolType::DIAMETER) {
         ParticipantType diameter_type = detectTypeFromDiameter(msg, is_source);
         if (diameter_type != ParticipantType::UNKNOWN) {
             type = diameter_type;
@@ -149,29 +149,29 @@ void ParticipantDetector::clear() {
 }
 
 ParticipantType ParticipantDetector::detectTypeFromProtocol(
-    const SessionMessageRef& msg,
+    const callflow::SessionMessageRef& msg,
     bool is_source
 ) {
     uint16_t port = is_source ? msg.src_port : msg.dst_port;
 
     // S1AP: eNodeB (source) or MME (destination)
-    if (msg.protocol == ProtocolType::S1AP || port == S1AP_PORT) {
+    if (msg.protocol == callflow::ProtocolType::S1AP || port == S1AP_PORT) {
         return is_source ? ParticipantType::ENODEB : ParticipantType::MME;
     }
 
     // NGAP: gNodeB (source) or AMF (destination)
-    if (msg.protocol == ProtocolType::NGAP || port == NGAP_PORT) {
+    if (msg.protocol == callflow::ProtocolType::NGAP || port == NGAP_PORT) {
         return is_source ? ParticipantType::GNODEB : ParticipantType::AMF;
     }
 
     // HTTP/2: Likely 5G SBI (SMF, AMF, UPF, etc.)
-    if (msg.protocol == ProtocolType::HTTP2) {
+    if (msg.protocol == callflow::ProtocolType::HTTP2) {
         // Cannot determine specific type from HTTP/2 alone
         return ParticipantType::UNKNOWN;
     }
 
     // PFCP: SMF (source) or UPF (destination)
-    if (msg.protocol == ProtocolType::PFCP || port == PFCP_PORT) {
+    if (msg.protocol == callflow::ProtocolType::PFCP || port == PFCP_PORT) {
         return is_source ? ParticipantType::SMF : ParticipantType::UPF;
     }
 
@@ -179,43 +179,43 @@ ParticipantType ParticipantDetector::detectTypeFromProtocol(
 }
 
 ParticipantType ParticipantDetector::detectTypeFromMessageType(
-    const SessionMessageRef& msg,
+    const callflow::SessionMessageRef& msg,
     bool is_source
 ) {
     // S1AP Initial UE Message: eNodeB -> MME
-    if (msg.message_type == MessageType::S1AP_INITIAL_UE_MESSAGE) {
+    if (msg.message_type == callflow::MessageType::S1AP_INITIAL_UE_MESSAGE) {
         return is_source ? ParticipantType::ENODEB : ParticipantType::MME;
     }
 
     // NGAP Initial UE Message: gNodeB -> AMF
-    if (msg.message_type == MessageType::NGAP_INITIAL_UE_MESSAGE) {
+    if (msg.message_type == callflow::MessageType::NGAP_INITIAL_UE_MESSAGE) {
         return is_source ? ParticipantType::GNODEB : ParticipantType::AMF;
     }
 
     // GTP-C Create Session Request
-    if (msg.message_type == MessageType::GTP_CREATE_SESSION_REQUEST) {
+    if (msg.message_type == callflow::MessageType::GTP_CREATE_SESSION_REQ) {
         // MME -> S-GW (S11) or S-GW -> P-GW (S5/S8)
         // Need more context to distinguish, default to MME -> SGW
         return is_source ? ParticipantType::MME : ParticipantType::SGW;
     }
 
     // GTP-C Create Session Response
-    if (msg.message_type == MessageType::GTP_CREATE_SESSION_RESPONSE) {
+    if (msg.message_type == callflow::MessageType::GTP_CREATE_SESSION_RESP) {
         return is_source ? ParticipantType::SGW : ParticipantType::MME;
     }
 
     // PFCP Session Establishment Request
-    if (msg.message_type == MessageType::PFCP_SESSION_ESTABLISHMENT_REQUEST) {
+    if (msg.message_type == callflow::MessageType::PFCP_SESSION_ESTABLISHMENT_REQ) {
         return is_source ? ParticipantType::SMF : ParticipantType::UPF;
     }
 
     // SIP REGISTER: UE -> P-CSCF
-    if (msg.message_type == MessageType::SIP_REGISTER) {
+    if (msg.message_type == callflow::MessageType::SIP_REGISTER) {
         return is_source ? ParticipantType::UE : ParticipantType::P_CSCF;
     }
 
     // SIP INVITE: Could be UE or P-CSCF depending on direction
-    if (msg.message_type == MessageType::SIP_INVITE) {
+    if (msg.message_type == callflow::MessageType::SIP_INVITE) {
         // Cannot determine without more context
         return ParticipantType::UNKNOWN;
     }
@@ -224,7 +224,7 @@ ParticipantType ParticipantDetector::detectTypeFromMessageType(
 }
 
 ParticipantType ParticipantDetector::detectTypeFromDiameter(
-    const SessionMessageRef& msg,
+    const callflow::SessionMessageRef& msg,
     bool is_source
 ) {
     auto app_id = extractDiameterAppId(msg);
@@ -293,7 +293,7 @@ std::string ParticipantDetector::generateParticipantId(
 }
 
 std::optional<uint32_t> ParticipantDetector::extractDiameterAppId(
-    const SessionMessageRef& msg
+    const callflow::SessionMessageRef& msg
 ) const {
     // Try to extract from parsed_data
     if (msg.parsed_data.contains("application_id")) {
