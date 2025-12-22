@@ -773,8 +773,8 @@ callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorr
                 for (const auto& id : parsed_data["p_asserted_identity"]) {
                     if (id.contains("username")) {
                         std::string username = id["username"].get<std::string>();
-                        // Check if it looks like an IMSI (10-15 digits)
-                        if (username.length() >= 10 &&
+                        // Check if it looks like an IMSI (Strictly 14-15 digits)
+                        if (username.length() >= 14 && username.length() <= 15 &&
                             std::all_of(username.begin(), username.end(), ::isdigit)) {
                             key.imsi = username;
                             break;
@@ -786,8 +786,8 @@ callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorr
             // 2. Try Authorization header
             if (!key.imsi.has_value() && parsed_data.contains("authorization_username")) {
                 std::string username = parsed_data["authorization_username"].get<std::string>();
-                // Only use if it looks numeric (IMSI)
-                if (username.length() >= 10 &&
+                // Only use if it looks numeric (IMSI) - strictly 14-15 digits
+                if (username.length() >= 14 && username.length() <= 15 &&
                     std::all_of(username.begin(), username.end(), ::isdigit)) {
                     key.imsi = username;
                 }
@@ -803,7 +803,7 @@ callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorr
                     if (sip_prefix != std::string::npos && at_pos != std::string::npos) {
                         std::string username =
                             uri.substr(sip_prefix + 4, at_pos - (sip_prefix + 4));
-                        if (username.length() >= 10 &&
+                        if (username.length() >= 14 && username.length() <= 15 &&
                             std::all_of(username.begin(), username.end(), ::isdigit)) {
                             key.imsi = username;
                             break;
@@ -821,6 +821,8 @@ callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorr
                             key.msisdn = username.substr(1);
                         } else if (username.length() >= 10 && username.length() <= 15 &&
                                    std::all_of(username.begin(), username.end(), ::isdigit)) {
+                            // If it wasn't identified as IMSI (which is now strict >=14), it's
+                            // likely MSISDN
                             if (!key.imsi.has_value() || key.imsi.value() != username) {
                                 key.msisdn = username;
                             }
@@ -843,12 +845,94 @@ callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorr
             if (parsed_data.contains("imsi")) {
                 key.imsi = parsed_data["imsi"].get<std::string>();
             }
-            if (parsed_data.contains("session_id")) {
-                // Could be mapped to a generic session ID or specific field
-            }
-            // Extract MSISDN (Subscription-Id type 0)
             if (parsed_data.contains("msisdn")) {
                 key.msisdn = parsed_data["msisdn"].get<std::string>();
+            }
+
+            // Deep scan for Subscription-Id in AVPs
+            if (parsed_data.contains("avps") && parsed_data["avps"].is_array()) {
+                LOG_DEBUG("Scanning " << parsed_data["avps"].size() << " AVPs for Subscription-Id");
+                for (const auto& avp : parsed_data["avps"]) {
+                    uint32_t code = avp.value("code", 0);
+                    LOG_DEBUG("AVP Code: " << code);
+
+                    // Subscription-Id (443)
+                    if (code == 443) {
+                        // Check for data_hex (handled as raw bytes)
+                        if (avp.contains("data_hex") && avp["data_hex"].is_array()) {
+                            std::vector<uint8_t> data;
+                            for (const auto& byte : avp["data_hex"]) {
+                                data.push_back(byte.get<uint8_t>());
+                            }
+
+                            // Manually parse Grouped AVP payload
+                            // Subscription-Id-Type (450) and Subscription-Id-Data (444)
+                            size_t offset = 0;
+                            int sub_type = -1;  // 0=E164, 1=IMSI
+                            std::string sub_data;
+
+                            while (offset < data.size()) {
+                                if (offset + 8 > data.size())
+                                    break;  // Header too short
+
+                                // Read header
+                                uint32_t avp_code = (data[offset] << 24) |
+                                                    (data[offset + 1] << 16) |
+                                                    (data[offset + 2] << 8) | data[offset + 3];
+                                uint8_t avp_flags = data[offset + 4];
+                                uint32_t avp_len = (data[offset + 5] << 16) |
+                                                   (data[offset + 6] << 8) | data[offset + 7];
+                                LOG_DEBUG("  SubAVP Code: " << avp_code << ", Len: " << avp_len);
+
+                                size_t header_len = 8;
+                                if (avp_flags & 0x80)
+                                    header_len = 12;  // V bit set
+
+                                if (avp_len < header_len || offset + avp_len > data.size()) {
+                                    LOG_DEBUG("  Invalid length or overflow");
+                                    break;
+                                }
+
+                                size_t payload_len = avp_len - header_len;
+                                uint32_t payload_offset = offset + header_len;
+
+                                if (avp_code == 450 && payload_len == 4) {  // Subscription-Id-Type
+                                    uint32_t val = (data[payload_offset] << 24) |
+                                                   (data[payload_offset + 1] << 16) |
+                                                   (data[payload_offset + 2] << 8) |
+                                                   data[payload_offset + 3];
+                                    sub_type = val;
+                                    LOG_DEBUG("  Type: " << val);
+                                } else if (avp_code == 444 &&
+                                           payload_len > 0) {  // Subscription-Id-Data
+                                    // UTF8String
+                                    sub_data.assign(
+                                        reinterpret_cast<const char*>(&data[payload_offset]),
+                                        payload_len);
+                                    LOG_DEBUG("  Data: " << sub_data);
+                                }
+
+                                // Advance to next AVP (padding 4 bytes)
+                                size_t padding = (avp_len % 4 == 0) ? 0 : (4 - (avp_len % 4));
+                                offset += avp_len + padding;
+                            }
+
+                            if (sub_type == 0 && !sub_data.empty()) {
+                                key.msisdn = sub_data;
+                            } else if (sub_type == 1 && !sub_data.empty()) {
+                                key.imsi = sub_data;
+                            }
+                        }
+                    }
+                    // User-Name (1) -> IMSI
+                    else if (code == 1 && avp.contains("data")) {
+                        std::string val = avp["data"].get<std::string>();
+                        if (val.length() >= 14 && val.length() <= 15 &&
+                            std::all_of(val.begin(), val.end(), ::isdigit)) {
+                            key.imsi = val;
+                        }
+                    }
+                }
             }
         } else if (protocol == ProtocolType::SCTP) {
             // Extract NGAP identifiers (transported over SCTP)

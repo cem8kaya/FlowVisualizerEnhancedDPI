@@ -276,6 +276,7 @@ private:
     /**
      * Extract correlation key from various protocol message types
      */
+public:
     SessionCorrelationKey extractCorrelationKey(const nlohmann::json& parsed_message,
                                                 ProtocolType protocol) const;
 };
