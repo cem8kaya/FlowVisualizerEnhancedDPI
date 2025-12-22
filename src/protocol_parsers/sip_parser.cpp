@@ -1,9 +1,11 @@
 #include "protocol_parsers/sip_parser.h"
+
+#include <algorithm>
+#include <cctype>
+#include <sstream>
+
 #include "common/logger.h"
 #include "common/utils.h"
-#include <algorithm>
-#include <sstream>
-#include <cctype>
 
 namespace callflow {
 
@@ -44,9 +46,38 @@ nlohmann::json SipMessage::toJson() const {
                 id["display_name"] = identity.display_name;
             }
             id["uri"] = identity.uri;
+
+            // Extract username (potential IMSI)
+            size_t sip_prefix = identity.uri.find("sip:");
+            size_t at_pos = identity.uri.find('@');
+            if (sip_prefix != std::string::npos && at_pos != std::string::npos) {
+                id["username"] = identity.uri.substr(sip_prefix + 4, at_pos - (sip_prefix + 4));
+            } else if (sip_prefix != std::string::npos) {
+                id["username"] = identity.uri.substr(sip_prefix + 4);
+            }
+
             pai_array.push_back(id);
         }
         j["p_asserted_identity"] = pai_array;
+    }
+
+    if (!p_associated_uri.empty()) {
+        j["p_associated_uri"] = p_associated_uri;
+    }
+
+    if (authorization.has_value()) {
+        j["authorization"] = authorization.value();
+
+        // Extract username from Authorization header
+        // Authorization: Digest username="20801...", realm="..."
+        std::string auth = authorization.value();
+        size_t user_pos = auth.find("username=\"");
+        if (user_pos != std::string::npos) {
+            size_t end_pos = auth.find("\"", user_pos + 10);
+            if (end_pos != std::string::npos) {
+                j["authorization_username"] = auth.substr(user_pos + 10, end_pos - (user_pos + 10));
+            }
+        }
     }
 
     if (p_access_network_info.has_value()) {
@@ -274,8 +305,7 @@ nlohmann::json SipMessage::toJson() const {
             nlohmann::json qos;
             qos["direction"] =
                 SipSdpQosPrecondition::directionToString(sdp->qos_current_remote->direction);
-            qos["status"] =
-                SipSdpQosPrecondition::statusToString(sdp->qos_current_remote->status);
+            qos["status"] = SipSdpQosPrecondition::statusToString(sdp->qos_current_remote->status);
             sdp_json["qos_current_remote"] = qos;
         }
 
@@ -295,8 +325,7 @@ nlohmann::json SipMessage::toJson() const {
                 SipSdpQosPrecondition::strengthToString(sdp->qos_desired_remote->strength);
             qos["direction"] =
                 SipSdpQosPrecondition::directionToString(sdp->qos_desired_remote->direction);
-            qos["status"] =
-                SipSdpQosPrecondition::statusToString(sdp->qos_desired_remote->status);
+            qos["status"] = SipSdpQosPrecondition::statusToString(sdp->qos_desired_remote->status);
             sdp_json["qos_desired_remote"] = qos;
         }
 
@@ -393,8 +422,8 @@ std::optional<SipMessage> SipParser::parse(const uint8_t* data, size_t len) {
     }
 
     // Parse headers
-    std::vector<std::string> header_lines(lines.begin() + 1,
-                                           body_start > 0 ? lines.begin() + body_start : lines.end());
+    std::vector<std::string> header_lines(
+        lines.begin() + 1, body_start > 0 ? lines.begin() + body_start : lines.end());
     parseHeaders(header_lines, msg);
 
     // Parse body if present
@@ -435,11 +464,9 @@ bool SipParser::isSipMessage(const uint8_t* data, size_t len) {
 
     // Check for SIP methods or status line
     return text.find("SIP/2.0") != std::string::npos &&
-           (text.find("INVITE") == 0 || text.find("ACK") == 0 ||
-            text.find("BYE") == 0 || text.find("CANCEL") == 0 ||
-            text.find("OPTIONS") == 0 || text.find("REGISTER") == 0 ||
-            text.find("UPDATE") == 0 || text.find("PRACK") == 0 ||
-            text.find("SIP/2.0") == 0);
+           (text.find("INVITE") == 0 || text.find("ACK") == 0 || text.find("BYE") == 0 ||
+            text.find("CANCEL") == 0 || text.find("OPTIONS") == 0 || text.find("REGISTER") == 0 ||
+            text.find("UPDATE") == 0 || text.find("PRACK") == 0 || text.find("SIP/2.0") == 0);
 }
 
 std::optional<std::string> SipParser::extractCallId(const uint8_t* data, size_t len) {
@@ -479,18 +506,29 @@ std::optional<std::string> SipParser::extractCallId(const uint8_t* data, size_t 
 
 MessageType SipParser::getMessageType(const SipMessage& msg) {
     if (msg.is_request) {
-        if (msg.method == "INVITE") return MessageType::SIP_INVITE;
-        if (msg.method == "ACK") return MessageType::SIP_ACK;
-        if (msg.method == "BYE") return MessageType::SIP_BYE;
-        if (msg.method == "CANCEL") return MessageType::SIP_CANCEL;
-        if (msg.method == "REGISTER") return MessageType::SIP_REGISTER;
-        if (msg.method == "OPTIONS") return MessageType::SIP_OPTIONS;
-        if (msg.method == "UPDATE") return MessageType::SIP_UPDATE;
-        if (msg.method == "PRACK") return MessageType::SIP_PRACK;
+        if (msg.method == "INVITE")
+            return MessageType::SIP_INVITE;
+        if (msg.method == "ACK")
+            return MessageType::SIP_ACK;
+        if (msg.method == "BYE")
+            return MessageType::SIP_BYE;
+        if (msg.method == "CANCEL")
+            return MessageType::SIP_CANCEL;
+        if (msg.method == "REGISTER")
+            return MessageType::SIP_REGISTER;
+        if (msg.method == "OPTIONS")
+            return MessageType::SIP_OPTIONS;
+        if (msg.method == "UPDATE")
+            return MessageType::SIP_UPDATE;
+        if (msg.method == "PRACK")
+            return MessageType::SIP_PRACK;
     } else {
-        if (msg.status_code == 100) return MessageType::SIP_TRYING;
-        if (msg.status_code == 180) return MessageType::SIP_RINGING;
-        if (msg.status_code == 200) return MessageType::SIP_OK;
+        if (msg.status_code == 100)
+            return MessageType::SIP_TRYING;
+        if (msg.status_code == 180)
+            return MessageType::SIP_RINGING;
+        if (msg.status_code == 200)
+            return MessageType::SIP_OK;
     }
     return MessageType::UNKNOWN;
 }
@@ -525,7 +563,8 @@ bool SipParser::parseStatusLine(const std::string& line, SipMessage& msg) {
 
 void SipParser::parseHeaders(const std::vector<std::string>& lines, SipMessage& msg) {
     for (const auto& line : lines) {
-        if (line.empty()) continue;
+        if (line.empty())
+            continue;
 
         auto [name, value] = parseHeader(line);
 
@@ -544,6 +583,8 @@ void SipParser::parseHeaders(const std::vector<std::string>& lines, SipMessage& 
             msg.cseq = value;
         } else if (name == "Content-Type" || name == "c") {
             msg.content_type = value;
+        } else if (name == "Authorization") {
+            msg.authorization = value;
         }
 
         // Store all headers
@@ -556,7 +597,8 @@ void SipParser::parseSdp(const std::string& body, SipMessage& msg) {
 
     auto lines = splitLines(body);
     for (const auto& line : lines) {
-        if (line.length() < 2 || line[1] != '=') continue;
+        if (line.length() < 2 || line[1] != '=')
+            continue;
 
         char type = line[0];
         std::string value = line.substr(2);
@@ -590,15 +632,14 @@ void SipParser::parseSdp(const std::string& body, SipMessage& msg) {
                 }
                 break;
             case 'a':  // Attribute
-                {
-                    size_t colon = value.find(':');
-                    if (colon != std::string::npos) {
-                        sdp.attributes[value.substr(0, colon)] = value.substr(colon + 1);
-                    } else {
-                        sdp.attributes[value] = "";
-                    }
+            {
+                size_t colon = value.find(':');
+                if (colon != std::string::npos) {
+                    sdp.attributes[value.substr(0, colon)] = value.substr(colon + 1);
+                } else {
+                    sdp.attributes[value] = "";
                 }
-                break;
+            } break;
         }
     }
 
@@ -720,6 +761,12 @@ void SipParser::parsePHeaders(SipMessage& msg) {
     it = msg.headers.find("P-Early-Media");
     if (it != msg.headers.end()) {
         msg.p_early_media = it->second;
+    }
+
+    // P-Associated-URI
+    it = msg.headers.find("P-Associated-URI");
+    if (it != msg.headers.end()) {
+        msg.p_associated_uri = splitCommaList(it->second);
     }
 }
 

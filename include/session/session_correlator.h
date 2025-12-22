@@ -46,6 +46,22 @@ public:
     std::vector<Session> correlateByImsi(const std::string& imsi) const;
 
     /**
+     * Find sessions by MSISDN
+     *
+     * @param msisdn MSISDN to search for
+     * @return Vector of sessions containing this MSISDN
+     */
+    std::vector<Session> correlateByMsisdn(const std::string& msisdn) const;
+
+    /**
+     * Find sessions by ICID
+     *
+     * @param icid ICID to search for
+     * @return Vector of sessions containing this ICID
+     */
+    std::vector<Session> correlateByIcid(const std::string& icid) const;
+
+    /**
      * Find sessions by SUPI (5G identifier)
      *
      * @param supi SUPI to search for
@@ -178,6 +194,9 @@ private:
         mme_ue_id_index_;  // MME UE ID -> session_ids
     std::unordered_map<uint64_t, std::vector<std::string>>
         amf_ue_id_index_;  // AMF UE ID -> session_ids
+    std::unordered_map<std::string, std::vector<std::string>>
+        msisdn_index_;                                                      // MSISDN -> session_ids
+    std::unordered_map<std::string, std::vector<std::string>> icid_index_;  // ICID -> session_ids
 
     // Thread safety
     mutable std::mutex mutex_;

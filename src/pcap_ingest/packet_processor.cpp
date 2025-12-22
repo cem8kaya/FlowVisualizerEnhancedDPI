@@ -64,7 +64,12 @@ void PacketProcessor::processPacket(const uint8_t* data, size_t len, Timestamp t
 }
 
 void PacketProcessor::processIpPacket(const std::vector<uint8_t>& ip_packet, Timestamp ts,
-                                      uint32_t frame_number) {
+                                      uint32_t frame_number, int recursion_depth) {
+    // Prevent infinite recursion (tunnel loops)
+    if (recursion_depth > 5) {
+        LOG_WARN("Max recursion depth reached for packet " << frame_number);
+        return;
+    }
     if (ip_packet.empty())
         return;
 
@@ -145,7 +150,7 @@ void PacketProcessor::processIpPacket(const std::vector<uint8_t>& ip_packet, Tim
             metadata.raw_data = payload;
 
             // UDP Payload dispatch
-            processTransportAndPayload(metadata, payload);
+            processTransportAndPayload(metadata, payload, recursion_depth);
         }
 
     } else if (protocol == IPPROTO_TCP) {
@@ -174,7 +179,7 @@ void PacketProcessor::processIpPacket(const std::vector<uint8_t>& ip_packet, Tim
 
         if (!reassembled.empty()) {
             metadata.raw_data = reassembled;
-            processTransportAndPayload(metadata, reassembled);
+            processTransportAndPayload(metadata, reassembled, recursion_depth);
         }
     } else if (protocol == 132) {  // SCTP
         // Full SCTP parsing with reassembly and PPID routing
@@ -184,15 +189,12 @@ void PacketProcessor::processIpPacket(const std::vector<uint8_t>& ip_packet, Tim
 
         // Extract ports from SCTP common header
         metadata.five_tuple.src_port = ntohs(*reinterpret_cast<const uint16_t*>(trans_data));
-        metadata.five_tuple.dst_port =
-            ntohs(*reinterpret_cast<const uint16_t*>(trans_data + 2));
+        metadata.five_tuple.dst_port = ntohs(*reinterpret_cast<const uint16_t*>(trans_data + 2));
 
         // Parse SCTP packet with full reassembly support
         auto sctp_packet_opt = sctp_parser_.parse(trans_data, trans_len, metadata.five_tuple);
 
         if (sctp_packet_opt.has_value()) {
-            const auto& sctp_packet = sctp_packet_opt.value();
-
             // Update metadata with SCTP protocol
             metadata.detected_protocol = ProtocolType::SCTP;
             metadata.raw_data.assign(trans_data, trans_data + trans_len);
@@ -203,10 +205,10 @@ void PacketProcessor::processIpPacket(const std::vector<uint8_t>& ip_packet, Tim
                 auto assoc_opt = sctp_parser_.getAssociation(assoc_id);
                 if (assoc_opt.has_value()) {
                     const auto& assoc = assoc_opt.value();
-                    LOG_DEBUG("SCTP association " << assoc_id << " state: "
-                             << static_cast<int>(assoc.state)
-                             << " streams: " << assoc.num_outbound_streams
-                             << "/" << assoc.num_inbound_streams);
+                    LOG_DEBUG("SCTP association "
+                              << assoc_id << " state: " << static_cast<int>(assoc.state)
+                              << " streams: " << assoc.num_outbound_streams << "/"
+                              << assoc.num_inbound_streams);
                 }
             }
 
@@ -217,7 +219,8 @@ void PacketProcessor::processIpPacket(const std::vector<uint8_t>& ip_packet, Tim
 }
 
 void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
-                                                 const std::vector<uint8_t>& payload) {
+                                                 const std::vector<uint8_t>& payload,
+                                                 int recursion_depth) {
     // Protocol Detection and Parsing logic from JobManager/main.cpp
 
     // PFCP (UDP 8805)
@@ -251,32 +254,116 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
             // Process the GTP-U packet
             correlator_.processPacket(metadata, ProtocolType::GTP_U, msg->toJson());
 
-            // If there's an encapsulated packet, we could recursively process it
-            // For now, the encapsulated packet info is included in the JSON
-            // TODO: Consider recursive processing of inner packet for deeper analysis
+            // Recursive processing for inner payload
+            if (!msg->user_data.empty()) {
+                // Pass the inner payload back to IP processing
+                // We keep the original timestamp and frame number
+                processIpPacket(msg->user_data, metadata.timestamp, metadata.frame_number,
+                                recursion_depth + 1);
+            }
             return;
         }
     }
 
     // Diameter (TCP/UDP 3868)
     if (metadata.five_tuple.src_port == 3868 || metadata.five_tuple.dst_port == 3868) {
-        DiameterParser parser;
-        auto msg = parser.parse(payload.data(), payload.size());
-        if (msg.has_value()) {
-            correlator_.processPacket(metadata, ProtocolType::DIAMETER, msg->toJson());
-            return;
+        if (metadata.five_tuple.protocol == IPPROTO_TCP) {
+            auto& session = diameter_sessions_[metadata.five_tuple];
+            session.buffer.insert(session.buffer.end(), payload.begin(), payload.end());
+
+            while (session.buffer.size() >= 4) {
+                // Diameter Header: Version(1) + Message Length(3)
+                uint32_t msg_length =
+                    (session.buffer[1] << 16) | (session.buffer[2] << 8) | session.buffer[3];
+
+                if (session.buffer.size() >= msg_length) {
+                    DiameterParser parser;
+                    auto msg = parser.parse(session.buffer.data(), msg_length);
+                    if (msg.has_value()) {
+                        correlator_.processPacket(metadata, ProtocolType::DIAMETER, msg->toJson());
+                    }
+                    session.buffer.erase(session.buffer.begin(),
+                                         session.buffer.begin() + msg_length);
+                } else {
+                    break;  // Wait for more data
+                }
+            }
+        } else {
+            // UDP
+            DiameterParser parser;
+            auto msg = parser.parse(payload.data(), payload.size());
+            if (msg.has_value()) {
+                correlator_.processPacket(metadata, ProtocolType::DIAMETER, msg->toJson());
+            }
         }
+        return;
     }
 
     // SIP (UDP/TCP 5060, 5061)
     if (metadata.five_tuple.src_port == 5060 || metadata.five_tuple.dst_port == 5060 ||
         metadata.five_tuple.src_port == 5061 || metadata.five_tuple.dst_port == 5061) {
-        SipParser parser;
-        auto msg = parser.parse(payload.data(), payload.size());
-        if (msg.has_value()) {
-            correlator_.processPacket(metadata, ProtocolType::SIP, msg->toJson());
-            return;
+        if (metadata.five_tuple.protocol == IPPROTO_TCP) {
+            auto& session = sip_tcp_sessions_[metadata.five_tuple];
+            session.buffer.insert(session.buffer.end(), payload.begin(), payload.end());
+
+            while (true) {
+                // Find double CRLF (end of headers)
+                const std::string crlf2 = "\r\n\r\n";
+                // Search in buffer
+                auto it = std::search(session.buffer.begin(), session.buffer.end(), crlf2.begin(),
+                                      crlf2.end());
+
+                if (it == session.buffer.end()) {
+                    break;  // Headers incomplete
+                }
+
+                // Calculate header length including double CRLF
+                size_t headers_len = std::distance(session.buffer.begin(), it) + 4;
+
+                // Parse headers to find Content-Length
+                // We do a lightweight parse or convert to string
+                std::string headers(session.buffer.begin(), session.buffer.begin() + headers_len);
+                int content_len = 0;
+
+                // Simple case-insensitive search for Content-Length
+                // Note: robustness improvement would use regex or proper parser,
+                // but for now simple string find is okay if standard compliant.
+                auto pos = headers.find("Content-Length:");
+                if (pos == std::string::npos) {
+                    pos = headers.find("l:");  // Compact form
+                }
+
+                if (pos != std::string::npos) {
+                    // Extract number
+                    size_t val_start = headers.find_first_of("0123456789", pos);
+                    if (val_start != std::string::npos) {
+                        content_len = std::atoi(headers.c_str() + val_start);
+                    }
+                }
+
+                size_t total_len = headers_len + content_len;
+
+                if (session.buffer.size() >= total_len) {
+                    SipParser parser;
+                    auto msg = parser.parse(session.buffer.data(), total_len);
+                    if (msg.has_value()) {
+                        correlator_.processPacket(metadata, ProtocolType::SIP, msg->toJson());
+                    }
+                    session.buffer.erase(session.buffer.begin(),
+                                         session.buffer.begin() + total_len);
+                } else {
+                    break;  // Body incomplete
+                }
+            }
+        } else {
+            // UDP
+            SipParser parser;
+            auto msg = parser.parse(payload.data(), payload.size());
+            if (msg.has_value()) {
+                correlator_.processPacket(metadata, ProtocolType::SIP, msg->toJson());
+            }
         }
+        return;
     }
 
     // RTP
@@ -403,8 +490,6 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
                     Nas5gParser nas_parser;
                     const auto& nas_data = msg.nas_pdu.value();
 
-                    NasSecurityContext* context = nullptr;
-
                     auto nas_msg_opt = nas_parser.parse(nas_data.data(), nas_data.size(), nullptr);
                     if (nas_msg_opt.has_value()) {
                         json["nas_5g"] = nas_msg_opt->toJson();
@@ -420,11 +505,11 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
 
 void PacketProcessor::processSctpMessage(const SctpReassembledMessage& message,
                                          const PacketMetadata& metadata) {
-    LOG_DEBUG("Processing SCTP message: stream_id=" << message.stream_id
-             << " ssn=" << message.stream_sequence
-             << " ppid=" << message.payload_protocol
-             << " (" << getSctpPpidName(message.payload_protocol) << ")"
-             << " length=" << message.data.size());
+    LOG_DEBUG("Processing SCTP message: stream_id="
+              << message.stream_id << " ssn=" << message.stream_sequence
+              << " ppid=" << message.payload_protocol << " ("
+              << getSctpPpidName(message.payload_protocol) << ")"
+              << " length=" << message.data.size());
 
     // Route based on PPID (Payload Protocol Identifier)
     switch (message.payload_protocol) {
@@ -485,8 +570,8 @@ void PacketProcessor::processSctpMessage(const SctpReassembledMessage& message,
         }
 
         default:
-            LOG_DEBUG("Unknown SCTP PPID: " << message.payload_protocol
-                     << " (" << getSctpPpidName(message.payload_protocol) << ")");
+            LOG_DEBUG("Unknown SCTP PPID: " << message.payload_protocol << " ("
+                                            << getSctpPpidName(message.payload_protocol) << ")");
             break;
     }
 }

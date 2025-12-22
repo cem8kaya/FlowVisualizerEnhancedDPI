@@ -1,7 +1,6 @@
 #include "session/session_correlator.h"
 
 #include <algorithm>
-#include <iomanip>
 #include <random>
 #include <sstream>
 #include <unordered_set>
@@ -21,20 +20,64 @@ void EnhancedSessionCorrelator::addMessage(const SessionMessageRef& msg) {
     LOG_DEBUG("Adding message to correlator: " << protocolTypeToString(msg.protocol) << " on "
                                                << interfaceTypeToString(msg.interface));
 
-    // Try to find existing session that matches
-    auto existing_session_id = findMatchingSession(msg.correlation_key);
+    // Find ALL matching sessions
+    std::unordered_set<std::string> matching_session_ids;
 
-    if (existing_session_id.has_value()) {
-        // Add to existing session
-        LOG_DEBUG("Found matching session: " << existing_session_id.value());
-        addMessageToSession(existing_session_id.value(), msg);
-    } else {
-        // Create new session
+    // Helper to add matches from an index lookup
+    auto addFromIndex = [&](const std::unordered_map<std::string, std::vector<std::string>>& index,
+                            const std::optional<std::string>& key_val) {
+        if (key_val.has_value()) {
+            auto it = index.find(key_val.value());
+            if (it != index.end()) {
+                matching_session_ids.insert(it->second.begin(), it->second.end());
+            }
+        }
+    };
+
+    // Numeric index helper
+    auto addFromNumericIndex = [&](const auto& index, const auto& key_val) {
+        if (key_val.has_value()) {
+            auto it = index.find(key_val.value());
+            if (it != index.end()) {
+                matching_session_ids.insert(it->second.begin(), it->second.end());
+            }
+        }
+    };
+
+    // 1. Search all indices directly (avoiding deadlock by not calling public methods)
+    addFromIndex(imsi_index_, msg.correlation_key.imsi);
+    addFromIndex(supi_index_, msg.correlation_key.supi);
+    addFromIndex(msisdn_index_, msg.correlation_key.msisdn);
+    addFromIndex(icid_index_, msg.correlation_key.icid);
+    addFromIndex(ue_ip_index_, msg.correlation_key.ue_ipv4);
+    addFromIndex(ue_ip_index_, msg.correlation_key.ue_ipv6);
+
+    addFromNumericIndex(teid_index_, msg.correlation_key.teid_s1u);
+    addFromNumericIndex(teid_index_, msg.correlation_key.teid_s5u);
+    addFromNumericIndex(seid_index_, msg.correlation_key.seid_n4);
+
+    if (matching_session_ids.empty()) {
+        // Scenario 0: No Match -> Create new session
         std::string new_session_id = createNewSession(msg);
         LOG_DEBUG("Created new session: " << new_session_id);
+    } else {
+        // Scenario 1 & 2: Match found (single or multiple)
+        std::string primary_session_id = *matching_session_ids.begin();
+
+        // If multiple matches, merge them
+        if (matching_session_ids.size() > 1) {
+            LOG_INFO("Found " << matching_session_ids.size() << " matching sessions. Merging.");
+            for (const auto& id : matching_session_ids) {
+                if (id != primary_session_id) {
+                    mergeSessions(primary_session_id, id);
+                }
+            }
+        }
+
+        // Add message to the (now unified) primary session
+        addMessageToSession(primary_session_id, msg);
     }
 }
-
 std::vector<Session> EnhancedSessionCorrelator::correlateByImsi(const std::string& imsi) const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<Session> result;
@@ -117,6 +160,38 @@ std::vector<Session> EnhancedSessionCorrelator::correlateByUeIp(const std::strin
         }
     }
 
+    return result;
+}
+
+std::vector<Session> EnhancedSessionCorrelator::correlateByMsisdn(const std::string& msisdn) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<Session> result;
+
+    auto it = msisdn_index_.find(msisdn);
+    if (it != msisdn_index_.end()) {
+        for (const auto& session_id : it->second) {
+            auto session_it = sessions_.find(session_id);
+            if (session_it != sessions_.end()) {
+                result.push_back(session_it->second);
+            }
+        }
+    }
+    return result;
+}
+
+std::vector<Session> EnhancedSessionCorrelator::correlateByIcid(const std::string& icid) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<Session> result;
+
+    auto it = icid_index_.find(icid);
+    if (it != icid_index_.end()) {
+        for (const auto& session_id : it->second) {
+            auto session_it = sessions_.find(session_id);
+            if (session_it != sessions_.end()) {
+                result.push_back(session_it->second);
+            }
+        }
+    }
     return result;
 }
 
@@ -466,6 +541,22 @@ void EnhancedSessionCorrelator::updateIndices(const std::string& session_id,
             sessions.push_back(session_id);
         }
     }
+
+    // Update MSISDN index
+    if (key.msisdn.has_value()) {
+        auto& sessions = msisdn_index_[key.msisdn.value()];
+        if (std::find(sessions.begin(), sessions.end(), session_id) == sessions.end()) {
+            sessions.push_back(session_id);
+        }
+    }
+
+    // Update ICID index
+    if (key.icid.has_value()) {
+        auto& sessions = icid_index_[key.icid.value()];
+        if (std::find(sessions.begin(), sessions.end(), session_id) == sessions.end()) {
+            sessions.push_back(session_id);
+        }
+    }
 }
 
 EnhancedSessionType EnhancedSessionCorrelator::detectSessionType(const Session& session) const {
@@ -484,7 +575,6 @@ EnhancedSessionType EnhancedSessionCorrelator::detectSessionType(const Session& 
     bool has_pfcp = false;
     bool has_sip = false;
     bool has_rtp = false;
-
 
     for (const auto& msg : all_messages) {
         // Check protocols
@@ -633,7 +723,6 @@ void EnhancedSessionCorrelator::mergeSessions(const std::string& session_id1,
     LOG_INFO("Merged session " << session_id2 << " into " << session_id1);
 }
 
-
 callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorrelationKey(
     const nlohmann::json& parsed_data, ProtocolType protocol) const {
     SessionCorrelationKey key;
@@ -648,6 +737,10 @@ callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorr
             }
             if (parsed_data.contains("imsi")) {
                 key.imsi = parsed_data["imsi"].get<std::string>();
+            }
+            // Extract MSISDN for GTP
+            if (parsed_data.contains("msisdn")) {
+                key.msisdn = parsed_data["msisdn"].get<std::string>();
             }
         } else if (protocol == ProtocolType::PFCP) {
             // Extract PFCP correlation keys
@@ -667,8 +760,84 @@ callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorr
             if (parsed_data.contains("call_id")) {
                 key.sip_call_id = parsed_data["call_id"].get<std::string>();
             }
-            // Try to extract IMSI/User from From/To fields if available
-            // This is a simplification; in reality, need to parse URI
+
+            // Extract ICID
+            if (parsed_data.contains("p_charging_vector") &&
+                parsed_data["p_charging_vector"].contains("icid_value")) {
+                key.icid = parsed_data["p_charging_vector"]["icid_value"].get<std::string>();
+            }
+
+            // 1. Try P-Asserted-Identity (PAI)
+            if (parsed_data.contains("p_asserted_identity") &&
+                parsed_data["p_asserted_identity"].is_array()) {
+                for (const auto& id : parsed_data["p_asserted_identity"]) {
+                    if (id.contains("username")) {
+                        std::string username = id["username"].get<std::string>();
+                        // Check if it looks like an IMSI (10-15 digits)
+                        if (username.length() >= 10 &&
+                            std::all_of(username.begin(), username.end(), ::isdigit)) {
+                            key.imsi = username;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 2. Try Authorization header
+            if (!key.imsi.has_value() && parsed_data.contains("authorization_username")) {
+                std::string username = parsed_data["authorization_username"].get<std::string>();
+                // Only use if it looks numeric (IMSI)
+                if (username.length() >= 10 &&
+                    std::all_of(username.begin(), username.end(), ::isdigit)) {
+                    key.imsi = username;
+                }
+            }
+
+            // 3. Try P-Associated-URI (backup)
+            if (!key.imsi.has_value() && parsed_data.contains("p_associated_uri") &&
+                parsed_data["p_associated_uri"].is_array()) {
+                for (const auto& uri_json : parsed_data["p_associated_uri"]) {
+                    std::string uri = uri_json.get<std::string>();
+                    size_t sip_prefix = uri.find("sip:");
+                    size_t at_pos = uri.find('@');
+                    if (sip_prefix != std::string::npos && at_pos != std::string::npos) {
+                        std::string username =
+                            uri.substr(sip_prefix + 4, at_pos - (sip_prefix + 4));
+                        if (username.length() >= 10 &&
+                            std::all_of(username.begin(), username.end(), ::isdigit)) {
+                            key.imsi = username;
+                            break;
+                        }
+                    }
+                }
+            }
+            // 4. Extract MSISDN from P-Asserted-Identity or From
+            if (!key.msisdn.has_value() && parsed_data.contains("p_asserted_identity") &&
+                parsed_data["p_asserted_identity"].is_array()) {
+                for (const auto& id : parsed_data["p_asserted_identity"]) {
+                    if (id.contains("username")) {
+                        std::string username = id["username"].get<std::string>();
+                        if (username.find('+') == 0) {
+                            key.msisdn = username.substr(1);
+                        } else if (username.length() >= 10 && username.length() <= 15 &&
+                                   std::all_of(username.begin(), username.end(), ::isdigit)) {
+                            if (!key.imsi.has_value() || key.imsi.value() != username) {
+                                key.msisdn = username;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 5. Extract SDP Connection Address (UE IP)
+            if (parsed_data.contains("sdp") && parsed_data["sdp"].contains("connection_address")) {
+                std::string ip = parsed_data["sdp"]["connection_address"].get<std::string>();
+                if (ip.find(':') != std::string::npos) {
+                    key.ue_ipv6 = ip;
+                } else {
+                    key.ue_ipv4 = ip;
+                }
+            }
         } else if (protocol == ProtocolType::DIAMETER) {
             // Extract Diameter identifiers
             if (parsed_data.contains("imsi")) {
@@ -676,6 +845,10 @@ callflow::SessionCorrelationKey callflow::EnhancedSessionCorrelator::extractCorr
             }
             if (parsed_data.contains("session_id")) {
                 // Could be mapped to a generic session ID or specific field
+            }
+            // Extract MSISDN (Subscription-Id type 0)
+            if (parsed_data.contains("msisdn")) {
+                key.msisdn = parsed_data["msisdn"].get<std::string>();
             }
         } else if (protocol == ProtocolType::SCTP) {
             // Extract NGAP identifiers (transported over SCTP)

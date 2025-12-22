@@ -111,6 +111,7 @@ struct SessionCorrelationKey {
 
     // Application identifiers
     std::optional<std::string> sip_call_id;  // SIP Call-ID for VoLTE
+    std::optional<std::string> icid;         // IMS Charging Identifier
     std::optional<uint32_t> rtp_ssrc;        // RTP SSRC
 
     /**

@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <iomanip>
-#include <sstream>
 
 namespace callflow {
 
@@ -81,6 +79,11 @@ bool SessionCorrelationKey::matches(const SessionCorrelationKey& other) const {
         return true;
     }
 
+    // Check IMS Charging Identifier (ICID)
+    if (icid.has_value() && other.icid.has_value() && icid.value() == other.icid.value()) {
+        return true;
+    }
+
     return false;
 }
 
@@ -130,6 +133,8 @@ void SessionCorrelationKey::merge(const SessionCorrelationKey& other) {
 
     if (!sip_call_id.has_value() && other.sip_call_id.has_value())
         sip_call_id = other.sip_call_id;
+    if (!icid.has_value() && other.icid.has_value())
+        icid = other.icid;
     if (!rtp_ssrc.has_value() && other.rtp_ssrc.has_value())
         rtp_ssrc = other.rtp_ssrc;
 }
@@ -182,6 +187,8 @@ nlohmann::json SessionCorrelationKey::toJson() const {
 
     if (sip_call_id.has_value())
         j["sip_call_id"] = sip_call_id.value();
+    if (icid.has_value())
+        j["icid"] = icid.value();
     if (rtp_ssrc.has_value())
         j["rtp_ssrc"] = rtp_ssrc.value();
 
@@ -204,6 +211,8 @@ size_t SessionCorrelationKey::hash() const {
         h ^= uint64_hasher(seid_n4.value()) << 3;
     if (ue_ipv4.has_value())
         h ^= string_hasher(ue_ipv4.value()) << 4;
+    if (icid.has_value())
+        h ^= string_hasher(icid.value()) << 5;
 
     return h;
 }
@@ -342,6 +351,19 @@ nlohmann::json Session::toJson() const {
     }
     j["events"] = events_json;
     j["events_count"] = all_msgs.size();
+
+    // Add list of protocols involved (unique)
+    std::vector<std::string> protocols;
+    for (const auto& leg : legs) {
+        // Map interface to likely protocol or check messages
+        for (const auto& msg : leg.messages) {
+            std::string proto_str = protocolTypeToString(msg.protocol);
+            if (std::find(protocols.begin(), protocols.end(), proto_str) == protocols.end()) {
+                protocols.push_back(proto_str);
+            }
+        }
+    }
+    j["protocols"] = protocols;
 
     return j;
 }

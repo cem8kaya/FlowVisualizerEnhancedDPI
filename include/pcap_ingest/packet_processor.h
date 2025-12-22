@@ -48,22 +48,31 @@ private:
     // Stateful parsers
     // Map: FiveTuple -> Http2Connection
     // Note: We use FiveTuple hash as key for simpler map, or specialized hash map
+    // Map: FiveTuple -> Http2Connection
+    // Note: We use FiveTuple hash as key for simpler map, or specialized hash map
     std::unordered_map<FiveTuple, Http2Connection> http2_sessions_;
+
+    struct TcpStreamBuffer {
+        std::vector<uint8_t> buffer;
+    };
+
+    // TCP Buffers for SIP and Diameter
+    std::unordered_map<FiveTuple, TcpStreamBuffer> sip_tcp_sessions_;
+    std::unordered_map<FiveTuple, TcpStreamBuffer> diameter_sessions_;
 
     // Parsers
     FiveGSbaParser sba_parser_;
     Http2Parser http2_parser_;
 
-    void processIpPacket(const std::vector<uint8_t>& ip_packet, Timestamp ts,
-                         uint32_t frame_number);
+    void processIpPacket(const std::vector<uint8_t>& ip_packet, Timestamp ts, uint32_t frame_number,
+                         int recursion_depth = 0);
     void processTransportAndPayload(const PacketMetadata& metadata,
-                                    const std::vector<uint8_t>& payload);
+                                    const std::vector<uint8_t>& payload, int recursion_depth);
 
     /**
      * Process reassembled SCTP messages and route by PPID
      */
-    void processSctpMessage(const SctpReassembledMessage& message,
-                           const PacketMetadata& metadata);
+    void processSctpMessage(const SctpReassembledMessage& message, const PacketMetadata& metadata);
 };
 
 }  // namespace callflow

@@ -76,6 +76,10 @@ struct SipMessage {
     std::optional<SipPServedUser> p_served_user;
     std::optional<std::string> p_preferred_identity;
     std::optional<std::string> p_early_media;
+    std::vector<std::string> p_associated_uri;
+
+    // Standard headers relevant for correlation
+    std::optional<std::string> authorization;
 
     // NEW: IMS session timers (RFC 4028)
     std::optional<SipSessionExpires> session_expires;
