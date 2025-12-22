@@ -47,7 +47,8 @@ public:
         uint32_t max_tunnels = 100000;
     };
 
-    explicit TunnelManager(const Config& config = Config{});
+    TunnelManager();
+    explicit TunnelManager(const Config& config);
 
     /**
      * Process a session message to update tunnel state
