@@ -37,7 +37,7 @@ public:
      * @return Detected participant info
      */
     ParticipantInfo detectParticipant(
-        const SessionMessageRef& msg,
+        const callflow::SessionMessageRef& msg,
         bool is_source
     );
 
@@ -91,19 +91,19 @@ private:
 
     // Detect participant type from protocol and port
     ParticipantType detectTypeFromProtocol(
-        const SessionMessageRef& msg,
+        const callflow::SessionMessageRef& msg,
         bool is_source
     );
 
     // Detect participant type from message type
     ParticipantType detectTypeFromMessageType(
-        const SessionMessageRef& msg,
+        const callflow::SessionMessageRef& msg,
         bool is_source
     );
 
     // Detect participant type from Diameter Application-ID
     ParticipantType detectTypeFromDiameter(
-        const SessionMessageRef& msg,
+        const callflow::SessionMessageRef& msg,
         bool is_source
     );
 
@@ -120,7 +120,7 @@ private:
     }
 
     // Extract Diameter Application-ID from message details
-    std::optional<uint32_t> extractDiameterAppId(const SessionMessageRef& msg) const;
+    std::optional<uint32_t> extractDiameterAppId(const callflow::SessionMessageRef& msg) const;
 
     // Counters for generating unique IDs
     std::unordered_map<ParticipantType, uint32_t> type_counters_;
