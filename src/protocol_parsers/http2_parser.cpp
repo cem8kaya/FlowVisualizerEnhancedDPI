@@ -761,27 +761,27 @@ bool Http2Parser::processSettingsFrame(const Http2Frame& frame, Http2Connection&
     return true;
 }
 
-bool Http2Parser::processPriorityFrame(const Http2Frame& frame, Http2Connection& connection) {
+bool Http2Parser::processPriorityFrame(const Http2Frame& frame, Http2Connection& /*connection*/) {
     LOG_DEBUG("HTTP/2: PRIORITY frame for stream {}", frame.header.stream_id);
     return true;
 }
 
-bool Http2Parser::processRstStreamFrame(const Http2Frame& frame, Http2Connection& connection) {
+bool Http2Parser::processRstStreamFrame(const Http2Frame& frame, Http2Connection& /*connection*/) {
     LOG_DEBUG("HTTP/2: RST_STREAM frame for stream {}", frame.header.stream_id);
     return true;
 }
 
-bool Http2Parser::processPingFrame(const Http2Frame& frame, Http2Connection& connection) {
+bool Http2Parser::processPingFrame(const Http2Frame& /*frame*/, Http2Connection& /*connection*/) {
     LOG_DEBUG("HTTP/2: PING frame");
     return true;
 }
 
-bool Http2Parser::processGoawayFrame(const Http2Frame& frame, Http2Connection& connection) {
+bool Http2Parser::processGoawayFrame(const Http2Frame& /*frame*/, Http2Connection& /*connection*/) {
     LOG_DEBUG("HTTP/2: GOAWAY frame");
     return true;
 }
 
-bool Http2Parser::processWindowUpdateFrame(const Http2Frame& frame, Http2Connection& connection) {
+bool Http2Parser::processWindowUpdateFrame(const Http2Frame& frame, Http2Connection& /*connection*/) {
     LOG_DEBUG("HTTP/2: WINDOW_UPDATE frame for stream {}", frame.header.stream_id);
     return true;
 }

@@ -194,12 +194,16 @@ int runApiServer(const CliArgs& args) {
         LOG_WARN("Failed to load protocol configuration, using defaults");
     }
 
+#ifdef ENABLE_DATABASE_PERSISTENCE
     // Initialize database
     auto db_manager = std::make_shared<DatabaseManager>(config.database);
     if (!db_manager->initialize()) {
         LOG_WARN("Failed to initialize database, persistence will be disabled");
         db_manager.reset();
     }
+#else
+    std::shared_ptr<DatabaseManager> db_manager = nullptr;
+#endif
 
     // Create components
     auto job_manager = std::make_shared<JobManager>(config, db_manager);
@@ -262,9 +266,11 @@ int runApiServer(const CliArgs& args) {
     http_server->stop();
     ws_handler->stop();
     job_manager->stop();
+#ifdef ENABLE_DATABASE_PERSISTENCE
     if (db_manager) {
         db_manager->close();
     }
+#endif
 
     LOG_INFO("API server stopped");
     return 0;

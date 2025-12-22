@@ -20,6 +20,13 @@ docker-compose down
 
 # Stop and remove volumes (WARNING: deletes data)
 docker-compose down -v
+
+
+
+docker builder prune
+docker build --no-cache -t callflow-visualizer .
+docker run -d --name callflowd -p 8080:8080 -p 8081:8081 -v $(pwd)/data:/app/data -v $(pwd)/output:/app/output -v $(pwd)/db:/app/db callflowd:latest
+
 ```
 
 ### Access the Application

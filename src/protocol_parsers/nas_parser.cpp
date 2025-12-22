@@ -412,11 +412,15 @@ bool NasParser::parseEmmMessage(const uint8_t* data, size_t len, size_t offset,
 
 bool NasParser::parseEsmMessage(const uint8_t* data, size_t len, size_t offset,
                                 LteNasMessage& msg) {
+    (void)data;
+    (void)len;
+    (void)offset;
     extractIEs(msg);
     return true;
 }
 
 void NasParser::extractIEs(LteNasMessage& msg) {
+    (void)msg;
     // Basic iterative IE extraction (Placeholder for full recursive logic)
     // Needs to know offset where optional IEs start.
     // Since parseEmmMessage handles mandatory, we need to pass current offset.

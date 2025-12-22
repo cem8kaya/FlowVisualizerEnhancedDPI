@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/types.h"
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <vector>
 #include <cstdint>

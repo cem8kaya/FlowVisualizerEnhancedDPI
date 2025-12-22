@@ -1,5 +1,5 @@
 #include "protocol_parsers/s1ap_parser.h"
-#include "thirdparty/asn1c/s1ap_asn1_wrapper.h"
+#include "asn1c/s1ap_asn1_wrapper.h"
 #include "common/logger.h"
 #include <cstring>
 #include <sstream>

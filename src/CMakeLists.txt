@@ -151,7 +151,9 @@ add_library(protocol_parsers STATIC
     protocol_parsers/x2ap_parser.cpp
     protocol_parsers/ngap_parser.cpp
     protocol_parsers/nas5g_parser.cpp
-    protocol_parsers/pfcp_parser.cpp
+    protocol_parsers/nas_parser.cpp
+    protocol_parsers/s1ap_parser.cpp
+
 )
 target_include_directories(protocol_parsers PUBLIC
     ${PROJECT_SOURCE_DIR}/include
@@ -258,6 +260,7 @@ if(BUILD_API_SERVER)
     # Link persistence for auth manager (if available)
     if(SQLite3_FOUND)
         target_link_libraries(api_server PUBLIC persistence)
+        target_compile_definitions(api_server PUBLIC ENABLE_DATABASE_PERSISTENCE)
     endif()
 endif()
 
@@ -280,6 +283,7 @@ target_link_libraries(callflowd PRIVATE
 
 if(NOT NEED_NDPI_BUILD)
     target_link_libraries(callflowd PRIVATE ndpi_engine)
+    target_compile_definitions(callflowd PRIVATE ENABLE_NDPI)
 endif()
 
 if(BUILD_API_SERVER)

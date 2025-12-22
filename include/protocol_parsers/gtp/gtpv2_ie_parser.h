@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gtpv2_types.h"
+#include <nlohmann/json.hpp>
 #include "common/logger.h"
 #include <vector>
 #include <cstdint>

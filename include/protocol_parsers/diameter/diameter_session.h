@@ -2,6 +2,7 @@
 
 #include "diameter_base.h"
 #include "diameter_types.h"
+#include <nlohmann/json.hpp>
 #include <chrono>
 #include <map>
 #include <memory>
