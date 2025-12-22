@@ -6,10 +6,7 @@ namespace flowviz {
 // Well-known ports for 3GPP protocols
 constexpr uint16_t S1AP_PORT = 36412;
 constexpr uint16_t NGAP_PORT = 38412;
-constexpr uint16_t GTP_C_PORT = 2123;
-constexpr uint16_t GTP_U_PORT = 2152;
 constexpr uint16_t PFCP_PORT = 8805;
-constexpr uint16_t DIAMETER_PORT = 3868;
 
 // Diameter Application IDs
 constexpr uint32_t DIAMETER_S6A_APP_ID = 16777251;
