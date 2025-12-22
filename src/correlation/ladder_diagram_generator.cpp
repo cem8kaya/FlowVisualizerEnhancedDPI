@@ -86,7 +86,7 @@ LadderDiagram LadderDiagramGenerator::generateFromSession(
     // Generate title from session type if not provided
     std::string diagram_title = title;
     if (diagram_title.empty()) {
-        diagram_title = callflow::sessionTypeToString(session.session_type);
+        diagram_title = callflow::enhancedSessionTypeToString(session.session_type);
 
         // Add IMSI if available
         if (session.correlation_key.imsi.has_value()) {
@@ -480,6 +480,8 @@ LadderMetrics LadderDiagramGenerator::calculateMetrics(
     const std::vector<LadderEvent>& events,
     const std::vector<ProcedureGroup>& procedures
 ) {
+    (void)procedures; // Suppress unused parameter warning
+
     LadderMetrics metrics;
     metrics.total_events = static_cast<uint32_t>(events.size());
 
