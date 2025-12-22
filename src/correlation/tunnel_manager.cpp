@@ -5,6 +5,10 @@
 
 namespace callflow {
 
+TunnelManager::TunnelManager()
+    : config_(Config{}) {
+}
+
 TunnelManager::TunnelManager(const Config& config)
     : config_(config) {
 }
