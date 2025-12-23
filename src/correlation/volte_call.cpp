@@ -1,6 +1,13 @@
 #include "correlation/volte_call.h"
+
 #include <algorithm>
-#include <spdlog/spdlog.h>
+#include <chrono>
+#include <iomanip>
+#include <memory>
+#include <nlohmann/json.hpp>
+#include <sstream>
+
+#include "common/logger.h"
 
 namespace callflow {
 namespace correlation {
@@ -193,8 +200,7 @@ bool VolteCall::isFailed() const {
 }
 
 bool VolteCall::hasMedia() const {
-    return rtp_leg.has_value() &&
-           (rtp_leg->uplink.packets > 0 || rtp_leg->downlink.packets > 0);
+    return rtp_leg.has_value() && (rtp_leg->uplink.packets > 0 || rtp_leg->downlink.packets > 0);
 }
 
 nlohmann::json VolteCall::toJson() const {
@@ -212,17 +218,28 @@ nlohmann::json VolteCall::toJson() const {
     j["state"] = static_cast<int>(state);
     j["state_name"] = [this]() {
         switch (state) {
-            case State::INITIATING: return "INITIATING";
-            case State::TRYING: return "TRYING";
-            case State::RINGING: return "RINGING";
-            case State::ANSWERED: return "ANSWERED";
-            case State::CONFIRMED: return "CONFIRMED";
-            case State::MEDIA_ACTIVE: return "MEDIA_ACTIVE";
-            case State::TERMINATING: return "TERMINATING";
-            case State::COMPLETED: return "COMPLETED";
-            case State::FAILED: return "FAILED";
-            case State::CANCELLED: return "CANCELLED";
-            default: return "UNKNOWN";
+            case State::INITIATING:
+                return "INITIATING";
+            case State::TRYING:
+                return "TRYING";
+            case State::RINGING:
+                return "RINGING";
+            case State::ANSWERED:
+                return "ANSWERED";
+            case State::CONFIRMED:
+                return "CONFIRMED";
+            case State::MEDIA_ACTIVE:
+                return "MEDIA_ACTIVE";
+            case State::TERMINATING:
+                return "TERMINATING";
+            case State::COMPLETED:
+                return "COMPLETED";
+            case State::FAILED:
+                return "FAILED";
+            case State::CANCELLED:
+                return "CANCELLED";
+            default:
+                return "UNKNOWN";
         }
     }();
     j["state_reason"] = state_reason;
@@ -258,171 +275,153 @@ nlohmann::json VolteCall::toLadderDiagramJson() const {
     diagram["type"] = "volte_call";
 
     // Participants
-    diagram["participants"] = nlohmann::json::array({
-        {{"id", "ue"}, {"name", "UE (" + msisdn + ")"}},
-        {{"id", "pcscf"}, {"name", "P-CSCF"}},
-        {{"id", "pcrf"}, {"name", "PCRF"}},
-        {{"id", "pgw"}, {"name", "PGW"}},
-        {{"id", "sgw"}, {"name", "SGW"}},
-        {{"id", "remote"}, {"name", "Remote Party"}}
-    });
+    diagram["participants"] =
+        nlohmann::json::array({{{"id", "ue"}, {"name", "UE (" + msisdn + ")"}},
+                               {{"id", "pcscf"}, {"name", "P-CSCF"}},
+                               {{"id", "pcrf"}, {"name", "PCRF"}},
+                               {{"id", "pgw"}, {"name", "PGW"}},
+                               {{"id", "sgw"}, {"name", "SGW"}},
+                               {{"id", "remote"}, {"name", "Remote Party"}}});
 
     // Messages in chronological order
     nlohmann::json messages = nlohmann::json::array();
 
     // SIP signaling
-    messages.push_back({
-        {"timestamp", std::chrono::system_clock::to_time_t(sip_leg.invite_time)},
-        {"from", "ue"},
-        {"to", "pcscf"},
-        {"protocol", "SIP"},
-        {"message", "INVITE"},
-        {"details", "Call-ID: " + call_id}
-    });
+    messages.push_back({{"timestamp", std::chrono::system_clock::to_time_t(sip_leg.invite_time)},
+                        {"from", "ue"},
+                        {"to", "pcscf"},
+                        {"protocol", "SIP"},
+                        {"message", "INVITE"},
+                        {"details", "Call-ID: " + call_id}});
 
     if (sip_leg.trying_time) {
-        messages.push_back({
-            {"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.trying_time)},
-            {"from", "pcscf"},
-            {"to", "ue"},
-            {"protocol", "SIP"},
-            {"message", "100 Trying"},
-            {"details", ""}
-        });
+        messages.push_back(
+            {{"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.trying_time)},
+             {"from", "pcscf"},
+             {"to", "ue"},
+             {"protocol", "SIP"},
+             {"message", "100 Trying"},
+             {"details", ""}});
     }
 
     // DIAMETER Rx (if present)
     if (rx_leg) {
-        messages.push_back({
-            {"timestamp", std::chrono::system_clock::to_time_t(rx_leg->aar_time)},
-            {"from", "pcscf"},
-            {"to", "pcrf"},
-            {"protocol", "DIAMETER Rx"},
-            {"message", "AAR"},
-            {"details", "Media authorization request"}
-        });
+        messages.push_back({{"timestamp", std::chrono::system_clock::to_time_t(rx_leg->aar_time)},
+                            {"from", "pcscf"},
+                            {"to", "pcrf"},
+                            {"protocol", "DIAMETER Rx"},
+                            {"message", "AAR"},
+                            {"details", "Media authorization request"}});
 
         if (rx_leg->aaa_time) {
-            messages.push_back({
-                {"timestamp", std::chrono::system_clock::to_time_t(*rx_leg->aaa_time)},
-                {"from", "pcrf"},
-                {"to", "pcscf"},
-                {"protocol", "DIAMETER Rx"},
-                {"message", "AAA"},
-                {"details", "Result-Code: " + std::to_string(rx_leg->result_code)}
-            });
+            messages.push_back(
+                {{"timestamp", std::chrono::system_clock::to_time_t(*rx_leg->aaa_time)},
+                 {"from", "pcrf"},
+                 {"to", "pcscf"},
+                 {"protocol", "DIAMETER Rx"},
+                 {"message", "AAA"},
+                 {"details", "Result-Code: " + std::to_string(rx_leg->result_code)}});
         }
     }
 
     // DIAMETER Gx (if present)
     if (gx_leg) {
-        messages.push_back({
-            {"timestamp", std::chrono::system_clock::to_time_t(gx_leg->rar_time)},
-            {"from", "pcrf"},
-            {"to", "pgw"},
-            {"protocol", "DIAMETER Gx"},
-            {"message", "RAR"},
-            {"details", "Policy installation"}
-        });
+        messages.push_back({{"timestamp", std::chrono::system_clock::to_time_t(gx_leg->rar_time)},
+                            {"from", "pcrf"},
+                            {"to", "pgw"},
+                            {"protocol", "DIAMETER Gx"},
+                            {"message", "RAR"},
+                            {"details", "Policy installation"}});
 
         if (gx_leg->raa_time) {
-            messages.push_back({
-                {"timestamp", std::chrono::system_clock::to_time_t(*gx_leg->raa_time)},
-                {"from", "pgw"},
-                {"to", "pcrf"},
-                {"protocol", "DIAMETER Gx"},
-                {"message", "RAA"},
-                {"details", "Policy acknowledged"}
-            });
+            messages.push_back(
+                {{"timestamp", std::chrono::system_clock::to_time_t(*gx_leg->raa_time)},
+                 {"from", "pgw"},
+                 {"to", "pcrf"},
+                 {"protocol", "DIAMETER Gx"},
+                 {"message", "RAA"},
+                 {"details", "Policy acknowledged"}});
         }
     }
 
     // GTP bearer creation (if present)
     if (bearer_leg) {
-        messages.push_back({
-            {"timestamp", std::chrono::system_clock::to_time_t(bearer_leg->request_time)},
-            {"from", "pgw"},
-            {"to", "sgw"},
-            {"protocol", "GTP-C"},
-            {"message", "Create Bearer Request"},
-            {"details", "QCI=" + std::to_string(bearer_leg->qci) + " EBI=" + std::to_string(bearer_leg->eps_bearer_id)}
-        });
+        messages.push_back(
+            {{"timestamp", std::chrono::system_clock::to_time_t(bearer_leg->request_time)},
+             {"from", "pgw"},
+             {"to", "sgw"},
+             {"protocol", "GTP-C"},
+             {"message", "Create Bearer Request"},
+             {"details", "QCI=" + std::to_string(bearer_leg->qci) +
+                             " EBI=" + std::to_string(bearer_leg->eps_bearer_id)}});
 
         if (bearer_leg->response_time) {
-            messages.push_back({
-                {"timestamp", std::chrono::system_clock::to_time_t(*bearer_leg->response_time)},
-                {"from", "sgw"},
-                {"to", "pgw"},
-                {"protocol", "GTP-C"},
-                {"message", "Create Bearer Response"},
-                {"details", "Cause=" + std::to_string(bearer_leg->cause)}
-            });
+            messages.push_back(
+                {{"timestamp", std::chrono::system_clock::to_time_t(*bearer_leg->response_time)},
+                 {"from", "sgw"},
+                 {"to", "pgw"},
+                 {"protocol", "GTP-C"},
+                 {"message", "Create Bearer Response"},
+                 {"details", "Cause=" + std::to_string(bearer_leg->cause)}});
         }
     }
 
     // SIP ringing/answer
     if (sip_leg.ringing_time) {
-        messages.push_back({
-            {"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.ringing_time)},
-            {"from", "pcscf"},
-            {"to", "ue"},
-            {"protocol", "SIP"},
-            {"message", "180 Ringing"},
-            {"details", ""}
-        });
+        messages.push_back(
+            {{"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.ringing_time)},
+             {"from", "pcscf"},
+             {"to", "ue"},
+             {"protocol", "SIP"},
+             {"message", "180 Ringing"},
+             {"details", ""}});
     }
 
     if (sip_leg.answer_time) {
-        messages.push_back({
-            {"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.answer_time)},
-            {"from", "pcscf"},
-            {"to", "ue"},
-            {"protocol", "SIP"},
-            {"message", "200 OK"},
-            {"details", ""}
-        });
+        messages.push_back(
+            {{"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.answer_time)},
+             {"from", "pcscf"},
+             {"to", "ue"},
+             {"protocol", "SIP"},
+             {"message", "200 OK"},
+             {"details", ""}});
     }
 
     if (sip_leg.ack_time) {
-        messages.push_back({
-            {"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.ack_time)},
-            {"from", "ue"},
-            {"to", "pcscf"},
-            {"protocol", "SIP"},
-            {"message", "ACK"},
-            {"details", ""}
-        });
+        messages.push_back({{"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.ack_time)},
+                            {"from", "ue"},
+                            {"to", "pcscf"},
+                            {"protocol", "SIP"},
+                            {"message", "ACK"},
+                            {"details", ""}});
     }
 
     // RTP media (if present)
     if (rtp_leg && rtp_leg->uplink.packets > 0) {
-        messages.push_back({
-            {"timestamp", std::chrono::system_clock::to_time_t(rtp_leg->uplink.first_packet)},
-            {"from", "ue"},
-            {"to", "remote"},
-            {"protocol", "RTP"},
-            {"message", "Media Start"},
-            {"details", "SSRC: " + std::to_string(rtp_leg->ssrc)}
-        });
+        messages.push_back(
+            {{"timestamp", std::chrono::system_clock::to_time_t(rtp_leg->uplink.first_packet)},
+             {"from", "ue"},
+             {"to", "remote"},
+             {"protocol", "RTP"},
+             {"message", "Media Start"},
+             {"details", "SSRC: " + std::to_string(rtp_leg->ssrc)}});
     }
 
     // SIP BYE
     if (sip_leg.bye_time) {
-        messages.push_back({
-            {"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.bye_time)},
-            {"from", "ue"},
-            {"to", "pcscf"},
-            {"protocol", "SIP"},
-            {"message", "BYE"},
-            {"details", ""}
-        });
+        messages.push_back({{"timestamp", std::chrono::system_clock::to_time_t(*sip_leg.bye_time)},
+                            {"from", "ue"},
+                            {"to", "pcscf"},
+                            {"protocol", "SIP"},
+                            {"message", "BYE"},
+                            {"details", ""}});
     }
 
     // Sort messages by timestamp
     std::sort(messages.begin(), messages.end(),
-        [](const nlohmann::json& a, const nlohmann::json& b) {
-            return a["timestamp"] < b["timestamp"];
-        });
+              [](const nlohmann::json& a, const nlohmann::json& b) {
+                  return a["timestamp"] < b["timestamp"];
+              });
 
     diagram["messages"] = messages;
     diagram["metrics"] = metrics.toJson();
@@ -436,13 +435,12 @@ nlohmann::json VolteCall::toLadderDiagramJson() const {
 
 VolteCallCorrelator::VolteCallCorrelator(std::shared_ptr<SubscriberContextManager> context_mgr)
     : context_mgr_(context_mgr) {
-    spdlog::info("VolteCallCorrelator initialized");
+    LOG_INFO("VolteCallCorrelator initialized");
 }
 
-void VolteCallCorrelator::processSipMessage(const session::SessionMessageRef& msg,
-                                           const protocol::SipMessage& sip) {
+void VolteCallCorrelator::processSipMessage(const SessionMessageRef& msg, const SipMessage& sip) {
     if (sip.call_id.empty()) {
-        spdlog::warn("SIP message without Call-ID, skipping");
+        LOG_WARN("SIP message without Call-ID, skipping");
         return;
     }
 
@@ -472,7 +470,7 @@ void VolteCallCorrelator::processSipMessage(const session::SessionMessageRef& ms
 
             // Extract ICID for billing correlation
             if (sip.p_charging_vector) {
-                call->icid = sip.p_charging_vector->icid;
+                call->icid = sip.p_charging_vector->icid_value;
                 icid_to_call_id_[call->icid] = call->call_id;
 
                 // Register ICID with subscriber context
@@ -488,13 +486,11 @@ void VolteCallCorrelator::processSipMessage(const session::SessionMessageRef& ms
 
             // Extract SDP info
             if (sip.sdp) {
-                for (const auto& media : sip.sdp->media_descriptions) {
-                    if (media.media_type == "audio") {
-                        call->sip_leg.rtp_port_local = media.port;
-                        if (!media.rtpmap.empty()) {
-                            call->sip_leg.audio_codec = media.rtpmap[0].encoding_name;
-                        }
-                    }
+                if (sip.sdp->rtp_port > 0) {
+                    call->sip_leg.rtp_port_local = sip.sdp->rtp_port;
+                }
+                if (!sip.sdp->codecs.empty()) {
+                    call->sip_leg.audio_codec = sip.sdp->codecs[0].encoding_name;
                 }
             }
 
@@ -518,13 +514,14 @@ void VolteCallCorrelator::processSipMessage(const session::SessionMessageRef& ms
                 imsi_to_call_ids_.emplace(call->imsi, call->call_id);
             }
 
-            spdlog::info("Created new VoLTE call: Call-ID={}, ICID={}, IMSI={}, calling={}, called={}",
-                        call->call_id, call->icid, call->imsi, call->calling_number, call->called_number);
+            LOG_INFO("Created new VoLTE call: Call-ID="
+                     << call->call_id << ", ICID=" << call->icid << ", IMSI=" << call->imsi
+                     << ", calling=" << call->calling_number << ", called=" << call->called_number);
         }
     }
 
     if (!call) {
-        spdlog::debug("SIP message for unknown call: {}", sip.call_id);
+        LOG_DEBUG("SIP message for unknown call: " << sip.call_id);
         return;
     }
 
@@ -537,7 +534,8 @@ void VolteCallCorrelator::processSipMessage(const session::SessionMessageRef& ms
         } else if (sip.status_code == 180 || sip.status_code == 183) {
             // 180 Ringing or 183 Session Progress
             call->sip_leg.ringing_time = msg.timestamp;
-            updateCallState(call, VolteCall::State::RINGING, std::to_string(sip.status_code) + " " + sip.reason_phrase);
+            updateCallState(call, VolteCall::State::RINGING,
+                            std::to_string(sip.status_code) + " " + sip.reason_phrase);
         } else if (sip.status_code == 200) {
             // 200 OK
             call->sip_leg.answer_time = msg.timestamp;
@@ -545,10 +543,8 @@ void VolteCallCorrelator::processSipMessage(const session::SessionMessageRef& ms
             // Extract remote SDP info
             if (sip.sdp) {
                 call->sip_leg.remote_ip = sip.sdp->connection_address;
-                for (const auto& media : sip.sdp->media_descriptions) {
-                    if (media.media_type == "audio") {
-                        call->sip_leg.rtp_port_remote = media.port;
-                    }
+                if (sip.sdp->rtp_port > 0) {
+                    call->sip_leg.rtp_port_remote = sip.sdp->rtp_port;
                 }
             }
 
@@ -556,7 +552,7 @@ void VolteCallCorrelator::processSipMessage(const session::SessionMessageRef& ms
         } else if (sip.status_code >= 300) {
             // Failure response
             updateCallState(call, VolteCall::State::FAILED,
-                          std::to_string(sip.status_code) + " " + sip.reason_phrase);
+                            std::to_string(sip.status_code) + " " + sip.reason_phrase);
         }
     }
 
@@ -581,8 +577,8 @@ void VolteCallCorrelator::processSipMessage(const session::SessionMessageRef& ms
     }
 }
 
-void VolteCallCorrelator::processDiameterRx(const session::SessionMessageRef& msg,
-                                           const protocol::DiameterMessage& dia) {
+void VolteCallCorrelator::processDiameterRx(const SessionMessageRef& msg,
+                                            const DiameterMessage& dia) {
     // Extract session ID and ICID for correlation
     std::string session_id = dia.session_id.value_or("");
     std::string icid;
@@ -620,14 +616,14 @@ void VolteCallCorrelator::processDiameterRx(const session::SessionMessageRef& ms
     }
 
     if (!call) {
-        spdlog::debug("DIAMETER Rx message for unknown call, ICID={}", icid);
+        LOG_DEBUG("DIAMETER Rx message for unknown call, ICID=" << icid);
         return;
     }
 
     // Determine message type
     auto msg_type = dia.getMessageType();
 
-    if (msg_type == session::MessageType::DIAMETER_AAR) {
+    if (msg_type == MessageType::DIAMETER_AAR) {
         // AAR - Media authorization request
         if (!call->rx_leg) {
             call->rx_leg = VolteCall::RxLeg();
@@ -641,9 +637,9 @@ void VolteCallCorrelator::processDiameterRx(const session::SessionMessageRef& ms
             rx_session_to_call_id_[session_id] = call->call_id;
         }
 
-        spdlog::debug("Correlated DIAMETER Rx AAR to call {}", call->call_id);
+        LOG_DEBUG("Correlated DIAMETER Rx AAR to call " << call->call_id);
 
-    } else if (msg_type == session::MessageType::DIAMETER_AAA) {
+    } else if (msg_type == MessageType::DIAMETER_AAA) {
         // AAA - Media authorization answer
         if (!call->rx_leg) {
             call->rx_leg = VolteCall::RxLeg();
@@ -653,13 +649,13 @@ void VolteCallCorrelator::processDiameterRx(const session::SessionMessageRef& ms
             call->rx_leg->result_code = *dia.result_code;
         }
 
-        spdlog::debug("Correlated DIAMETER Rx AAA to call {}, result_code={}",
-                     call->call_id, call->rx_leg->result_code);
+        LOG_DEBUG("Correlated DIAMETER Rx AAA to call "
+                  << call->call_id << ", result_code=" << call->rx_leg->result_code);
     }
 }
 
-void VolteCallCorrelator::processDiameterGx(const session::SessionMessageRef& msg,
-                                           const protocol::DiameterMessage& dia) {
+void VolteCallCorrelator::processDiameterGx(const SessionMessageRef& msg,
+                                            const DiameterMessage& dia) {
     std::string session_id = dia.session_id.value_or("");
     std::string framed_ip;
 
@@ -683,13 +679,13 @@ void VolteCallCorrelator::processDiameterGx(const session::SessionMessageRef& ms
     }
 
     if (!call) {
-        spdlog::debug("DIAMETER Gx message for unknown call");
+        LOG_DEBUG("DIAMETER Gx message for unknown call");
         return;
     }
 
     auto msg_type = dia.getMessageType();
 
-    if (msg_type == session::MessageType::DIAMETER_RAR) {
+    if (msg_type == MessageType::DIAMETER_RAR) {
         // RAR - Policy installation
         if (!call->gx_leg) {
             call->gx_leg = VolteCall::GxLeg();
@@ -698,26 +694,25 @@ void VolteCallCorrelator::processDiameterGx(const session::SessionMessageRef& ms
         call->gx_leg->framed_ip = framed_ip;
         call->gx_leg->rar_time = msg.timestamp;
 
-        spdlog::debug("Correlated DIAMETER Gx RAR to call {}", call->call_id);
+        LOG_DEBUG("Correlated DIAMETER Gx RAR to call " << call->call_id);
 
-    } else if (msg_type == session::MessageType::DIAMETER_RAA) {
+    } else if (msg_type == MessageType::DIAMETER_RAA) {
         // RAA - Policy installation acknowledgment
         if (!call->gx_leg) {
             call->gx_leg = VolteCall::GxLeg();
         }
         call->gx_leg->raa_time = msg.timestamp;
 
-        spdlog::debug("Correlated DIAMETER Gx RAA to call {}", call->call_id);
+        LOG_DEBUG("Correlated DIAMETER Gx RAA to call " << call->call_id);
     }
 }
 
-void VolteCallCorrelator::processGtpBearer(const session::SessionMessageRef& msg,
-                                          const protocol::GtpMessage& gtp) {
+void VolteCallCorrelator::processGtpBearer(const SessionMessageRef& msg, const GtpMessage& gtp) {
     // Look for Create Bearer Request/Response with QCI=1 (voice)
     auto msg_type = gtp.getMessageType();
 
-    if (msg_type != session::MessageType::GTP_CREATE_BEARER_REQ &&
-        msg_type != session::MessageType::GTP_CREATE_BEARER_RESP) {
+    if (msg_type != MessageType::GTP_CREATE_BEARER_REQ &&
+        msg_type != MessageType::GTP_CREATE_BEARER_RESP) {
         return;
     }
 
@@ -742,11 +737,11 @@ void VolteCallCorrelator::processGtpBearer(const session::SessionMessageRef& msg
     }
 
     if (!call) {
-        spdlog::debug("GTP bearer message for IMSI {} but no active call found", imsi);
+        LOG_DEBUG("GTP bearer message for IMSI " << imsi << " but no active call found");
         return;
     }
 
-    if (msg_type == session::MessageType::GTP_CREATE_BEARER_REQ) {
+    if (msg_type == MessageType::GTP_CREATE_BEARER_REQ) {
         if (!call->bearer_leg) {
             call->bearer_leg = VolteCall::BearerLeg();
         }
@@ -771,10 +766,11 @@ void VolteCallCorrelator::processGtpBearer(const session::SessionMessageRef& msg
         // Assume QCI=1 for VoLTE
         call->bearer_leg->qci = 1;
 
-        spdlog::info("Correlated GTP Create Bearer Request to call {}, TEID_UL={}, EBI={}",
-                    call->call_id, call->bearer_leg->teid_uplink, call->bearer_leg->eps_bearer_id);
+        LOG_INFO("Correlated GTP Create Bearer Request to call "
+                 << call->call_id << ", TEID_UL=" << call->bearer_leg->teid_uplink
+                 << ", EBI=" << call->bearer_leg->eps_bearer_id);
 
-    } else if (msg_type == session::MessageType::GTP_CREATE_BEARER_RESP) {
+    } else if (msg_type == MessageType::GTP_CREATE_BEARER_RESP) {
         if (!call->bearer_leg) {
             call->bearer_leg = VolteCall::BearerLeg();
         }
@@ -783,13 +779,12 @@ void VolteCallCorrelator::processGtpBearer(const session::SessionMessageRef& msg
             call->bearer_leg->cause = *gtp.cause;
         }
 
-        spdlog::debug("Correlated GTP Create Bearer Response to call {}, cause={}",
-                     call->call_id, call->bearer_leg->cause);
+        LOG_DEBUG("Correlated GTP Create Bearer Response to call "
+                  << call->call_id << ", cause=" << call->bearer_leg->cause);
     }
 }
 
-void VolteCallCorrelator::processRtpPacket(const session::SessionMessageRef& msg,
-                                          const protocol::RtpHeader& rtp) {
+void VolteCallCorrelator::processRtpPacket(const SessionMessageRef& msg, const RtpHeader& rtp) {
     // Find call by UE IP and RTP port
     std::string ue_ip = msg.src_ip;
     uint16_t port = msg.src_port;
@@ -797,7 +792,8 @@ void VolteCallCorrelator::processRtpPacket(const session::SessionMessageRef& msg
     // Try to find call with matching SDP ports
     std::shared_ptr<VolteCall> call;
     for (auto& [call_id, c] : calls_by_call_id_) {
-        if (c->isComplete()) continue;
+        if (c->isComplete())
+            continue;
 
         // Check if port matches SDP-negotiated port
         if (c->sip_leg.rtp_port_local == port || c->sip_leg.rtp_port_remote == port) {
@@ -826,7 +822,7 @@ void VolteCallCorrelator::processRtpPacket(const session::SessionMessageRef& msg
         call->rtp_leg->remote_ip = msg.dst_ip;
         call->rtp_leg->remote_port = msg.dst_port;
 
-        spdlog::info("Correlated RTP stream to call {}, SSRC={}", call->call_id, rtp.ssrc);
+        LOG_INFO("Correlated RTP stream to call " << call->call_id << ", SSRC=" << rtp.ssrc);
     }
 
     // Update RTP statistics
@@ -946,7 +942,8 @@ size_t VolteCallCorrelator::cleanupCompletedCalls(std::chrono::seconds retention
     }
 
     if (removed > 0) {
-        spdlog::info("Cleaned up {} completed VoLTE calls older than {}s", removed, retention.count());
+        LOG_INFO("Cleaned up " << removed << " completed VoLTE calls older than "
+                               << retention.count() << "s");
     }
 
     return removed;
@@ -990,11 +987,10 @@ VolteCallCorrelator::Stats VolteCallCorrelator::getStats() const {
 }
 
 void VolteCallCorrelator::updateCallState(std::shared_ptr<VolteCall> call,
-                                         VolteCall::State new_state,
-                                         const std::string& reason) {
+                                          VolteCall::State new_state, const std::string& reason) {
     if (call->state != new_state) {
-        spdlog::debug("Call {} state: {} -> {} ({})",
-                     call->call_id, static_cast<int>(call->state), static_cast<int>(new_state), reason);
+        LOG_DEBUG("Call " << call->call_id << " state: " << static_cast<int>(call->state) << " -> "
+                          << static_cast<int>(new_state) << " (" << reason << ")");
         call->state = new_state;
         call->state_reason = reason;
 
@@ -1065,10 +1061,11 @@ void VolteCallCorrelator::calculateMetrics(std::shared_ptr<VolteCall> call) {
         }
 
         // Average packet loss and jitter
-        metrics.packet_loss_rate = (call->rtp_leg->uplink.packet_loss_rate +
-                                   call->rtp_leg->downlink.packet_loss_rate) / 2.0;
-        metrics.jitter_ms = (call->rtp_leg->uplink.jitter_ms +
-                            call->rtp_leg->downlink.jitter_ms) / 2.0;
+        metrics.packet_loss_rate =
+            (call->rtp_leg->uplink.packet_loss_rate + call->rtp_leg->downlink.packet_loss_rate) /
+            2.0;
+        metrics.jitter_ms =
+            (call->rtp_leg->uplink.jitter_ms + call->rtp_leg->downlink.jitter_ms) / 2.0;
     }
 }
 
@@ -1080,7 +1077,7 @@ std::optional<std::string> VolteCallCorrelator::resolveImsiByIp(const std::strin
     return std::nullopt;
 }
 
-std::optional<std::string> VolteCallCorrelator::extractImsiFromSip(const protocol::SipMessage& sip) {
+std::optional<std::string> VolteCallCorrelator::extractImsiFromSip(const SipMessage& sip) {
     // In some deployments, IMSI might be in P-Asserted-Identity as tel URI or SIP URI
     // Format: sip:imsi@ims.mnc001.mcc001.3gppnetwork.org
     if (sip.p_asserted_identity && !sip.p_asserted_identity->empty()) {
@@ -1100,6 +1097,21 @@ std::optional<std::string> VolteCallCorrelator::extractImsiFromSip(const protoco
         }
     }
     return std::nullopt;
+}
+
+void VolteCallCorrelator::correlateRxToCall(std::shared_ptr<VolteCall> /*call*/,
+                                            const std::string& /*framed_ip*/) {
+    // Logic currently inline in processDiameterRx
+}
+
+void VolteCallCorrelator::correlateBearerToCall(std::shared_ptr<VolteCall> /*call*/,
+                                                const std::string& /*ue_ip*/) {
+    // Logic currently inline in processGtpBearer
+}
+
+void VolteCallCorrelator::correlateRtpToCall(std::shared_ptr<VolteCall> /*call*/,
+                                             const std::string& /*ue_ip*/, uint16_t /*port*/) {
+    // Logic currently inline in processRtpPacket
 }
 
 }  // namespace correlation

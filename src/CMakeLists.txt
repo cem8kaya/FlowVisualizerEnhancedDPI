@@ -65,6 +65,7 @@ target_include_directories(procedure_correlation PUBLIC
 target_link_libraries(procedure_correlation PUBLIC
     callflow_common
     session_correlation
+    protocol_parsers
 )
 
 
@@ -278,17 +279,21 @@ endif()
 add_executable(callflowd
     cli/main.cpp
     cli/cli_parser.cpp
+    cli/cli_parser.cpp
 )
 
+target_compile_options(callflowd PRIVATE -fno-lto)
+target_link_options(callflowd PRIVATE -fno-lto)
+
 target_link_libraries(callflowd PRIVATE
-    callflow_common
-    config_manager
-    pcap_ingest
-    flow_manager
-    protocol_parsers
+    procedure_correlation
     event_extractor
     session_correlation
-    procedure_correlation
+    flow_manager
+    pcap_ingest
+    protocol_parsers
+    config_manager
+    callflow_common
 )
 
 if(NOT NEED_NDPI_BUILD)

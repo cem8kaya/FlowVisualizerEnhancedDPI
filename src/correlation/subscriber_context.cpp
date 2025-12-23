@@ -16,19 +16,15 @@ namespace correlation {
 
 std::string SubscriberContext::GUTI::toString() const {
     std::ostringstream oss;
-    oss << "GUTI{" << mcc_mnc << ":"
-        << std::hex << std::setfill('0')
-        << std::setw(4) << mme_group_id << ":"
-        << std::setw(2) << static_cast<int>(mme_code) << ":"
-        << std::setw(8) << m_tmsi << "}";
+    oss << "GUTI{" << mcc_mnc << ":" << std::hex << std::setfill('0') << std::setw(4)
+        << mme_group_id << ":" << std::setw(2) << static_cast<int>(mme_code) << ":" << std::setw(8)
+        << m_tmsi << "}";
     return oss.str();
 }
 
 bool SubscriberContext::GUTI::operator==(const GUTI& other) const {
-    return mcc_mnc == other.mcc_mnc &&
-           mme_group_id == other.mme_group_id &&
-           mme_code == other.mme_code &&
-           m_tmsi == other.m_tmsi;
+    return mcc_mnc == other.mcc_mnc && mme_group_id == other.mme_group_id &&
+           mme_code == other.mme_code && m_tmsi == other.m_tmsi;
 }
 
 // ============================================================================
@@ -37,20 +33,15 @@ bool SubscriberContext::GUTI::operator==(const GUTI& other) const {
 
 std::string SubscriberContext::GUTI5G::toString() const {
     std::ostringstream oss;
-    oss << "5G-GUTI{" << mcc_mnc << ":"
-        << std::hex << std::setfill('0')
-        << std::setw(2) << amf_region_id << ":"
-        << std::setw(4) << amf_set_id << ":"
-        << std::setw(2) << static_cast<int>(amf_pointer) << ":"
-        << std::setw(8) << tmsi_5g << "}";
+    oss << "5G-GUTI{" << mcc_mnc << ":" << std::hex << std::setfill('0') << std::setw(2)
+        << amf_region_id << ":" << std::setw(4) << amf_set_id << ":" << std::setw(2)
+        << static_cast<int>(amf_pointer) << ":" << std::setw(8) << tmsi_5g << "}";
     return oss.str();
 }
 
 bool SubscriberContext::GUTI5G::operator==(const GUTI5G& other) const {
-    return mcc_mnc == other.mcc_mnc &&
-           amf_region_id == other.amf_region_id &&
-           amf_set_id == other.amf_set_id &&
-           amf_pointer == other.amf_pointer &&
+    return mcc_mnc == other.mcc_mnc && amf_region_id == other.amf_region_id &&
+           amf_set_id == other.amf_set_id && amf_pointer == other.amf_pointer &&
            tmsi_5g == other.tmsi_5g;
 }
 
@@ -59,49 +50,71 @@ bool SubscriberContext::GUTI5G::operator==(const GUTI5G& other) const {
 // ============================================================================
 
 bool SubscriberContext::hasIdentifier(const std::string& id) const {
-    if (imsi && *imsi == id) return true;
-    if (supi && *supi == id) return true;
-    if (msisdn && *msisdn == id) return true;
-    if (imei && *imei == id) return true;
-    if (imeisv && *imeisv == id) return true;
+    if (imsi && *imsi == id)
+        return true;
+    if (supi && *supi == id)
+        return true;
+    if (msisdn && *msisdn == id)
+        return true;
+    if (imei && *imei == id)
+        return true;
+    if (imeisv && *imeisv == id)
+        return true;
 
-    if (ue_ipv4_addresses.count(id)) return true;
-    if (ue_ipv6_addresses.count(id)) return true;
-    if (sip_uris.count(id)) return true;
-    if (sip_call_ids.count(id)) return true;
-    if (icids.count(id)) return true;
+    if (ue_ipv4_addresses.count(id))
+        return true;
+    if (ue_ipv6_addresses.count(id))
+        return true;
+    if (sip_uris.count(id))
+        return true;
+    if (sip_call_ids.count(id))
+        return true;
+    if (icids.count(id))
+        return true;
 
     return false;
 }
 
 std::string SubscriberContext::getPrimaryIdentifier() const {
-    if (imsi) return *imsi;
-    if (supi) return *supi;
-    if (msisdn) return *msisdn;
-    if (!current_ue_ipv4.empty()) return current_ue_ipv4;
-    if (!current_ue_ipv6.empty()) return current_ue_ipv6;
-    if (!current_sip_uri.empty()) return current_sip_uri;
-    if (current_guti) return current_guti->toString();
-    if (current_5g_guti) return current_5g_guti->toString();
+    if (imsi)
+        return *imsi;
+    if (supi)
+        return *supi;
+    if (msisdn)
+        return *msisdn;
+    if (!current_ue_ipv4.empty())
+        return current_ue_ipv4;
+    if (!current_ue_ipv6.empty())
+        return current_ue_ipv6;
+    if (!current_sip_uri.empty())
+        return current_sip_uri;
+    if (current_guti)
+        return current_guti->toString();
+    if (current_5g_guti)
+        return current_5g_guti->toString();
     return context_id;
 }
 
 std::string SubscriberContext::getDisplayName() const {
-    if (msisdn) return *msisdn;
-    if (imsi) return *imsi;
-    if (supi) return *supi;
-    if (!current_sip_uri.empty()) return current_sip_uri;
+    if (msisdn)
+        return *msisdn;
+    if (imsi)
+        return *imsi;
+    if (supi)
+        return *supi;
+    if (!current_sip_uri.empty())
+        return current_sip_uri;
     return getPrimaryIdentifier();
 }
 
 size_t SubscriberContext::getActiveBearerCount() const {
     return std::count_if(bearers.begin(), bearers.end(),
-                        [](const BearerInfo& b) { return b.is_active(); });
+                         [](const BearerInfo& b) { return b.is_active(); });
 }
 
 size_t SubscriberContext::getActivePduSessionCount() const {
     return std::count_if(pdu_sessions.begin(), pdu_sessions.end(),
-                        [](const PduSessionInfo& p) { return p.is_active(); });
+                         [](const PduSessionInfo& p) { return p.is_active(); });
 }
 
 nlohmann::json SubscriberContext::toJson() const {
@@ -110,11 +123,16 @@ nlohmann::json SubscriberContext::toJson() const {
     j["context_id"] = context_id;
 
     // Primary identifiers
-    if (imsi) j["imsi"] = *imsi;
-    if (supi) j["supi"] = *supi;
-    if (msisdn) j["msisdn"] = *msisdn;
-    if (imei) j["imei"] = *imei;
-    if (imeisv) j["imeisv"] = *imeisv;
+    if (imsi)
+        j["imsi"] = *imsi;
+    if (supi)
+        j["supi"] = *supi;
+    if (msisdn)
+        j["msisdn"] = *msisdn;
+    if (imei)
+        j["imei"] = *imei;
+    if (imeisv)
+        j["imeisv"] = *imeisv;
 
     // Temporary identifiers
     if (current_guti) {
@@ -138,8 +156,10 @@ nlohmann::json SubscriberContext::toJson() const {
     }
 
     // Network-assigned identifiers
-    if (!current_ue_ipv4.empty()) j["current_ue_ipv4"] = current_ue_ipv4;
-    if (!current_ue_ipv6.empty()) j["current_ue_ipv6"] = current_ue_ipv6;
+    if (!current_ue_ipv4.empty())
+        j["current_ue_ipv4"] = current_ue_ipv4;
+    if (!current_ue_ipv6.empty())
+        j["current_ue_ipv6"] = current_ue_ipv6;
     if (!ue_ipv4_addresses.empty()) {
         j["ue_ipv4_addresses"] = nlohmann::json::array();
         for (const auto& ip : ue_ipv4_addresses) {
@@ -164,8 +184,10 @@ nlohmann::json SubscriberContext::toJson() const {
             b["pgw_ip"] = bearer.pgw_ip;
             b["qci"] = bearer.qci;
             b["active"] = bearer.is_active();
-            if (bearer.uplink_teid > 0) b["uplink_teid"] = bearer.uplink_teid;
-            if (bearer.downlink_teid > 0) b["downlink_teid"] = bearer.downlink_teid;
+            if (bearer.uplink_teid > 0)
+                b["uplink_teid"] = bearer.uplink_teid;
+            if (bearer.downlink_teid > 0)
+                b["downlink_teid"] = bearer.downlink_teid;
             j["bearers"].push_back(b);
         }
     }
@@ -180,7 +202,8 @@ nlohmann::json SubscriberContext::toJson() const {
             s["downlink_teid"] = session.downlink_teid;
             s["dnn"] = session.dnn;
             s["sst"] = session.sst;
-            if (session.sd) s["sd"] = *session.sd;
+            if (session.sd)
+                s["sd"] = *session.sd;
             s["active"] = session.is_active();
             j["pdu_sessions"].push_back(s);
         }
@@ -195,13 +218,18 @@ nlohmann::json SubscriberContext::toJson() const {
     }
 
     // Control plane context IDs
-    if (mme_ue_s1ap_id) j["mme_ue_s1ap_id"] = *mme_ue_s1ap_id;
-    if (enb_ue_s1ap_id) j["enb_ue_s1ap_id"] = *enb_ue_s1ap_id;
-    if (amf_ue_ngap_id) j["amf_ue_ngap_id"] = *amf_ue_ngap_id;
-    if (ran_ue_ngap_id) j["ran_ue_ngap_id"] = *ran_ue_ngap_id;
+    if (mme_ue_s1ap_id)
+        j["mme_ue_s1ap_id"] = *mme_ue_s1ap_id;
+    if (enb_ue_s1ap_id)
+        j["enb_ue_s1ap_id"] = *enb_ue_s1ap_id;
+    if (amf_ue_ngap_id)
+        j["amf_ue_ngap_id"] = *amf_ue_ngap_id;
+    if (ran_ue_ngap_id)
+        j["ran_ue_ngap_id"] = *ran_ue_ngap_id;
 
     // IMS/VoLTE identifiers
-    if (!current_sip_uri.empty()) j["current_sip_uri"] = current_sip_uri;
+    if (!current_sip_uri.empty())
+        j["current_sip_uri"] = current_sip_uri;
     if (!sip_uris.empty()) {
         j["sip_uris"] = nlohmann::json::array();
         for (const auto& uri : sip_uris) {
@@ -230,10 +258,12 @@ nlohmann::json SubscriberContext::toJson() const {
     }
 
     // Lifecycle
-    j["first_seen"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-        first_seen.time_since_epoch()).count();
-    j["last_updated"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-        last_updated.time_since_epoch()).count();
+    j["first_seen"] =
+        std::chrono::duration_cast<std::chrono::milliseconds>(first_seen.time_since_epoch())
+            .count();
+    j["last_updated"] =
+        std::chrono::duration_cast<std::chrono::milliseconds>(last_updated.time_since_epoch())
+            .count();
 
     // Statistics
     j["active_bearer_count"] = getActiveBearerCount();
@@ -260,12 +290,11 @@ SubscriberContextManager::~SubscriberContextManager() {
 // Lookup Methods
 // ============================================================================
 
-template<typename KeyType>
+template <typename KeyType>
 std::shared_ptr<SubscriberContext> SubscriberContextManager::lookupInIndex(
-    const std::unordered_map<KeyType, std::string>& index,
-    const KeyType& key) const {
-
+    const std::unordered_map<KeyType, std::string>& index, const KeyType& key) const {
     std::shared_lock<std::shared_mutex> lock(mutex_);
+    // We traverse `stats_` which is mutable, so const method is fine
     stats_.lookups_total++;
 
     auto it = index.find(key);
@@ -292,7 +321,8 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::findBySupi(const st
     return lookupInIndex(supi_index_, supi);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByMsisdn(const std::string& msisdn) {
+std::shared_ptr<SubscriberContext> SubscriberContextManager::findByMsisdn(
+    const std::string& msisdn) {
     return lookupInIndex(msisdn_index_, msisdn);
 }
 
@@ -322,23 +352,28 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::findBySipUri(const 
     return lookupInIndex(sip_uri_index_, uri);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findBySipCallId(const std::string& call_id) {
+std::shared_ptr<SubscriberContext> SubscriberContextManager::findBySipCallId(
+    const std::string& call_id) {
     return lookupInIndex(sip_call_id_index_, call_id);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByMmeUeId(uint32_t mme_ue_s1ap_id) {
+std::shared_ptr<SubscriberContext> SubscriberContextManager::findByMmeUeId(
+    uint32_t mme_ue_s1ap_id) {
     return lookupInIndex(mme_ue_id_index_, mme_ue_s1ap_id);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByEnbUeId(uint32_t enb_ue_s1ap_id) {
+std::shared_ptr<SubscriberContext> SubscriberContextManager::findByEnbUeId(
+    uint32_t enb_ue_s1ap_id) {
     return lookupInIndex(enb_ue_id_index_, enb_ue_s1ap_id);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByAmfUeId(uint64_t amf_ue_ngap_id) {
+std::shared_ptr<SubscriberContext> SubscriberContextManager::findByAmfUeId(
+    uint64_t amf_ue_ngap_id) {
     return lookupInIndex(amf_ue_id_index_, amf_ue_ngap_id);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByRanUeId(uint64_t ran_ue_ngap_id) {
+std::shared_ptr<SubscriberContext> SubscriberContextManager::findByRanUeId(
+    uint64_t ran_ue_ngap_id) {
     return lookupInIndex(ran_ue_id_index_, ran_ue_ngap_id);
 }
 
@@ -461,8 +496,7 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::createTemporaryCont
 // Update Methods
 // ============================================================================
 
-void SubscriberContextManager::updateImsi(const std::string& context_id,
-                                         const std::string& imsi) {
+void SubscriberContextManager::updateImsi(const std::string& context_id, const std::string& imsi) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -487,8 +521,7 @@ void SubscriberContextManager::updateImsi(const std::string& context_id,
     LOG_DEBUG("Updated IMSI for context " << context_id << ": " << imsi);
 }
 
-void SubscriberContextManager::updateSupi(const std::string& context_id,
-                                         const std::string& supi) {
+void SubscriberContextManager::updateSupi(const std::string& context_id, const std::string& supi) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -513,7 +546,7 @@ void SubscriberContextManager::updateSupi(const std::string& context_id,
 }
 
 void SubscriberContextManager::updateMsisdn(const std::string& context_id,
-                                           const std::string& msisdn) {
+                                            const std::string& msisdn) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -537,8 +570,7 @@ void SubscriberContextManager::updateMsisdn(const std::string& context_id,
     LOG_DEBUG("Updated MSISDN for context " << context_id << ": " << msisdn);
 }
 
-void SubscriberContextManager::updateImei(const std::string& context_id,
-                                         const std::string& imei) {
+void SubscriberContextManager::updateImei(const std::string& context_id, const std::string& imei) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -555,7 +587,7 @@ void SubscriberContextManager::updateImei(const std::string& context_id,
 }
 
 void SubscriberContextManager::updateGuti(const std::string& context_id,
-                                         const SubscriberContext::GUTI& guti) {
+                                          const SubscriberContext::GUTI& guti) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -584,7 +616,7 @@ void SubscriberContextManager::updateGuti(const std::string& context_id,
 }
 
 void SubscriberContextManager::updateGuti5G(const std::string& context_id,
-                                           const SubscriberContext::GUTI5G& guti) {
+                                            const SubscriberContext::GUTI5G& guti) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -610,9 +642,8 @@ void SubscriberContextManager::updateGuti5G(const std::string& context_id,
     LOG_DEBUG("Updated 5G-GUTI for context " << context_id << ": " << guti.toString());
 }
 
-void SubscriberContextManager::updateUeIp(const std::string& context_id,
-                                         const std::string& ipv4,
-                                         const std::string& ipv6) {
+void SubscriberContextManager::updateUeIp(const std::string& context_id, const std::string& ipv4,
+                                          const std::string& ipv6) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -655,7 +686,7 @@ void SubscriberContextManager::updateUeIp(const std::string& context_id,
 }
 
 void SubscriberContextManager::addBearer(const std::string& context_id,
-                                        const SubscriberContext::BearerInfo& bearer) {
+                                         const SubscriberContext::BearerInfo& bearer) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -682,8 +713,8 @@ void SubscriberContextManager::addBearer(const std::string& context_id,
 
     context->last_updated = std::chrono::system_clock::now();
 
-    LOG_DEBUG("Added bearer to context " << context_id << ": TEID=" << bearer.teid
-              << " bearer_id=" << static_cast<int>(bearer.eps_bearer_id));
+    LOG_DEBUG("Added bearer to context " << context_id << ": TEID=" << bearer.teid << " bearer_id="
+                                         << static_cast<int>(bearer.eps_bearer_id));
 }
 
 void SubscriberContextManager::removeBearer(const std::string& context_id, uint32_t teid) {
@@ -718,7 +749,7 @@ void SubscriberContextManager::removeBearer(const std::string& context_id, uint3
 }
 
 void SubscriberContextManager::addPduSession(const std::string& context_id,
-                                            const SubscriberContext::PduSessionInfo& session) {
+                                             const SubscriberContext::PduSessionInfo& session) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -738,12 +769,12 @@ void SubscriberContextManager::addPduSession(const std::string& context_id,
 
     context->last_updated = std::chrono::system_clock::now();
 
-    LOG_DEBUG("Added PDU session to context " << context_id
-              << ": session_id=" << static_cast<int>(session.pdu_session_id));
+    LOG_DEBUG("Added PDU session to context "
+              << context_id << ": session_id=" << static_cast<int>(session.pdu_session_id));
 }
 
 void SubscriberContextManager::removePduSession(const std::string& context_id,
-                                               uint8_t pdu_session_id) {
+                                                uint8_t pdu_session_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -763,14 +794,14 @@ void SubscriberContextManager::removePduSession(const std::string& context_id,
                 stats_.with_active_pdu_sessions--;
             }
 
-            LOG_DEBUG("Removed PDU session from context " << context_id
-                      << ": session_id=" << static_cast<int>(pdu_session_id));
+            LOG_DEBUG("Removed PDU session from context "
+                      << context_id << ": session_id=" << static_cast<int>(pdu_session_id));
             return;
         }
     }
 
-    LOG_WARN("PDU session " << static_cast<int>(pdu_session_id)
-             << " not found in context " << context_id);
+    LOG_WARN("PDU session " << static_cast<int>(pdu_session_id) << " not found in context "
+                            << context_id);
 }
 
 void SubscriberContextManager::addSeid(const std::string& context_id, uint64_t seid) {
@@ -791,7 +822,7 @@ void SubscriberContextManager::addSeid(const std::string& context_id, uint64_t s
 }
 
 void SubscriberContextManager::updateMmeUeId(const std::string& context_id,
-                                            uint32_t mme_ue_s1ap_id) {
+                                             uint32_t mme_ue_s1ap_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -814,7 +845,7 @@ void SubscriberContextManager::updateMmeUeId(const std::string& context_id,
 }
 
 void SubscriberContextManager::updateEnbUeId(const std::string& context_id,
-                                            uint32_t enb_ue_s1ap_id) {
+                                             uint32_t enb_ue_s1ap_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -837,7 +868,7 @@ void SubscriberContextManager::updateEnbUeId(const std::string& context_id,
 }
 
 void SubscriberContextManager::updateAmfUeId(const std::string& context_id,
-                                            uint64_t amf_ue_ngap_id) {
+                                             uint64_t amf_ue_ngap_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -860,7 +891,7 @@ void SubscriberContextManager::updateAmfUeId(const std::string& context_id,
 }
 
 void SubscriberContextManager::updateRanUeId(const std::string& context_id,
-                                            uint64_t ran_ue_ngap_id) {
+                                             uint64_t ran_ue_ngap_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -882,8 +913,7 @@ void SubscriberContextManager::updateRanUeId(const std::string& context_id,
     LOG_DEBUG("Updated RAN UE NGAP ID for context " << context_id << ": " << ran_ue_ngap_id);
 }
 
-void SubscriberContextManager::updateSipUri(const std::string& context_id,
-                                           const std::string& uri) {
+void SubscriberContextManager::updateSipUri(const std::string& context_id, const std::string& uri) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -908,7 +938,7 @@ void SubscriberContextManager::updateSipUri(const std::string& context_id,
 }
 
 void SubscriberContextManager::addSipCallId(const std::string& context_id,
-                                           const std::string& call_id) {
+                                            const std::string& call_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -925,8 +955,7 @@ void SubscriberContextManager::addSipCallId(const std::string& context_id,
     LOG_DEBUG("Added SIP Call-ID to context " << context_id << ": " << call_id);
 }
 
-void SubscriberContextManager::addIcid(const std::string& context_id,
-                                      const std::string& icid) {
+void SubscriberContextManager::addIcid(const std::string& context_id, const std::string& icid) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -944,7 +973,7 @@ void SubscriberContextManager::addIcid(const std::string& context_id,
 }
 
 void SubscriberContextManager::addSessionId(const std::string& context_id,
-                                           const std::string& session_id) {
+                                            const std::string& session_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -965,7 +994,7 @@ void SubscriberContextManager::addSessionId(const std::string& context_id,
 // ============================================================================
 
 bool SubscriberContextManager::mergeContexts(const std::string& context_id_keep,
-                                            const std::string& context_id_merge) {
+                                             const std::string& context_id_merge) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it_keep = contexts_.find(context_id_keep);
@@ -1006,8 +1035,7 @@ bool SubscriberContextManager::mergeContexts(const std::string& context_id_keep,
         ctx_keep->current_guti = ctx_merge->current_guti;
         guti_index_[ctx_merge->current_guti->toString()] = context_id_keep;
     }
-    ctx_keep->guti_history.insert(ctx_keep->guti_history.end(),
-                                  ctx_merge->guti_history.begin(),
+    ctx_keep->guti_history.insert(ctx_keep->guti_history.end(), ctx_merge->guti_history.begin(),
                                   ctx_merge->guti_history.end());
 
     // Merge 5G-GUTI
@@ -1104,8 +1132,8 @@ bool SubscriberContextManager::mergeContexts(const std::string& context_id_keep,
     stats_.merges_total++;
 
     LOG_INFO("Successfully merged contexts. Resulting context has "
-             << ctx_keep->bearers.size() << " bearers, "
-             << ctx_keep->sip_call_ids.size() << " SIP calls");
+             << ctx_keep->bearers.size() << " bearers, " << ctx_keep->sip_call_ids.size()
+             << " SIP calls");
 
     return true;
 }
@@ -1163,7 +1191,6 @@ bool SubscriberContextManager::removeContext(const std::string& context_id) {
 
 void SubscriberContextManager::removeFromAllIndices(
     const std::shared_ptr<SubscriberContext>& context) {
-
     if (context->imsi) {
         imsi_index_.erase(*context->imsi);
         stats_.with_imsi--;
@@ -1282,6 +1309,30 @@ std::string SubscriberContextManager::generateContextId() {
     std::ostringstream oss;
     oss << "ctx_" << std::hex << std::setfill('0') << std::setw(16) << dis(gen);
     return oss.str();
+}
+
+void SubscriberContextManager::updateLastModified(const std::string& context_id) {
+    auto it = contexts_.find(context_id);
+    if (it != contexts_.end()) {
+        it->second->last_updated = std::chrono::system_clock::now();
+    }
+}
+
+void SubscriberContextManager::addToImsiIndex(const std::string& context_id,
+                                              const std::string& imsi) {
+    imsi_index_[imsi] = context_id;
+}
+
+void SubscriberContextManager::removeFromImsiIndex(const std::string& imsi) {
+    imsi_index_.erase(imsi);
+}
+
+void SubscriberContextManager::addToTeidIndex(const std::string& context_id, uint32_t teid) {
+    teid_index_[teid] = context_id;
+}
+
+void SubscriberContextManager::removeFromTeidIndex(uint32_t teid) {
+    teid_index_.erase(teid);
 }
 
 }  // namespace correlation

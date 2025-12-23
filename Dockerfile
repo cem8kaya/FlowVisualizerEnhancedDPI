@@ -31,9 +31,9 @@ RUN mkdir build && cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_TESTS=OFF \
     -DBUILD_API_SERVER=ON \
-    -DCMAKE_CXX_FLAGS="-O3 -march=native -flto" \
+    -DCMAKE_CXX_FLAGS="-O3 -march=native" \
     .. && \
-    make -j2 VERBOSE=1 && \
+    make -j2 && \
     strip src/callflowd
 
 # Runtime stage

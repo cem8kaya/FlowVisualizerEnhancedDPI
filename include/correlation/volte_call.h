@@ -1,19 +1,20 @@
 #pragma once
 
+#include <chrono>
+#include <cstdint>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
-#include <vector>
 #include <unordered_map>
-#include <chrono>
-#include <nlohmann/json.hpp>
+#include <vector>
 
 #include "correlation/subscriber_context.h"
-#include "session/session_types.h"
-#include "protocol_parsers/sip_parser.h"
 #include "protocol_parsers/diameter_parser.h"
 #include "protocol_parsers/gtp_parser.h"
 #include "protocol_parsers/rtp_parser.h"
+#include "protocol_parsers/sip_parser.h"
+#include "session/session_types.h"
 
 namespace callflow {
 namespace correlation {
@@ -32,42 +33,42 @@ namespace correlation {
  */
 struct VolteCall {
     // Primary identifiers
-    std::string call_id;              ///< SIP Call-ID (primary key)
-    std::string icid;                 ///< IMS Charging ID (from P-Charging-Vector)
+    std::string call_id;  ///< SIP Call-ID (primary key)
+    std::string icid;     ///< IMS Charging ID (from P-Charging-Vector)
 
     // Subscriber identifiers
-    std::string imsi;                 ///< International Mobile Subscriber Identity
-    std::string msisdn;               ///< Mobile phone number
-    std::string calling_number;       ///< Calling party (from P-Asserted-Identity)
-    std::string called_number;        ///< Called party (from Request-URI or To header)
+    std::string imsi;            ///< International Mobile Subscriber Identity
+    std::string msisdn;          ///< Mobile phone number
+    std::string calling_number;  ///< Calling party (from P-Asserted-Identity)
+    std::string called_number;   ///< Called party (from Request-URI or To header)
 
     /**
      * @brief Call state tracking
      */
     enum class State {
-        INITIATING,       ///< SIP INVITE sent
-        TRYING,           ///< SIP 100 Trying received
-        RINGING,          ///< SIP 180 Ringing received
-        ANSWERED,         ///< SIP 200 OK received
-        CONFIRMED,        ///< SIP ACK sent
-        MEDIA_ACTIVE,     ///< RTP packets detected
-        TERMINATING,      ///< SIP BYE sent/received
-        COMPLETED,        ///< Call successfully completed
-        FAILED,           ///< Call failed (4xx/5xx/6xx response)
-        CANCELLED         ///< Call cancelled (CANCEL)
+        INITIATING,    ///< SIP INVITE sent
+        TRYING,        ///< SIP 100 Trying received
+        RINGING,       ///< SIP 180 Ringing received
+        ANSWERED,      ///< SIP 200 OK received
+        CONFIRMED,     ///< SIP ACK sent
+        MEDIA_ACTIVE,  ///< RTP packets detected
+        TERMINATING,   ///< SIP BYE sent/received
+        COMPLETED,     ///< Call successfully completed
+        FAILED,        ///< Call failed (4xx/5xx/6xx response)
+        CANCELLED      ///< Call cancelled (CANCEL)
     };
     State state = State::INITIATING;
-    std::string state_reason;         ///< Human-readable state reason (e.g., "486 Busy Here")
+    std::string state_reason;  ///< Human-readable state reason (e.g., "486 Busy Here")
 
     /**
      * @brief SIP signaling leg
      */
     struct SipLeg {
-        std::string session_id;           ///< Internal session ID
-        std::string call_id;              ///< SIP Call-ID
-        std::string from_uri;             ///< From header URI
-        std::string to_uri;               ///< To header URI
-        std::string p_cscf_ip;            ///< P-CSCF address
+        std::string session_id;  ///< Internal session ID
+        std::string call_id;     ///< SIP Call-ID
+        std::string from_uri;    ///< From header URI
+        std::string to_uri;      ///< To header URI
+        std::string p_cscf_ip;   ///< P-CSCF address
 
         // Timing milestones
         std::chrono::system_clock::time_point invite_time;
@@ -78,10 +79,10 @@ struct VolteCall {
         std::optional<std::chrono::system_clock::time_point> bye_time;
 
         // Media parameters (from SDP)
-        std::string audio_codec;          ///< Codec name (e.g., "AMR", "AMR-WB")
-        uint16_t rtp_port_local = 0;      ///< UE RTP port
-        uint16_t rtp_port_remote = 0;     ///< Remote RTP port
-        std::string remote_ip;            ///< Remote media IP
+        std::string audio_codec;       ///< Codec name (e.g., "AMR", "AMR-WB")
+        uint16_t rtp_port_local = 0;   ///< UE RTP port
+        uint16_t rtp_port_remote = 0;  ///< Remote RTP port
+        std::string remote_ip;         ///< Remote media IP
 
         nlohmann::json toJson() const;
     };
@@ -91,24 +92,24 @@ struct VolteCall {
      * @brief DIAMETER Rx leg (P-CSCF → PCRF media authorization)
      */
     struct RxLeg {
-        std::string session_id;           ///< Diameter Session-Id AVP
-        std::string af_app_id;            ///< AF-Application-Identifier (IMS signaling)
-        std::string framed_ip;            ///< UE IP address (Framed-IP-Address AVP)
+        std::string session_id;  ///< Diameter Session-Id AVP
+        std::string af_app_id;   ///< AF-Application-Identifier (IMS signaling)
+        std::string framed_ip;   ///< UE IP address (Framed-IP-Address AVP)
 
         std::chrono::system_clock::time_point aar_time;
         std::optional<std::chrono::system_clock::time_point> aaa_time;
 
-        uint32_t result_code = 0;         ///< Diameter Result-Code (2001 = success)
+        uint32_t result_code = 0;  ///< Diameter Result-Code (2001 = success)
 
         /**
          * @brief Media component description from Rx AAR
          */
         struct MediaComponent {
-            uint32_t flow_number;         ///< Media-Component-Number
-            std::string media_type;       ///< Audio, Video, etc.
-            uint32_t max_bandwidth_ul;    ///< Max-Requested-Bandwidth-UL
-            uint32_t max_bandwidth_dl;    ///< Max-Requested-Bandwidth-DL
-            std::string flow_description; ///< IP filter rules
+            uint32_t flow_number;          ///< Media-Component-Number
+            std::string media_type;        ///< Audio, Video, etc.
+            uint32_t max_bandwidth_ul;     ///< Max-Requested-Bandwidth-UL
+            uint32_t max_bandwidth_dl;     ///< Max-Requested-Bandwidth-DL
+            std::string flow_description;  ///< IP filter rules
         };
         std::vector<MediaComponent> media_components;
 
@@ -120,8 +121,8 @@ struct VolteCall {
      * @brief DIAMETER Gx leg (PCRF → PGW policy control)
      */
     struct GxLeg {
-        std::string session_id;           ///< Diameter Session-Id AVP
-        std::string framed_ip;            ///< UE IP address
+        std::string session_id;  ///< Diameter Session-Id AVP
+        std::string framed_ip;   ///< UE IP address
 
         std::chrono::system_clock::time_point rar_time;
         std::optional<std::chrono::system_clock::time_point> raa_time;
@@ -130,8 +131,8 @@ struct VolteCall {
          * @brief Charging rule installed for voice bearer
          */
         struct ChargingRule {
-            std::string rule_name;        ///< Charging-Rule-Name
-            uint8_t qci = 0;              ///< QoS Class Identifier (1 for voice)
+            std::string rule_name;                 ///< Charging-Rule-Name
+            uint8_t qci = 0;                       ///< QoS Class Identifier (1 for voice)
             uint32_t guaranteed_bandwidth_ul = 0;  ///< GBR uplink
             uint32_t guaranteed_bandwidth_dl = 0;  ///< GBR downlink
         };
@@ -145,18 +146,18 @@ struct VolteCall {
      * @brief GTP-C bearer leg (dedicated bearer creation)
      */
     struct BearerLeg {
-        std::string session_id;           ///< Internal session ID
-        uint32_t teid_uplink = 0;         ///< S5/S8 uplink TEID
-        uint32_t teid_downlink = 0;       ///< S5/S8 downlink TEID
-        uint8_t eps_bearer_id = 0;        ///< EPS Bearer ID (5-15)
-        uint8_t qci = 0;                  ///< QCI (1 for voice)
-        uint32_t gbr_ul = 0;              ///< Guaranteed Bit Rate uplink (bps)
-        uint32_t gbr_dl = 0;              ///< Guaranteed Bit Rate downlink (bps)
+        std::string session_id;      ///< Internal session ID
+        uint32_t teid_uplink = 0;    ///< S5/S8 uplink TEID
+        uint32_t teid_downlink = 0;  ///< S5/S8 downlink TEID
+        uint8_t eps_bearer_id = 0;   ///< EPS Bearer ID (5-15)
+        uint8_t qci = 0;             ///< QCI (1 for voice)
+        uint32_t gbr_ul = 0;         ///< Guaranteed Bit Rate uplink (bps)
+        uint32_t gbr_dl = 0;         ///< Guaranteed Bit Rate downlink (bps)
 
         std::chrono::system_clock::time_point request_time;
         std::optional<std::chrono::system_clock::time_point> response_time;
 
-        uint32_t cause = 0;               ///< GTP Cause (16 = Request accepted)
+        uint32_t cause = 0;  ///< GTP Cause (16 = Request accepted)
 
         nlohmann::json toJson() const;
     };
@@ -166,11 +167,11 @@ struct VolteCall {
      * @brief RTP media leg (voice packets)
      */
     struct RtpLeg {
-        uint32_t ssrc = 0;                ///< Synchronization Source ID
-        std::string local_ip;             ///< UE IP address
-        uint16_t local_port = 0;          ///< UE RTP port
-        std::string remote_ip;            ///< Remote media gateway IP
-        uint16_t remote_port = 0;         ///< Remote RTP port
+        uint32_t ssrc = 0;         ///< Synchronization Source ID
+        std::string local_ip;      ///< UE IP address
+        uint16_t local_port = 0;   ///< UE RTP port
+        std::string remote_ip;     ///< Remote media gateway IP
+        uint16_t remote_port = 0;  ///< Remote RTP port
 
         /**
          * @brief Per-direction RTP statistics
@@ -184,8 +185,8 @@ struct VolteCall {
             std::chrono::system_clock::time_point first_packet;
             std::chrono::system_clock::time_point last_packet;
         };
-        Direction uplink;        ///< UE → Network
-        Direction downlink;      ///< Network → UE
+        Direction uplink;    ///< UE → Network
+        Direction downlink;  ///< Network → UE
 
         nlohmann::json toJson() const;
     };
@@ -195,16 +196,16 @@ struct VolteCall {
      * @brief Computed call quality metrics
      */
     struct Metrics {
-        std::chrono::milliseconds setup_time{0};           ///< INVITE → 200 OK
-        std::chrono::milliseconds post_dial_delay{0};      ///< INVITE → 180 Ringing
-        std::chrono::milliseconds answer_delay{0};         ///< 180 → 200 OK
-        std::chrono::milliseconds bearer_setup_time{0};    ///< Bearer Req → Resp
-        std::chrono::milliseconds rx_authorization_time{0}; ///< AAR → AAA
-        std::chrono::milliseconds total_call_duration{0};  ///< INVITE → BYE
-        std::chrono::milliseconds media_duration{0};       ///< First RTP → Last RTP
-        double avg_mos = 0.0;                              ///< Average MOS (both directions)
-        double packet_loss_rate = 0.0;                     ///< Average packet loss
-        double jitter_ms = 0.0;                            ///< Average jitter
+        std::chrono::milliseconds setup_time{0};             ///< INVITE → 200 OK
+        std::chrono::milliseconds post_dial_delay{0};        ///< INVITE → 180 Ringing
+        std::chrono::milliseconds answer_delay{0};           ///< 180 → 200 OK
+        std::chrono::milliseconds bearer_setup_time{0};      ///< Bearer Req → Resp
+        std::chrono::milliseconds rx_authorization_time{0};  ///< AAR → AAA
+        std::chrono::milliseconds total_call_duration{0};    ///< INVITE → BYE
+        std::chrono::milliseconds media_duration{0};         ///< First RTP → Last RTP
+        double avg_mos = 0.0;                                ///< Average MOS (both directions)
+        double packet_loss_rate = 0.0;                       ///< Average packet loss
+        double jitter_ms = 0.0;                              ///< Average jitter
 
         nlohmann::json toJson() const;
     };
@@ -268,7 +269,7 @@ public:
      * @param msg Message reference with packet metadata
      * @param sip Parsed SIP message
      */
-    void processSipMessage(const session::SessionMessageRef& msg, const protocol::SipMessage& sip);
+    void processSipMessage(const SessionMessageRef& msg, const SipMessage& sip);
 
     /**
      * @brief Process a DIAMETER Rx message (P-CSCF ↔ PCRF)
@@ -276,7 +277,7 @@ public:
      * @param msg Message reference
      * @param dia Parsed DIAMETER message
      */
-    void processDiameterRx(const session::SessionMessageRef& msg, const protocol::DiameterMessage& dia);
+    void processDiameterRx(const SessionMessageRef& msg, const DiameterMessage& dia);
 
     /**
      * @brief Process a DIAMETER Gx message (PGW ↔ PCRF)
@@ -284,7 +285,7 @@ public:
      * @param msg Message reference
      * @param dia Parsed DIAMETER message
      */
-    void processDiameterGx(const session::SessionMessageRef& msg, const protocol::DiameterMessage& dia);
+    void processDiameterGx(const SessionMessageRef& msg, const DiameterMessage& dia);
 
     /**
      * @brief Process a GTP bearer message
@@ -292,7 +293,7 @@ public:
      * @param msg Message reference
      * @param gtp Parsed GTP message
      */
-    void processGtpBearer(const session::SessionMessageRef& msg, const protocol::GtpMessage& gtp);
+    void processGtpBearer(const SessionMessageRef& msg, const GtpMessage& gtp);
 
     /**
      * @brief Process an RTP packet
@@ -300,7 +301,7 @@ public:
      * @param msg Message reference
      * @param rtp Parsed RTP header
      */
-    void processRtpPacket(const session::SessionMessageRef& msg, const protocol::RtpHeader& rtp);
+    void processRtpPacket(const SessionMessageRef& msg, const RtpHeader& rtp);
 
     /**
      * @brief Find call by SIP Call-ID
@@ -387,13 +388,14 @@ private:
     /**
      * @brief Correlate RTP to call by UE IP and port
      */
-    void correlateRtpToCall(std::shared_ptr<VolteCall> call, const std::string& ue_ip, uint16_t port);
+    void correlateRtpToCall(std::shared_ptr<VolteCall> call, const std::string& ue_ip,
+                            uint16_t port);
 
     /**
      * @brief Update call state and trigger metric calculation
      */
     void updateCallState(std::shared_ptr<VolteCall> call, VolteCall::State new_state,
-                        const std::string& reason = "");
+                         const std::string& reason = "");
 
     /**
      * @brief Calculate timing and quality metrics
@@ -408,7 +410,7 @@ private:
     /**
      * @brief Extract IMSI from SIP P-Asserted-Identity if present
      */
-    std::optional<std::string> extractImsiFromSip(const protocol::SipMessage& sip);
+    std::optional<std::string> extractImsiFromSip(const SipMessage& sip);
 };
 
 }  // namespace correlation
