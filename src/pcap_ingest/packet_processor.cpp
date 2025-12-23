@@ -12,11 +12,11 @@
 #include "protocol_parsers/gtp_parser.h"
 #include "protocol_parsers/gtpv1_parser.h"
 #include "protocol_parsers/nas5g_parser.h"
+#include "protocol_parsers/nas_parser.h"
 #include "protocol_parsers/ngap_parser.h"
 #include "protocol_parsers/pfcp_parser.h"
-#include "protocol_parsers/nas_parser.h"
 #include "protocol_parsers/rtp_parser.h"
-#include "protocol_parsers/s1ap_parser.h"
+#include "protocol_parsers/s1ap/s1ap_parser.h"
 #include "protocol_parsers/sip_parser.h"
 
 namespace callflow {
@@ -517,7 +517,7 @@ void PacketProcessor::processSctpMessage(const SctpReassembledMessage& message,
     switch (message.payload_protocol) {
         case 18: {  // S1AP
             LOG_DEBUG("Routing SCTP payload to S1AP parser");
-            S1apParser s1ap_parser;
+            s1ap::S1APParser s1ap_parser;
             auto s1ap_msg = s1ap_parser.parse(message.data.data(), message.data.size());
             if (s1ap_msg.has_value()) {
                 auto& msg = s1ap_msg.value();

@@ -118,8 +118,8 @@ endif()
 if(BUILD_API_SERVER)
     FetchContent_Declare(
         httplib
-        URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.14.3.tar.gz
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+        GIT_TAG v0.15.3
     )
     FetchContent_MakeAvailable(httplib)
     message(STATUS "cpp-httplib fetched for API server")
