@@ -56,6 +56,7 @@ add_library(procedure_correlation STATIC
     correlation/ladder_types.cpp
     correlation/participant_detector.cpp
     correlation/ladder_diagram_generator.cpp
+    correlation/subscriber_context.cpp
 )
 target_include_directories(procedure_correlation PUBLIC
     ${PROJECT_SOURCE_DIR}/include
