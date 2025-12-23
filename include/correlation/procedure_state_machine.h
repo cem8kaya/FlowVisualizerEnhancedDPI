@@ -27,28 +27,6 @@ struct ProcedureStep {
 };
 
 /**
- * Procedure Type enumeration
- */
-enum class ProcedureType {
-    UNKNOWN = 0,
-    LTE_ATTACH,
-    LTE_DETACH,
-    LTE_SERVICE_REQUEST,
-    LTE_HANDOVER_X2,
-    LTE_HANDOVER_S1,
-    FIVEG_REGISTRATION,
-    FIVEG_DEREGISTRATION,
-    FIVEG_PDU_SESSION_ESTABLISHMENT,
-    FIVEG_PDU_SESSION_RELEASE,
-    FIVEG_HANDOVER,
-    VOLTE_CALL_SETUP,
-    VOLTE_CALL_RELEASE
-};
-
-std::string procedureTypeToString(ProcedureType type);
-ProcedureType stringToProcedureType(const std::string& str);
-
-/**
  * Base class for all procedure state machines
  *
  * State machines track the progress of standard 3GPP telecommunication
@@ -141,7 +119,7 @@ std::optional<std::string> extractImsi(const nlohmann::json& parsed_data);
  * Helper function to extract TEID from GTP message
  */
 std::optional<uint32_t> extractTeid(const nlohmann::json& parsed_data,
-                                     const std::string& interface_type);
+                                    const std::string& interface_type);
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

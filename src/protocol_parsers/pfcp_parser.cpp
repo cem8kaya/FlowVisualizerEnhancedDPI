@@ -1,9 +1,12 @@
 #include "protocol_parsers/pfcp_parser.h"
-#include "common/logger.h"
-#include "common/utils.h"
+
 #include <arpa/inet.h>
+
 #include <cstring>
 #include <sstream>
+
+#include "common/logger.h"
+#include "common/utils.h"
 
 namespace callflow {
 
@@ -44,7 +47,8 @@ nlohmann::json PfcpInformationElement::toJson() const {
             std::stringstream ss;
             size_t max_bytes = std::min(data.size(), size_t(16));
             for (size_t i = 0; i < max_bytes; ++i) {
-                if (i > 0) ss << " ";
+                if (i > 0)
+                    ss << " ";
                 ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
             }
             if (data.size() > max_bytes) {
@@ -81,25 +85,44 @@ std::optional<uint64_t> PfcpInformationElement::getDataAsUint64() const {
 
 std::string PfcpInformationElement::getTypeName() const {
     switch (static_cast<PfcpIeType>(type)) {
-        case PfcpIeType::CAUSE: return "Cause";
-        case PfcpIeType::SOURCE_INTERFACE: return "Source Interface";
-        case PfcpIeType::F_TEID: return "F-TEID";
-        case PfcpIeType::NETWORK_INSTANCE: return "Network Instance";
-        case PfcpIeType::F_SEID: return "F-SEID";
-        case PfcpIeType::NODE_ID: return "Node ID";
-        case PfcpIeType::PDR_ID: return "PDR ID";
-        case PfcpIeType::FAR_ID: return "FAR ID";
-        case PfcpIeType::QER_ID: return "QER ID";
-        case PfcpIeType::URR_ID: return "URR ID";
-        case PfcpIeType::CREATE_PDR: return "Create PDR";
-        case PfcpIeType::CREATE_FAR: return "Create FAR";
-        case PfcpIeType::CREATE_QER: return "Create QER";
-        case PfcpIeType::CREATE_URR: return "Create URR";
-        case PfcpIeType::UE_IP_ADDRESS: return "UE IP Address";
-        case PfcpIeType::RECOVERY_TIME_STAMP: return "Recovery Time Stamp";
-        case PfcpIeType::UP_FUNCTION_FEATURES: return "UP Function Features";
-        case PfcpIeType::CP_FUNCTION_FEATURES: return "CP Function Features";
-        default: return "Unknown (" + std::to_string(type) + ")";
+        case PfcpIeType::CAUSE:
+            return "Cause";
+        case PfcpIeType::SOURCE_INTERFACE:
+            return "Source Interface";
+        case PfcpIeType::F_TEID:
+            return "F-TEID";
+        case PfcpIeType::NETWORK_INSTANCE:
+            return "Network Instance";
+        case PfcpIeType::F_SEID:
+            return "F-SEID";
+        case PfcpIeType::NODE_ID:
+            return "Node ID";
+        case PfcpIeType::PDR_ID:
+            return "PDR ID";
+        case PfcpIeType::FAR_ID:
+            return "FAR ID";
+        case PfcpIeType::QER_ID:
+            return "QER ID";
+        case PfcpIeType::URR_ID:
+            return "URR ID";
+        case PfcpIeType::CREATE_PDR:
+            return "Create PDR";
+        case PfcpIeType::CREATE_FAR:
+            return "Create FAR";
+        case PfcpIeType::CREATE_QER:
+            return "Create QER";
+        case PfcpIeType::CREATE_URR:
+            return "Create URR";
+        case PfcpIeType::UE_IP_ADDRESS:
+            return "UE IP Address";
+        case PfcpIeType::RECOVERY_TIME_STAMP:
+            return "Recovery Time Stamp";
+        case PfcpIeType::UP_FUNCTION_FEATURES:
+            return "UP Function Features";
+        case PfcpIeType::CP_FUNCTION_FEATURES:
+            return "CP Function Features";
+        default:
+            return "Unknown (" + std::to_string(type) + ")";
     }
 }
 
@@ -172,29 +195,52 @@ MessageType PfcpMessage::getMessageType() const {
 
 std::string PfcpMessage::getMessageTypeName() const {
     switch (static_cast<PfcpMessageType>(header.message_type)) {
-        case PfcpMessageType::HEARTBEAT_REQUEST: return "Heartbeat Request";
-        case PfcpMessageType::HEARTBEAT_RESPONSE: return "Heartbeat Response";
-        case PfcpMessageType::PFD_MANAGEMENT_REQUEST: return "PFD Management Request";
-        case PfcpMessageType::PFD_MANAGEMENT_RESPONSE: return "PFD Management Response";
-        case PfcpMessageType::ASSOCIATION_SETUP_REQUEST: return "Association Setup Request";
-        case PfcpMessageType::ASSOCIATION_SETUP_RESPONSE: return "Association Setup Response";
-        case PfcpMessageType::ASSOCIATION_UPDATE_REQUEST: return "Association Update Request";
-        case PfcpMessageType::ASSOCIATION_UPDATE_RESPONSE: return "Association Update Response";
-        case PfcpMessageType::ASSOCIATION_RELEASE_REQUEST: return "Association Release Request";
-        case PfcpMessageType::ASSOCIATION_RELEASE_RESPONSE: return "Association Release Response";
-        case PfcpMessageType::NODE_REPORT_REQUEST: return "Node Report Request";
-        case PfcpMessageType::NODE_REPORT_RESPONSE: return "Node Report Response";
-        case PfcpMessageType::SESSION_SET_DELETION_REQUEST: return "Session Set Deletion Request";
-        case PfcpMessageType::SESSION_SET_DELETION_RESPONSE: return "Session Set Deletion Response";
-        case PfcpMessageType::SESSION_ESTABLISHMENT_REQUEST: return "Session Establishment Request";
-        case PfcpMessageType::SESSION_ESTABLISHMENT_RESPONSE: return "Session Establishment Response";
-        case PfcpMessageType::SESSION_MODIFICATION_REQUEST: return "Session Modification Request";
-        case PfcpMessageType::SESSION_MODIFICATION_RESPONSE: return "Session Modification Response";
-        case PfcpMessageType::SESSION_DELETION_REQUEST: return "Session Deletion Request";
-        case PfcpMessageType::SESSION_DELETION_RESPONSE: return "Session Deletion Response";
-        case PfcpMessageType::SESSION_REPORT_REQUEST: return "Session Report Request";
-        case PfcpMessageType::SESSION_REPORT_RESPONSE: return "Session Report Response";
-        default: return "Unknown (" + std::to_string(header.message_type) + ")";
+        case PfcpMessageType::HEARTBEAT_REQUEST:
+            return "Heartbeat Request";
+        case PfcpMessageType::HEARTBEAT_RESPONSE:
+            return "Heartbeat Response";
+        case PfcpMessageType::PFD_MANAGEMENT_REQUEST:
+            return "PFD Management Request";
+        case PfcpMessageType::PFD_MANAGEMENT_RESPONSE:
+            return "PFD Management Response";
+        case PfcpMessageType::ASSOCIATION_SETUP_REQUEST:
+            return "Association Setup Request";
+        case PfcpMessageType::ASSOCIATION_SETUP_RESPONSE:
+            return "Association Setup Response";
+        case PfcpMessageType::ASSOCIATION_UPDATE_REQUEST:
+            return "Association Update Request";
+        case PfcpMessageType::ASSOCIATION_UPDATE_RESPONSE:
+            return "Association Update Response";
+        case PfcpMessageType::ASSOCIATION_RELEASE_REQUEST:
+            return "Association Release Request";
+        case PfcpMessageType::ASSOCIATION_RELEASE_RESPONSE:
+            return "Association Release Response";
+        case PfcpMessageType::NODE_REPORT_REQUEST:
+            return "Node Report Request";
+        case PfcpMessageType::NODE_REPORT_RESPONSE:
+            return "Node Report Response";
+        case PfcpMessageType::SESSION_SET_DELETION_REQUEST:
+            return "Session Set Deletion Request";
+        case PfcpMessageType::SESSION_SET_DELETION_RESPONSE:
+            return "Session Set Deletion Response";
+        case PfcpMessageType::SESSION_ESTABLISHMENT_REQUEST:
+            return "Session Establishment Request";
+        case PfcpMessageType::SESSION_ESTABLISHMENT_RESPONSE:
+            return "Session Establishment Response";
+        case PfcpMessageType::SESSION_MODIFICATION_REQUEST:
+            return "Session Modification Request";
+        case PfcpMessageType::SESSION_MODIFICATION_RESPONSE:
+            return "Session Modification Response";
+        case PfcpMessageType::SESSION_DELETION_REQUEST:
+            return "Session Deletion Request";
+        case PfcpMessageType::SESSION_DELETION_RESPONSE:
+            return "Session Deletion Response";
+        case PfcpMessageType::SESSION_REPORT_REQUEST:
+            return "Session Report Request";
+        case PfcpMessageType::SESSION_REPORT_RESPONSE:
+            return "Session Report Response";
+        default:
+            return "Unknown (" + std::to_string(header.message_type) + ")";
     }
 }
 
@@ -213,7 +259,7 @@ bool PfcpParser::isPfcp(const uint8_t* data, size_t len) {
 
     // Check message type (valid PFCP message types)
     uint8_t msg_type = data[1];
-    return (msg_type == 1 || msg_type == 2 ||  // Heartbeat
+    return (msg_type == 1 || msg_type == 2 ||     // Heartbeat
             (msg_type >= 3 && msg_type <= 15) ||  // Node management
             (msg_type >= 50 && msg_type <= 57));  // Session management
 }
@@ -322,7 +368,7 @@ bool PfcpParser::parseIes(const uint8_t* data, size_t len, size_t offset,
 }
 
 std::optional<PfcpInformationElement> PfcpParser::parseIe(const uint8_t* data, size_t len,
-                                                           size_t& offset) {
+                                                          size_t& offset) {
     if (offset + 4 > len) {
         return std::nullopt;
     }
@@ -339,7 +385,7 @@ std::optional<PfcpInformationElement> PfcpParser::parseIe(const uint8_t* data, s
 
     // IE Data
     if (offset + ie.length > len) {
-        LOG_WARN("PFCP IE length " << ie.length << " exceeds remaining data");
+        LOG_DEBUG("PFCP IE length " << ie.length << " exceeds remaining data");
         return std::nullopt;
     }
 
@@ -376,7 +422,8 @@ void PfcpParser::extractCommonFields(PfcpMessage& msg) {
 
             case PfcpIeType::RECOVERY_TIME_STAMP:
                 if (ie.data.size() >= 4) {
-                    msg.recovery_timestamp = ntohl(*reinterpret_cast<const uint32_t*>(ie.data.data()));
+                    msg.recovery_timestamp =
+                        ntohl(*reinterpret_cast<const uint32_t*>(ie.data.data()));
                 }
                 break;
 
@@ -396,19 +443,18 @@ std::string PfcpParser::decodeNodeId(const std::vector<uint8_t>& data) {
     if (type == 0 && data.size() >= 5) {
         // IPv4 address
         std::stringstream ss;
-        ss << static_cast<int>(data[1]) << "."
-           << static_cast<int>(data[2]) << "."
-           << static_cast<int>(data[3]) << "."
-           << static_cast<int>(data[4]);
+        ss << static_cast<int>(data[1]) << "." << static_cast<int>(data[2]) << "."
+           << static_cast<int>(data[3]) << "." << static_cast<int>(data[4]);
         return ss.str();
     } else if (type == 1 && data.size() >= 17) {
         // IPv6 address
         std::stringstream ss;
         ss << std::hex;
         for (size_t i = 1; i < 17; i += 2) {
-            if (i > 1) ss << ":";
-            ss << std::setw(2) << std::setfill('0') << static_cast<int>(data[i])
-               << std::setw(2) << std::setfill('0') << static_cast<int>(data[i + 1]);
+            if (i > 1)
+                ss << ":";
+            ss << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]) << std::setw(2)
+               << std::setfill('0') << static_cast<int>(data[i + 1]);
         }
         return ss.str();
     } else if (type == 2 && data.size() > 1) {
@@ -433,17 +479,16 @@ std::string PfcpParser::decodeUeIpAddress(const std::vector<uint8_t>& data) {
     if (v4 && data.size() >= offset + 4) {
         // IPv4 address
         std::stringstream ss;
-        ss << static_cast<int>(data[offset]) << "."
-           << static_cast<int>(data[offset + 1]) << "."
-           << static_cast<int>(data[offset + 2]) << "."
-           << static_cast<int>(data[offset + 3]);
+        ss << static_cast<int>(data[offset]) << "." << static_cast<int>(data[offset + 1]) << "."
+           << static_cast<int>(data[offset + 2]) << "." << static_cast<int>(data[offset + 3]);
         return ss.str();
     } else if (v6 && data.size() >= offset + 16) {
         // IPv6 address
         std::stringstream ss;
         ss << std::hex;
         for (size_t i = 0; i < 16; i += 2) {
-            if (i > 0) ss << ":";
+            if (i > 0)
+                ss << ":";
             ss << std::setw(2) << std::setfill('0') << static_cast<int>(data[offset + i])
                << std::setw(2) << std::setfill('0') << static_cast<int>(data[offset + i + 1]);
         }

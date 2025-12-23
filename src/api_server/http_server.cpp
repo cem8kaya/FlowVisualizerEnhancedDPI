@@ -269,7 +269,29 @@ void HttpServer::setupRoutes() {
             }
 
             auto sessions = full_results["sessions"];
-            size_t total_count = sessions.size();
+
+            // Apply filtering
+            std::string filter_imsi = req.has_param("imsi") ? req.get_param_value("imsi") : "";
+            std::string filter_msisdn =
+                req.has_param("msisdn") ? req.get_param_value("msisdn") : "";
+
+            nlohmann::json filtered_sessions = nlohmann::json::array();
+            for (const auto& session : sessions) {
+                bool match = true;
+                if (!filter_imsi.empty()) {
+                    if (session.value("imsi", "") != filter_imsi)
+                        match = false;
+                }
+                if (!filter_msisdn.empty()) {
+                    if (session.value("msisdn", "") != filter_msisdn)
+                        match = false;
+                }
+                if (match) {
+                    filtered_sessions.push_back(session);
+                }
+            }
+
+            size_t total_count = filtered_sessions.size();
 
             // Apply pagination
             size_t start_idx = (page - 1) * limit;
@@ -277,7 +299,7 @@ void HttpServer::setupRoutes() {
 
             nlohmann::json paginated_sessions = nlohmann::json::array();
             for (size_t i = start_idx; i < end_idx; ++i) {
-                paginated_sessions.push_back(sessions[i]);
+                paginated_sessions.push_back(filtered_sessions[i]);
             }
 
             nlohmann::json response = {{"job_id", job_id},
@@ -327,7 +349,10 @@ void HttpServer::setupRoutes() {
                 // Find the session
                 if (full_results.contains("sessions") && full_results["sessions"].is_array()) {
                     for (const auto& session : full_results["sessions"]) {
-                        if (session["session_id"] == session_id) {
+                        // Check for master_id (VoLTE) or fallback to session_id
+                        std::string id =
+                            session.value("master_id", session.value("session_id", ""));
+                        if (id == session_id) {
                             res.set_content(session.dump(), "application/json");
                             return;
                         }
@@ -452,10 +477,11 @@ void HttpServer::setupRoutes() {
                 nlohmann::json full_results;
                 infile >> full_results;
 
-                // Find the session and extract legs
                 if (full_results.contains("sessions") && full_results["sessions"].is_array()) {
                     for (const auto& session : full_results["sessions"]) {
-                        if (session["session_id"] == session_id) {
+                        std::string id =
+                            session.value("master_id", session.value("session_id", ""));
+                        if (id == session_id) {
                             nlohmann::json legs_response;
                             legs_response["session_id"] = session_id;
                             legs_response["legs"] = nlohmann::json::array();
@@ -543,9 +569,12 @@ void HttpServer::setupRoutes() {
                             bool matches = false;
 
                             // Match by IMSI
-                            if (!imsi.empty() && session.contains("correlation_keys")) {
-                                if (session["correlation_keys"].contains("imsi") &&
-                                    session["correlation_keys"]["imsi"] == imsi) {
+                            if (!imsi.empty()) {
+                                // Check both top-level imsi and legacy correlation_keys
+                                if (session.value("imsi", "") == imsi) {
+                                    matches = true;
+                                } else if (session.contains("correlation_keys") &&
+                                           session["correlation_keys"].value("imsi", "") == imsi) {
                                     matches = true;
                                 }
                             }

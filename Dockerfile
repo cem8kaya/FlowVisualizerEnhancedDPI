@@ -63,6 +63,7 @@ COPY --from=builder /build/ui/static /app/ui/static/
 
 # Copy default configuration
 COPY config.example.json /app/config.json
+COPY config/ /app/config/
 
 # Create directories with proper permissions
 RUN mkdir -p /app/data /app/output /app/db /app/logs /app/certs && \
@@ -88,6 +89,7 @@ ENV API_PORT=8080 \
     DATABASE_ENABLED=true \
     DATABASE_PATH=/app/db/callflowd.db \
     CONFIG_PATH=/app/config.json \
+    PROTOCOLS_CONFIG_PATH=/app/config/protocols.yaml \
     TZ=UTC
 
 # Add labels for metadata

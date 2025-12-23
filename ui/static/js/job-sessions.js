@@ -18,9 +18,28 @@ const jobSessions = {
             return;
         }
 
-        const refreshBtn = document.getElementById('refreshSessionsBtn');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.refresh());
+        }
+
+        // Add filter listeners
+        const filterImsi = document.getElementById('filterImsi');
+        const filterMsisdn = document.getElementById('filterMsisdn');
+        const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+
+        if (applyFiltersBtn) {
+            applyFiltersBtn.addEventListener('click', () => this.loadSessions(1));
+        }
+
+        if (filterImsi) {
+            filterImsi.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') this.loadSessions(1);
+            });
+        }
+        if (filterMsisdn) {
+            filterMsisdn.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') this.loadSessions(1);
+            });
         }
 
         await this.loadJobDetails();
@@ -79,7 +98,10 @@ const jobSessions = {
         tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Loading...</td></tr>';
 
         try {
-            const response = await app.getJobSessions(this.jobId, this.currentPage, this.limit);
+            const imsi = document.getElementById('filterImsi') ? document.getElementById('filterImsi').value : '';
+            const msisdn = document.getElementById('filterMsisdn') ? document.getElementById('filterMsisdn').value : '';
+
+            const response = await app.getJobSessions(this.jobId, this.currentPage, this.limit, imsi, msisdn);
             this.totalSessions = response.total;
             this.renderSessions(response.sessions);
             this.renderPagination();
@@ -92,27 +114,30 @@ const jobSessions = {
     renderSessions(sessions) {
         const tbody = document.getElementById('sessionsTableBody');
         if (!sessions || sessions.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No sessions found in this job.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No sessions found in this job.</td></tr>';
             return;
         }
 
         tbody.innerHTML = sessions.map(session => `
-            <tr class="cursor-pointer fade-in" onclick="jobSessions.viewSession('${session.session_id}')">
-                <td><small class="font-monospace">${session.session_id.substring(0, 8)}</small></td>
-                <td><span class="badge bg-info text-dark">${session.session_type}</span></td>
+            <tr class="cursor-pointer fade-in" onclick="jobSessions.viewSession('${session.master_id}')">
+                <td><small class="font-monospace">${session.master_id.substring(0, 8)}</small></td>
+                <td><span class="badge bg-light text-dark border">${session.imsi || '-'}</span></td>
+                <td><span class="badge bg-light text-dark border">${session.msisdn || '-'}</span></td>
                 <td>
-                    ${(session.protocols || []).map(p =>
-            `<span class="badge bg-secondary me-1" style="font-size: 0.7em;">${p}</span>`
-        ).join('')}
+                    ${(session.protocols || []).map(p => {
+            let bgClass = 'bg-secondary';
+            if (p === 'SIP') bgClass = 'bg-primary';
+            if (p === 'GTPv2') bgClass = 'bg-success';
+            if (p === 'DIAMETER') bgClass = 'bg-info';
+            return `<span class="badge ${bgClass} me-1" style="font-size: 0.7em;">${p}</span>`;
+        }).join('')}
                 </td>
-                <td><small class="text-break">${session.session_key}</small></td>
                 <td><small>${app.formatTimestamp(session.start_time)}</small></td>
                 <td>${app.formatDuration(session.duration_ms)}</td>
-                <td>${session.packet_count}</td>
-                <td>${app.formatBytes(session.byte_count)}</td>
+                <td><span class="badge bg-secondary rounded-pill">${session.events ? session.events.length : 0}</span></td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary" 
-                            onclick="event.stopPropagation(); jobSessions.viewSession('${session.session_id}')">
+                            onclick="event.stopPropagation(); jobSessions.viewSession('${session.master_id}')">
                         <i class="bi bi-eye"></i> Details
                     </button>
                 </td>

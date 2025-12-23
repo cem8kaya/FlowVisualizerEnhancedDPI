@@ -6,7 +6,72 @@
 namespace callflow {
 
 // ============================================================================
-// SessionCorrelationKey Methods
+// ProcedureType helpers
+// ============================================================================
+
+std::string procedureTypeToString(ProcedureType type) {
+    switch (type) {
+        case ProcedureType::UNKNOWN:
+            return "UNKNOWN";
+        case ProcedureType::LTE_ATTACH:
+            return "LTE_ATTACH";
+        case ProcedureType::LTE_DETACH:
+            return "LTE_DETACH";
+        case ProcedureType::LTE_SERVICE_REQUEST:
+            return "LTE_SERVICE_REQUEST";
+        case ProcedureType::LTE_HANDOVER_X2:
+            return "LTE_HANDOVER_X2";
+        case ProcedureType::LTE_HANDOVER_S1:
+            return "LTE_HANDOVER_S1";
+        case ProcedureType::FIVEG_REGISTRATION:
+            return "5G_REGISTRATION";
+        case ProcedureType::FIVEG_DEREGISTRATION:
+            return "5G_DEREGISTRATION";
+        case ProcedureType::FIVEG_PDU_SESSION_ESTABLISHMENT:
+            return "5G_PDU_SESSION_ESTABLISHMENT";
+        case ProcedureType::FIVEG_PDU_SESSION_RELEASE:
+            return "5G_PDU_SESSION_RELEASE";
+        case ProcedureType::FIVEG_HANDOVER:
+            return "5G_HANDOVER";
+        case ProcedureType::VOLTE_CALL_SETUP:
+            return "VOLTE_CALL_SETUP";
+        case ProcedureType::VOLTE_CALL_RELEASE:
+            return "VOLTE_CALL_RELEASE";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+ProcedureType stringToProcedureType(const std::string& str) {
+    if (str == "LTE_ATTACH")
+        return ProcedureType::LTE_ATTACH;
+    if (str == "LTE_DETACH")
+        return ProcedureType::LTE_DETACH;
+    if (str == "LTE_SERVICE_REQUEST")
+        return ProcedureType::LTE_SERVICE_REQUEST;
+    if (str == "LTE_HANDOVER_X2")
+        return ProcedureType::LTE_HANDOVER_X2;
+    if (str == "LTE_HANDOVER_S1")
+        return ProcedureType::LTE_HANDOVER_S1;
+    if (str == "5G_REGISTRATION")
+        return ProcedureType::FIVEG_REGISTRATION;
+    if (str == "5G_DEREGISTRATION")
+        return ProcedureType::FIVEG_DEREGISTRATION;
+    if (str == "5G_PDU_SESSION_ESTABLISHMENT")
+        return ProcedureType::FIVEG_PDU_SESSION_ESTABLISHMENT;
+    if (str == "5G_PDU_SESSION_RELEASE")
+        return ProcedureType::FIVEG_PDU_SESSION_RELEASE;
+    if (str == "5G_HANDOVER")
+        return ProcedureType::FIVEG_HANDOVER;
+    if (str == "VOLTE_CALL_SETUP")
+        return ProcedureType::VOLTE_CALL_SETUP;
+    if (str == "VOLTE_CALL_RELEASE")
+        return ProcedureType::VOLTE_CALL_RELEASE;
+    return ProcedureType::UNKNOWN;
+}
+
+// ============================================================================
+// EnhancedSessionType Methods
 // ============================================================================
 
 bool SessionCorrelationKey::matches(const SessionCorrelationKey& other) const {
@@ -473,6 +538,33 @@ void Session::finalize() {
     // A complete session should have start and end messages
     // This is a simplified check
     is_complete = !legs.empty() && (end_time > start_time);
+}
+
+// ============================================================================
+// VolteMasterSession Methods
+// ============================================================================
+
+nlohmann::json VolteMasterSession::toJson() const {
+    nlohmann::json j;
+    j["master_uuid"] = master_uuid;
+    j["imsi"] = imsi;
+    j["msisdn"] = msisdn;
+
+    if (gtp_session_id.has_value()) {
+        j["gtp_session_id"] = gtp_session_id.value();
+    }
+
+    j["sip_session_ids"] = sip_session_ids;
+    j["diameter_session_ids"] = diameter_session_ids;
+
+    j["start_time"] =
+        std::chrono::duration_cast<std::chrono::milliseconds>(start_time.time_since_epoch())
+            .count();
+    j["last_update_time"] =
+        std::chrono::duration_cast<std::chrono::milliseconds>(last_update_time.time_since_epoch())
+            .count();
+
+    return j;
 }
 
 // ============================================================================

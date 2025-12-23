@@ -1,23 +1,18 @@
 #include <gtest/gtest.h>
+
 #include "../../include/correlation/participant_detector.h"
 #include "../../include/session/session_types.h"
 
 using namespace flowviz;
+using namespace callflow;
 
 class ParticipantDetectorTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        detector = std::make_unique<ParticipantDetector>();
-    }
+    void SetUp() override { detector = std::make_unique<ParticipantDetector>(); }
 
-    SessionMessageRef createMessage(
-        const std::string& src_ip,
-        uint16_t src_port,
-        const std::string& dst_ip,
-        uint16_t dst_port,
-        ProtocolType protocol,
-        MessageType msg_type
-    ) {
+    SessionMessageRef createMessage(const std::string& src_ip, uint16_t src_port,
+                                    const std::string& dst_ip, uint16_t dst_port,
+                                    ProtocolType protocol, MessageType msg_type) {
         SessionMessageRef msg;
         msg.message_id = "msg_" + std::to_string(msg_counter_++);
         msg.timestamp = std::chrono::system_clock::now();
@@ -37,12 +32,8 @@ protected:
 int ParticipantDetectorTest::msg_counter_ = 0;
 
 TEST_F(ParticipantDetectorTest, DetectUEFromSIPRegister) {
-    auto msg = createMessage(
-        "192.0.2.100", 5060,
-        "10.0.1.50", 5060,
-        ProtocolType::SIP,
-        MessageType::SIP_REGISTER
-    );
+    auto msg = createMessage("192.0.2.100", 5060, "10.0.1.50", 5060, ProtocolType::SIP,
+                             MessageType::SIP_REGISTER);
 
     auto participant = detector->detectParticipant(msg, true);
 
@@ -52,12 +43,8 @@ TEST_F(ParticipantDetectorTest, DetectUEFromSIPRegister) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectPCSCFFromSIPRegister) {
-    auto msg = createMessage(
-        "192.0.2.100", 5060,
-        "10.0.1.50", 5060,
-        ProtocolType::SIP,
-        MessageType::SIP_REGISTER
-    );
+    auto msg = createMessage("192.0.2.100", 5060, "10.0.1.50", 5060, ProtocolType::SIP,
+                             MessageType::SIP_REGISTER);
 
     auto participant = detector->detectParticipant(msg, false);
 
@@ -66,12 +53,8 @@ TEST_F(ParticipantDetectorTest, DetectPCSCFFromSIPRegister) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectENodeBFromS1AP) {
-    auto msg = createMessage(
-        "10.0.1.50", 36412,
-        "10.0.2.10", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    );
+    auto msg = createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                             MessageType::S1AP_INITIAL_UE_MESSAGE);
 
     auto participant = detector->detectParticipant(msg, true);
 
@@ -80,12 +63,8 @@ TEST_F(ParticipantDetectorTest, DetectENodeBFromS1AP) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectMMEFromS1AP) {
-    auto msg = createMessage(
-        "10.0.1.50", 36412,
-        "10.0.2.10", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    );
+    auto msg = createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                             MessageType::S1AP_INITIAL_UE_MESSAGE);
 
     auto participant = detector->detectParticipant(msg, false);
 
@@ -94,12 +73,8 @@ TEST_F(ParticipantDetectorTest, DetectMMEFromS1AP) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectGNodeBFromNGAP) {
-    auto msg = createMessage(
-        "10.0.1.60", 38412,
-        "10.0.2.20", 38412,
-        ProtocolType::NGAP,
-        MessageType::NGAP_INITIAL_UE_MESSAGE
-    );
+    auto msg = createMessage("10.0.1.60", 38412, "10.0.2.20", 38412, ProtocolType::NGAP,
+                             MessageType::NGAP_INITIAL_UE_MESSAGE);
 
     auto participant = detector->detectParticipant(msg, true);
 
@@ -108,12 +83,8 @@ TEST_F(ParticipantDetectorTest, DetectGNodeBFromNGAP) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectAMFFromNGAP) {
-    auto msg = createMessage(
-        "10.0.1.60", 38412,
-        "10.0.2.20", 38412,
-        ProtocolType::NGAP,
-        MessageType::NGAP_INITIAL_UE_MESSAGE
-    );
+    auto msg = createMessage("10.0.1.60", 38412, "10.0.2.20", 38412, ProtocolType::NGAP,
+                             MessageType::NGAP_INITIAL_UE_MESSAGE);
 
     auto participant = detector->detectParticipant(msg, false);
 
@@ -122,12 +93,8 @@ TEST_F(ParticipantDetectorTest, DetectAMFFromNGAP) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectMMEFromGTPCreateSessionRequest) {
-    auto msg = createMessage(
-        "10.0.2.10", 2123,
-        "10.0.3.10", 2123,
-        ProtocolType::GTP_C,
-        MessageType::GTP_CREATE_SESSION_REQUEST
-    );
+    auto msg = createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                             MessageType::GTP_CREATE_SESSION_REQ);
 
     auto participant = detector->detectParticipant(msg, true);
 
@@ -136,12 +103,8 @@ TEST_F(ParticipantDetectorTest, DetectMMEFromGTPCreateSessionRequest) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectSGWFromGTPCreateSessionRequest) {
-    auto msg = createMessage(
-        "10.0.2.10", 2123,
-        "10.0.3.10", 2123,
-        ProtocolType::GTP_C,
-        MessageType::GTP_CREATE_SESSION_REQUEST
-    );
+    auto msg = createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                             MessageType::GTP_CREATE_SESSION_REQ);
 
     auto participant = detector->detectParticipant(msg, false);
 
@@ -150,12 +113,8 @@ TEST_F(ParticipantDetectorTest, DetectSGWFromGTPCreateSessionRequest) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectHSSFromDiameterS6a) {
-    auto msg = createMessage(
-        "10.0.2.10", 3868,
-        "10.0.5.10", 3868,
-        ProtocolType::DIAMETER,
-        MessageType::DIAMETER_AAR
-    );
+    auto msg = createMessage("10.0.2.10", 3868, "10.0.5.10", 3868, ProtocolType::DIAMETER,
+                             MessageType::DIAMETER_AAR);
 
     // Add Diameter S6a Application-ID
     msg.parsed_data["application_id"] = 16777251;
@@ -167,12 +126,8 @@ TEST_F(ParticipantDetectorTest, DetectHSSFromDiameterS6a) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectPCRFFromDiameterGx) {
-    auto msg = createMessage(
-        "10.0.4.10", 3868,
-        "10.0.6.10", 3868,
-        ProtocolType::DIAMETER,
-        MessageType::DIAMETER_CCR
-    );
+    auto msg = createMessage("10.0.4.10", 3868, "10.0.6.10", 3868, ProtocolType::DIAMETER,
+                             MessageType::DIAMETER_CCR);
 
     // Add Diameter Gx Application-ID
     msg.parsed_data["application_id"] = 16777238;
@@ -184,12 +139,8 @@ TEST_F(ParticipantDetectorTest, DetectPCRFFromDiameterGx) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectSMFFromPFCP) {
-    auto msg = createMessage(
-        "10.0.7.10", 8805,
-        "10.0.8.10", 8805,
-        ProtocolType::PFCP,
-        MessageType::PFCP_SESSION_ESTABLISHMENT_REQUEST
-    );
+    auto msg = createMessage("10.0.7.10", 8805, "10.0.8.10", 8805, ProtocolType::PFCP,
+                             MessageType::PFCP_SESSION_ESTABLISHMENT_REQ);
 
     auto participant = detector->detectParticipant(msg, true);
 
@@ -198,12 +149,8 @@ TEST_F(ParticipantDetectorTest, DetectSMFFromPFCP) {
 }
 
 TEST_F(ParticipantDetectorTest, DetectUPFFromPFCP) {
-    auto msg = createMessage(
-        "10.0.7.10", 8805,
-        "10.0.8.10", 8805,
-        ProtocolType::PFCP,
-        MessageType::PFCP_SESSION_ESTABLISHMENT_REQUEST
-    );
+    auto msg = createMessage("10.0.7.10", 8805, "10.0.8.10", 8805, ProtocolType::PFCP,
+                             MessageType::PFCP_SESSION_ESTABLISHMENT_REQ);
 
     auto participant = detector->detectParticipant(msg, false);
 
@@ -214,12 +161,8 @@ TEST_F(ParticipantDetectorTest, DetectUPFFromPFCP) {
 TEST_F(ParticipantDetectorTest, ExplicitMapping) {
     detector->addExplicitMapping("10.0.1.100", "MyMME", ParticipantType::MME);
 
-    auto msg = createMessage(
-        "10.0.1.100", 36412,
-        "10.0.2.10", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    );
+    auto msg = createMessage("10.0.1.100", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                             MessageType::S1AP_INITIAL_UE_MESSAGE);
 
     auto participant = detector->detectParticipant(msg, true);
 
@@ -231,19 +174,11 @@ TEST_F(ParticipantDetectorTest, ExplicitMapping) {
 }
 
 TEST_F(ParticipantDetectorTest, GetAllParticipants) {
-    auto msg1 = createMessage(
-        "10.0.1.50", 36412,
-        "10.0.2.10", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    );
+    auto msg1 = createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                              MessageType::S1AP_INITIAL_UE_MESSAGE);
 
-    auto msg2 = createMessage(
-        "10.0.2.10", 2123,
-        "10.0.3.10", 2123,
-        ProtocolType::GTP_C,
-        MessageType::GTP_CREATE_SESSION_REQUEST
-    );
+    auto msg2 = createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                              MessageType::GTP_CREATE_SESSION_REQ);
 
     detector->detectParticipant(msg1, true);   // eNodeB
     detector->detectParticipant(msg1, false);  // MME
@@ -255,12 +190,8 @@ TEST_F(ParticipantDetectorTest, GetAllParticipants) {
 }
 
 TEST_F(ParticipantDetectorTest, ClearParticipants) {
-    auto msg = createMessage(
-        "10.0.1.50", 36412,
-        "10.0.2.10", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    );
+    auto msg = createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                             MessageType::S1AP_INITIAL_UE_MESSAGE);
 
     detector->detectParticipant(msg, true);
     EXPECT_EQ(detector->getAllParticipants().size(), 1);
@@ -270,12 +201,8 @@ TEST_F(ParticipantDetectorTest, ClearParticipants) {
 }
 
 TEST_F(ParticipantDetectorTest, ParticipantCaching) {
-    auto msg = createMessage(
-        "10.0.2.10", 36412,
-        "10.0.1.50", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    );
+    auto msg = createMessage("10.0.2.10", 36412, "10.0.1.50", 36412, ProtocolType::S1AP,
+                             MessageType::S1AP_INITIAL_UE_MESSAGE);
 
     // First detection
     auto participant1 = detector->detectParticipant(msg, true);
@@ -289,19 +216,11 @@ TEST_F(ParticipantDetectorTest, ParticipantCaching) {
 }
 
 TEST_F(ParticipantDetectorTest, MultipleInstancesOfSameType) {
-    auto msg1 = createMessage(
-        "10.0.1.50", 36412,
-        "10.0.2.10", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    );
+    auto msg1 = createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                              MessageType::S1AP_INITIAL_UE_MESSAGE);
 
-    auto msg2 = createMessage(
-        "10.0.1.60", 36412,
-        "10.0.2.10", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    );
+    auto msg2 = createMessage("10.0.1.60", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                              MessageType::S1AP_INITIAL_UE_MESSAGE);
 
     auto enb1 = detector->detectParticipant(msg1, true);
     auto enb2 = detector->detectParticipant(msg2, true);

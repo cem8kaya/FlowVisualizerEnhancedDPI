@@ -77,7 +77,7 @@ const sessionView = {
         tbody.innerHTML = this.sessionData.events.map((event, index) => `
             <tr class="cursor-pointer" onclick="sessionView.showEventDetails(${index})">
                 <td><small class="font-monospace">${new Date(event.timestamp).toLocaleTimeString()}</small></td>
-                <td><span class="badge bg-secondary">${event.protocol}</span></td>
+                <td><span class="badge bg-secondary">${event.proto || event.protocol || 'UNKNOWN'}</span></td>
                 <td>${event.message_type || '-'}</td>
                 <td><small>${event.src_ip}:${event.src_port}</small></td>
                 <td><small>${event.dst_ip}:${event.dst_port}</small></td>

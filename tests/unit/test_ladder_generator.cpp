@@ -1,10 +1,13 @@
 #include <gtest/gtest.h>
+
+#include <chrono>
+#include <thread>
+
 #include "../../include/correlation/ladder_diagram_generator.h"
 #include "../../include/session/session_types.h"
-#include <thread>
-#include <chrono>
 
 using namespace flowviz;
+using namespace callflow;
 
 class LadderDiagramGeneratorTest : public ::testing::Test {
 protected:
@@ -14,14 +17,9 @@ protected:
     }
 
     SessionMessageRef createMessage(
-        const std::string& src_ip,
-        uint16_t src_port,
-        const std::string& dst_ip,
-        uint16_t dst_port,
-        ProtocolType protocol,
-        MessageType msg_type,
-        std::chrono::milliseconds offset = std::chrono::milliseconds(0)
-    ) {
+        const std::string& src_ip, uint16_t src_port, const std::string& dst_ip, uint16_t dst_port,
+        ProtocolType protocol, MessageType msg_type,
+        std::chrono::milliseconds offset = std::chrono::milliseconds(0)) {
         SessionMessageRef msg;
         msg.message_id = "msg_" + std::to_string(msg_counter_++);
         msg.timestamp = base_time + offset;
@@ -55,12 +53,8 @@ TEST_F(LadderDiagramGeneratorTest, EmptyMessages) {
 
 TEST_F(LadderDiagramGeneratorTest, SingleMessage) {
     std::vector<SessionMessageRef> messages;
-    messages.push_back(createMessage(
-        "10.0.1.50", 36412,
-        "10.0.2.10", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    ));
+    messages.push_back(createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                                     MessageType::S1AP_INITIAL_UE_MESSAGE));
 
     auto diagram = generator->generate(messages, "test_session", "Single Message Test");
 
@@ -77,23 +71,18 @@ TEST_F(LadderDiagramGeneratorTest, GlobalTimestampOrdering) {
     std::vector<SessionMessageRef> messages;
 
     // Create messages with specific timestamps
-    messages.push_back(createMessage(
-        "10.0.2.10", 2123, "10.0.3.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_REQUEST,
-        std::chrono::milliseconds(100)
-    ));
+    messages.push_back(createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                                     MessageType::GTP_CREATE_SESSION_REQ,
+                                     std::chrono::milliseconds(100)));
 
-    messages.push_back(createMessage(
-        "10.0.1.50", 36412, "10.0.2.10", 36412,
-        ProtocolType::S1AP, MessageType::S1AP_INITIAL_UE_MESSAGE,
-        std::chrono::milliseconds(0)  // Earlier timestamp
-    ));
+    messages.push_back(createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                                     MessageType::S1AP_INITIAL_UE_MESSAGE,
+                                     std::chrono::milliseconds(0)  // Earlier timestamp
+                                     ));
 
-    messages.push_back(createMessage(
-        "10.0.3.10", 2123, "10.0.2.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_RESPONSE,
-        std::chrono::milliseconds(250)
-    ));
+    messages.push_back(createMessage("10.0.3.10", 2123, "10.0.2.10", 2123, ProtocolType::GTP_C,
+                                     MessageType::GTP_CREATE_SESSION_RESP,
+                                     std::chrono::milliseconds(250)));
 
     auto diagram = generator->generate(messages);
 
@@ -101,8 +90,8 @@ TEST_F(LadderDiagramGeneratorTest, GlobalTimestampOrdering) {
 
     // Verify sorted by timestamp
     EXPECT_EQ(diagram.events[0].message_type, MessageType::S1AP_INITIAL_UE_MESSAGE);
-    EXPECT_EQ(diagram.events[1].message_type, MessageType::GTP_CREATE_SESSION_REQUEST);
-    EXPECT_EQ(diagram.events[2].message_type, MessageType::GTP_CREATE_SESSION_RESPONSE);
+    EXPECT_EQ(diagram.events[1].message_type, MessageType::GTP_CREATE_SESSION_REQ);
+    EXPECT_EQ(diagram.events[2].message_type, MessageType::GTP_CREATE_SESSION_RESP);
 
     // Verify timestamps are in order
     EXPECT_LT(diagram.events[0].timestamp, diagram.events[1].timestamp);
@@ -111,12 +100,8 @@ TEST_F(LadderDiagramGeneratorTest, GlobalTimestampOrdering) {
 
 TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationS1MME) {
     std::vector<SessionMessageRef> messages;
-    messages.push_back(createMessage(
-        "10.0.1.50", 36412,
-        "10.0.2.10", 36412,
-        ProtocolType::S1AP,
-        MessageType::S1AP_INITIAL_UE_MESSAGE
-    ));
+    messages.push_back(createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                                     MessageType::S1AP_INITIAL_UE_MESSAGE));
 
     auto diagram = generator->generate(messages);
 
@@ -128,12 +113,8 @@ TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationS11) {
     std::vector<SessionMessageRef> messages;
 
     // MME -> S-GW (GTP-C on S11)
-    messages.push_back(createMessage(
-        "10.0.2.10", 2123,
-        "10.0.3.10", 2123,
-        ProtocolType::GTP_C,
-        MessageType::GTP_CREATE_SESSION_REQUEST
-    ));
+    messages.push_back(createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                                     MessageType::GTP_CREATE_SESSION_REQ));
 
     auto diagram = generator->generate(messages);
 
@@ -144,12 +125,8 @@ TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationS11) {
 TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationDiameterS6a) {
     std::vector<SessionMessageRef> messages;
 
-    auto msg = createMessage(
-        "10.0.2.10", 3868,
-        "10.0.5.10", 3868,
-        ProtocolType::DIAMETER,
-        MessageType::DIAMETER_AAR
-    );
+    auto msg = createMessage("10.0.2.10", 3868, "10.0.5.10", 3868, ProtocolType::DIAMETER,
+                             MessageType::DIAMETER_AAR);
     msg.parsed_data["application_id"] = 16777251;  // S6a Application-ID
     messages.push_back(msg);
 
@@ -162,12 +139,8 @@ TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationDiameterS6a) {
 TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationDiameterGx) {
     std::vector<SessionMessageRef> messages;
 
-    auto msg = createMessage(
-        "10.0.4.10", 3868,
-        "10.0.6.10", 3868,
-        ProtocolType::DIAMETER,
-        MessageType::DIAMETER_CCR
-    );
+    auto msg = createMessage("10.0.4.10", 3868, "10.0.6.10", 3868, ProtocolType::DIAMETER,
+                             MessageType::DIAMETER_CCR);
     msg.parsed_data["application_id"] = 16777238;  // Gx Application-ID
     messages.push_back(msg);
 
@@ -179,12 +152,8 @@ TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationDiameterGx) {
 
 TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationNGAP) {
     std::vector<SessionMessageRef> messages;
-    messages.push_back(createMessage(
-        "10.0.1.60", 38412,
-        "10.0.2.20", 38412,
-        ProtocolType::NGAP,
-        MessageType::NGAP_INITIAL_UE_MESSAGE
-    ));
+    messages.push_back(createMessage("10.0.1.60", 38412, "10.0.2.20", 38412, ProtocolType::NGAP,
+                                     MessageType::NGAP_INITIAL_UE_MESSAGE));
 
     auto diagram = generator->generate(messages);
 
@@ -194,12 +163,8 @@ TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationNGAP) {
 
 TEST_F(LadderDiagramGeneratorTest, InterfaceIdentificationPFCP) {
     std::vector<SessionMessageRef> messages;
-    messages.push_back(createMessage(
-        "10.0.7.10", 8805,
-        "10.0.8.10", 8805,
-        ProtocolType::PFCP,
-        MessageType::PFCP_SESSION_ESTABLISHMENT_REQUEST
-    ));
+    messages.push_back(createMessage("10.0.7.10", 8805, "10.0.8.10", 8805, ProtocolType::PFCP,
+                                     MessageType::PFCP_SESSION_ESTABLISHMENT_REQ));
 
     auto diagram = generator->generate(messages);
 
@@ -211,18 +176,14 @@ TEST_F(LadderDiagramGeneratorTest, LatencyCalculationGTPCreateSession) {
     std::vector<SessionMessageRef> messages;
 
     // GTP Create Session Request
-    messages.push_back(createMessage(
-        "10.0.2.10", 2123, "10.0.3.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_REQUEST,
-        std::chrono::milliseconds(0)
-    ));
+    messages.push_back(createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                                     MessageType::GTP_CREATE_SESSION_REQ,
+                                     std::chrono::milliseconds(0)));
 
     // GTP Create Session Response (100ms later)
-    messages.push_back(createMessage(
-        "10.0.3.10", 2123, "10.0.2.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_RESPONSE,
-        std::chrono::milliseconds(100)
-    ));
+    messages.push_back(createMessage("10.0.3.10", 2123, "10.0.2.10", 2123, ProtocolType::GTP_C,
+                                     MessageType::GTP_CREATE_SESSION_RESP,
+                                     std::chrono::milliseconds(100)));
 
     auto diagram = generator->generate(messages);
 
@@ -240,18 +201,14 @@ TEST_F(LadderDiagramGeneratorTest, LatencyCalculationPFCP) {
     std::vector<SessionMessageRef> messages;
 
     // PFCP Session Establishment Request
-    messages.push_back(createMessage(
-        "10.0.7.10", 8805, "10.0.8.10", 8805,
-        ProtocolType::PFCP, MessageType::PFCP_SESSION_ESTABLISHMENT_REQUEST,
-        std::chrono::milliseconds(0)
-    ));
+    messages.push_back(createMessage("10.0.7.10", 8805, "10.0.8.10", 8805, ProtocolType::PFCP,
+                                     MessageType::PFCP_SESSION_ESTABLISHMENT_REQ,
+                                     std::chrono::milliseconds(0)));
 
     // PFCP Session Establishment Response (50ms later)
-    messages.push_back(createMessage(
-        "10.0.8.10", 8805, "10.0.7.10", 8805,
-        ProtocolType::PFCP, MessageType::PFCP_SESSION_ESTABLISHMENT_RESPONSE,
-        std::chrono::milliseconds(50)
-    ));
+    messages.push_back(createMessage("10.0.8.10", 8805, "10.0.7.10", 8805, ProtocolType::PFCP,
+                                     MessageType::PFCP_SESSION_ESTABLISHMENT_RESP,
+                                     std::chrono::milliseconds(50)));
 
     auto diagram = generator->generate(messages);
 
@@ -264,17 +221,13 @@ TEST_F(LadderDiagramGeneratorTest, ParticipantDetection) {
     std::vector<SessionMessageRef> messages;
 
     // S1AP: eNodeB -> MME
-    messages.push_back(createMessage(
-        "10.0.1.50", 36412, "10.0.2.10", 36412,
-        ProtocolType::S1AP, MessageType::S1AP_INITIAL_UE_MESSAGE
-    ));
+    messages.push_back(createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                                     MessageType::S1AP_INITIAL_UE_MESSAGE));
 
     // GTP-C: MME -> S-GW
-    messages.push_back(createMessage(
-        "10.0.2.10", 2123, "10.0.3.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_REQUEST,
-        std::chrono::milliseconds(100)
-    ));
+    messages.push_back(createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                                     MessageType::GTP_CREATE_SESSION_REQ,
+                                     std::chrono::milliseconds(100)));
 
     auto diagram = generator->generate(messages);
 
@@ -286,9 +239,12 @@ TEST_F(LadderDiagramGeneratorTest, ParticipantDetection) {
     bool found_sgw = false;
 
     for (const auto& p : diagram.participants) {
-        if (p.type == ParticipantType::ENODEB) found_enodeb = true;
-        if (p.type == ParticipantType::MME) found_mme = true;
-        if (p.type == ParticipantType::SGW) found_sgw = true;
+        if (p.type == ParticipantType::ENODEB)
+            found_enodeb = true;
+        if (p.type == ParticipantType::MME)
+            found_mme = true;
+        if (p.type == ParticipantType::SGW)
+            found_sgw = true;
     }
 
     EXPECT_TRUE(found_enodeb);
@@ -300,17 +256,13 @@ TEST_F(LadderDiagramGeneratorTest, MessageDirection) {
     std::vector<SessionMessageRef> messages;
 
     // Request
-    messages.push_back(createMessage(
-        "10.0.2.10", 2123, "10.0.3.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_REQUEST
-    ));
+    messages.push_back(createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                                     MessageType::GTP_CREATE_SESSION_REQ));
 
     // Response
-    messages.push_back(createMessage(
-        "10.0.3.10", 2123, "10.0.2.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_RESPONSE,
-        std::chrono::milliseconds(100)
-    ));
+    messages.push_back(createMessage("10.0.3.10", 2123, "10.0.2.10", 2123, ProtocolType::GTP_C,
+                                     MessageType::GTP_CREATE_SESSION_RESP,
+                                     std::chrono::milliseconds(100)));
 
     auto diagram = generator->generate(messages);
 
@@ -323,27 +275,18 @@ TEST_F(LadderDiagramGeneratorTest, ProcedureGrouping) {
     std::vector<SessionMessageRef> messages;
 
     // Create messages for LTE Attach procedure
-    auto msg1 = createMessage(
-        "10.0.1.50", 36412, "10.0.2.10", 36412,
-        ProtocolType::S1AP, MessageType::S1AP_INITIAL_UE_MESSAGE,
-        std::chrono::milliseconds(0)
-    );
+    auto msg1 = createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                              MessageType::S1AP_INITIAL_UE_MESSAGE, std::chrono::milliseconds(0));
     msg1.correlation_key.procedure_type = ProcedureType::LTE_ATTACH;
     messages.push_back(msg1);
 
-    auto msg2 = createMessage(
-        "10.0.2.10", 2123, "10.0.3.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_REQUEST,
-        std::chrono::milliseconds(100)
-    );
+    auto msg2 = createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                              MessageType::GTP_CREATE_SESSION_REQ, std::chrono::milliseconds(100));
     msg2.correlation_key.procedure_type = ProcedureType::LTE_ATTACH;
     messages.push_back(msg2);
 
-    auto msg3 = createMessage(
-        "10.0.3.10", 2123, "10.0.2.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_RESPONSE,
-        std::chrono::milliseconds(250)
-    );
+    auto msg3 = createMessage("10.0.3.10", 2123, "10.0.2.10", 2123, ProtocolType::GTP_C,
+                              MessageType::GTP_CREATE_SESSION_RESP, std::chrono::milliseconds(250));
     msg3.correlation_key.procedure_type = ProcedureType::LTE_ATTACH;
     messages.push_back(msg3);
 
@@ -360,11 +303,9 @@ TEST_F(LadderDiagramGeneratorTest, MetricsCalculation) {
     std::vector<SessionMessageRef> messages;
 
     for (int i = 0; i < 10; ++i) {
-        messages.push_back(createMessage(
-            "10.0.1.50", 36412, "10.0.2.10", 36412,
-            ProtocolType::S1AP, MessageType::S1AP_INITIAL_UE_MESSAGE,
-            std::chrono::milliseconds(i * 100)
-        ));
+        messages.push_back(createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                                         MessageType::S1AP_INITIAL_UE_MESSAGE,
+                                         std::chrono::milliseconds(i * 100)));
     }
 
     auto diagram = generator->generate(messages);
@@ -375,10 +316,8 @@ TEST_F(LadderDiagramGeneratorTest, MetricsCalculation) {
 
 TEST_F(LadderDiagramGeneratorTest, JSONSerialization) {
     std::vector<SessionMessageRef> messages;
-    messages.push_back(createMessage(
-        "10.0.1.50", 36412, "10.0.2.10", 36412,
-        ProtocolType::S1AP, MessageType::S1AP_INITIAL_UE_MESSAGE
-    ));
+    messages.push_back(createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                                     MessageType::S1AP_INITIAL_UE_MESSAGE));
 
     auto diagram = generator->generate(messages, "test_session", "Test Diagram");
     auto json = diagram.toJson();
@@ -401,11 +340,9 @@ TEST_F(LadderDiagramGeneratorTest, LargeEventSet) {
 
     // Create 1000 events
     for (int i = 0; i < 1000; ++i) {
-        messages.push_back(createMessage(
-            "10.0.1.50", 36412, "10.0.2.10", 36412,
-            ProtocolType::S1AP, MessageType::S1AP_INITIAL_UE_MESSAGE,
-            std::chrono::milliseconds(i)
-        ));
+        messages.push_back(createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                                         MessageType::S1AP_INITIAL_UE_MESSAGE,
+                                         std::chrono::milliseconds(i)));
     }
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -426,10 +363,8 @@ TEST_F(LadderDiagramGeneratorTest, ExplicitParticipantMapping) {
     generator->addParticipantMapping("10.0.1.50", "MyENodeB", ParticipantType::ENODEB);
 
     std::vector<SessionMessageRef> messages;
-    messages.push_back(createMessage(
-        "10.0.1.50", 36412, "10.0.2.10", 36412,
-        ProtocolType::S1AP, MessageType::S1AP_INITIAL_UE_MESSAGE
-    ));
+    messages.push_back(createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                                     MessageType::S1AP_INITIAL_UE_MESSAGE));
 
     auto diagram = generator->generate(messages);
 
@@ -449,49 +384,34 @@ TEST_F(LadderDiagramGeneratorTest, CompleteLTEAttachFlow) {
     std::vector<SessionMessageRef> messages;
 
     // 1. S1AP Initial UE Message
-    auto msg1 = createMessage(
-        "10.0.1.50", 36412, "10.0.2.10", 36412,
-        ProtocolType::S1AP, MessageType::S1AP_INITIAL_UE_MESSAGE,
-        std::chrono::milliseconds(0)
-    );
+    auto msg1 = createMessage("10.0.1.50", 36412, "10.0.2.10", 36412, ProtocolType::S1AP,
+                              MessageType::S1AP_INITIAL_UE_MESSAGE, std::chrono::milliseconds(0));
     msg1.correlation_key.procedure_type = ProcedureType::LTE_ATTACH;
     messages.push_back(msg1);
 
     // 2. Diameter S6a AIR (MME -> HSS)
-    auto msg2 = createMessage(
-        "10.0.2.10", 3868, "10.0.5.10", 3868,
-        ProtocolType::DIAMETER, MessageType::DIAMETER_AAR,
-        std::chrono::milliseconds(50)
-    );
+    auto msg2 = createMessage("10.0.2.10", 3868, "10.0.5.10", 3868, ProtocolType::DIAMETER,
+                              MessageType::DIAMETER_AAR, std::chrono::milliseconds(50));
     msg2.parsed_data["application_id"] = 16777251;
     msg2.correlation_key.procedure_type = ProcedureType::LTE_ATTACH;
     messages.push_back(msg2);
 
     // 3. Diameter S6a AIA (HSS -> MME)
-    auto msg3 = createMessage(
-        "10.0.5.10", 3868, "10.0.2.10", 3868,
-        ProtocolType::DIAMETER, MessageType::DIAMETER_AAA,
-        std::chrono::milliseconds(150)
-    );
+    auto msg3 = createMessage("10.0.5.10", 3868, "10.0.2.10", 3868, ProtocolType::DIAMETER,
+                              MessageType::DIAMETER_AAA, std::chrono::milliseconds(150));
     msg3.parsed_data["application_id"] = 16777251;
     msg3.correlation_key.procedure_type = ProcedureType::LTE_ATTACH;
     messages.push_back(msg3);
 
     // 4. GTP Create Session Request (MME -> S-GW)
-    auto msg4 = createMessage(
-        "10.0.2.10", 2123, "10.0.3.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_REQUEST,
-        std::chrono::milliseconds(200)
-    );
+    auto msg4 = createMessage("10.0.2.10", 2123, "10.0.3.10", 2123, ProtocolType::GTP_C,
+                              MessageType::GTP_CREATE_SESSION_REQ, std::chrono::milliseconds(200));
     msg4.correlation_key.procedure_type = ProcedureType::LTE_ATTACH;
     messages.push_back(msg4);
 
     // 5. GTP Create Session Response (S-GW -> MME)
-    auto msg5 = createMessage(
-        "10.0.3.10", 2123, "10.0.2.10", 2123,
-        ProtocolType::GTP_C, MessageType::GTP_CREATE_SESSION_RESPONSE,
-        std::chrono::milliseconds(350)
-    );
+    auto msg5 = createMessage("10.0.3.10", 2123, "10.0.2.10", 2123, ProtocolType::GTP_C,
+                              MessageType::GTP_CREATE_SESSION_RESP, std::chrono::milliseconds(350));
     msg5.correlation_key.procedure_type = ProcedureType::LTE_ATTACH;
     messages.push_back(msg5);
 

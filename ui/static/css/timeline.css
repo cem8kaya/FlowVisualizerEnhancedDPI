@@ -84,14 +84,19 @@ body.dark-mode .timeline-lane-label {
     stroke-width: 2;
 }
 
-.timeline-event.event-request circle {
+.timeline-event.event-sip circle {
     fill: #0d6efd;
     stroke: #084298;
 }
 
-.timeline-event.event-response circle {
+.timeline-event.event-gtp circle {
     fill: #198754;
     stroke: #0f5132;
+}
+
+.timeline-event.event-diameter circle {
+    fill: #6f42c1;
+    stroke: #59359a;
 }
 
 .timeline-event.event-info circle {

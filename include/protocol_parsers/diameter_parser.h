@@ -1,9 +1,10 @@
 #pragma once
 
-#include "common/types.h"
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <vector>
-#include <nlohmann/json.hpp>
+
+#include "common/types.h"
 
 namespace callflow {
 
@@ -14,45 +15,45 @@ enum class DiameterCommandCode : uint32_t {
     UNKNOWN = 0,
 
     // Base Protocol (RFC 6733)
-    CAPABILITIES_EXCHANGE = 257,   // CER/CEA
-    RE_AUTH = 258,                 // RAR/RAA
-    AA_REQUEST = 265,              // AAR/AAA
-    ACCOUNTING = 271,              // ACR/ACA
-    CREDIT_CONTROL = 272,          // CCR/CCA (RFC 4006)
-    ABORT_SESSION = 274,           // ASR/ASA
-    SESSION_TERMINATION = 275,     // STR/STA
-    DEVICE_WATCHDOG = 280,         // DWR/DWA
-    DISCONNECT_PEER = 282,         // DPR/DPA
+    CAPABILITIES_EXCHANGE = 257,  // CER/CEA
+    RE_AUTH = 258,                // RAR/RAA
+    AA_REQUEST = 265,             // AAR/AAA
+    ACCOUNTING = 271,             // ACR/ACA
+    CREDIT_CONTROL = 272,         // CCR/CCA (RFC 4006)
+    ABORT_SESSION = 274,          // ASR/ASA
+    SESSION_TERMINATION = 275,    // STR/STA
+    DEVICE_WATCHDOG = 280,        // DWR/DWA
+    DISCONNECT_PEER = 282,        // DPR/DPA
 
     // 3GPP Cx/Dx Interface (TS 29.228, TS 29.229)
-    USER_AUTHORIZATION = 300,      // UAR/UAA
-    SERVER_ASSIGNMENT = 301,       // SAR/SAA
-    LOCATION_INFO = 302,           // LIR/LIA
-    MULTIMEDIA_AUTH = 303,         // MAR/MAA
-    REGISTRATION_TERMINATION = 304,// RTR/RTA
-    PUSH_PROFILE = 305,            // PPR/PPA
+    USER_AUTHORIZATION = 300,        // UAR/UAA
+    SERVER_ASSIGNMENT = 301,         // SAR/SAA
+    LOCATION_INFO = 302,             // LIR/LIA
+    MULTIMEDIA_AUTH = 303,           // MAR/MAA
+    REGISTRATION_TERMINATION = 304,  // RTR/RTA
+    PUSH_PROFILE = 305,              // PPR/PPA
 
     // 3GPP Sh Interface (TS 29.328, TS 29.329)
-    USER_DATA = 306,               // UDR/UDA
-    PROFILE_UPDATE = 307,          // PUR/PUA
-    SUBSCRIBE_NOTIFICATIONS = 308, // SNR/SNA
-    PUSH_NOTIFICATION = 309,       // PNR/PNA
+    USER_DATA = 306,                // UDR/UDA
+    PROFILE_UPDATE = 307,           // PUR/PUA
+    SUBSCRIBE_NOTIFICATIONS = 308,  // SNR/SNA
+    PUSH_NOTIFICATION = 309,        // PNR/PNA
 
     // 3GPP S6a/S6d Interface (TS 29.272)
-    UPDATE_LOCATION = 316,         // ULR/ULA
-    CANCEL_LOCATION = 317,         // CLR/CLA
-    AUTHENTICATION_INFORMATION = 318, // AIR/AIA
-    INSERT_SUBSCRIBER_DATA = 319,  // IDR/IDA
-    DELETE_SUBSCRIBER_DATA = 320,  // DSR/DSA
-    PURGE_UE = 321,                // PUR/PUA
-    RESET = 322,                   // RSR/RSA
-    NOTIFY = 323,                  // NOR/NOA
+    UPDATE_LOCATION = 316,             // ULR/ULA
+    CANCEL_LOCATION = 317,             // CLR/CLA
+    AUTHENTICATION_INFORMATION = 318,  // AIR/AIA
+    INSERT_SUBSCRIBER_DATA = 319,      // IDR/IDA
+    DELETE_SUBSCRIBER_DATA = 320,      // DSR/DSA
+    PURGE_UE = 321,                    // PUR/PUA
+    RESET = 322,                       // RSR/RSA
+    NOTIFY = 323,                      // NOR/NOA
 
     // 3GPP Gx Interface (TS 29.212)
     // Uses CREDIT_CONTROL = 272
 
     // 3GPP Rx Interface (TS 29.214)
-    AA_REQUEST_RX = 265,           // AAR/AAA (same code, different interface)
+    AA_REQUEST_RX = 265,  // AAR/AAA (same code, different interface)
 
     // 3GPP Gy/Ro Interface (TS 32.299)
     // Uses CREDIT_CONTROL = 272
@@ -190,14 +191,14 @@ std::string getResultCodeName(uint32_t result_code);
  * DIAMETER AVP Data Types (RFC 6733 Section 4.2)
  */
 enum class DiameterAvpDataType {
-    OCTET_STRING,       // Arbitrary data
-    INTEGER32,          // Signed 32-bit integer
-    INTEGER64,          // Signed 64-bit integer
-    UNSIGNED32,         // Unsigned 32-bit integer
-    UNSIGNED64,         // Unsigned 64-bit integer
-    FLOAT32,            // 32-bit floating point
-    FLOAT64,            // 64-bit floating point
-    GROUPED,            // Grouped AVP (contains other AVPs)
+    OCTET_STRING,  // Arbitrary data
+    INTEGER32,     // Signed 32-bit integer
+    INTEGER64,     // Signed 64-bit integer
+    UNSIGNED32,    // Unsigned 32-bit integer
+    UNSIGNED64,    // Unsigned 64-bit integer
+    FLOAT32,       // 32-bit floating point
+    FLOAT64,       // 64-bit floating point
+    GROUPED,       // Grouped AVP (contains other AVPs)
 
     // Derived types (OctetString)
     UTF8STRING,         // UTF-8 encoded string
@@ -217,16 +218,16 @@ std::string getAvpDataTypeName(DiameterAvpDataType type);
  * DIAMETER header structure (20 bytes)
  */
 struct DiameterHeader {
-    uint8_t version;              // Version (1 byte)
-    uint32_t message_length;      // Message length including header (3 bytes)
-    bool request_flag;            // R flag
-    bool proxiable_flag;          // P flag
-    bool error_flag;              // E flag
-    bool retransmit_flag;         // T flag
-    uint32_t command_code;        // Command code (3 bytes)
-    uint32_t application_id;      // Application ID (4 bytes)
-    uint32_t hop_by_hop_id;       // Hop-by-Hop ID (4 bytes)
-    uint32_t end_to_end_id;       // End-to-End ID (4 bytes)
+    uint8_t version;          // Version (1 byte)
+    uint32_t message_length;  // Message length including header (3 bytes)
+    bool request_flag;        // R flag
+    bool proxiable_flag;      // P flag
+    bool error_flag;          // E flag
+    bool retransmit_flag;     // T flag
+    uint32_t command_code;    // Command code (3 bytes)
+    uint32_t application_id;  // Application ID (4 bytes)
+    uint32_t hop_by_hop_id;   // Hop-by-Hop ID (4 bytes)
+    uint32_t end_to_end_id;   // End-to-End ID (4 bytes)
 
     nlohmann::json toJson() const;
 };
@@ -235,13 +236,13 @@ struct DiameterHeader {
  * DIAMETER AVP (Attribute-Value Pair) structure
  */
 struct DiameterAvp {
-    uint32_t code;                // AVP code (4 bytes)
-    bool vendor_flag;             // V flag
-    bool mandatory_flag;          // M flag
-    bool protected_flag;          // P flag
-    uint32_t length;              // AVP length including header (3 bytes)
-    uint32_t vendor_id;           // Vendor ID (4 bytes, only if V flag set)
-    std::vector<uint8_t> data;    // AVP data
+    uint32_t code;              // AVP code (4 bytes)
+    bool vendor_flag;           // V flag
+    bool mandatory_flag;        // M flag
+    bool protected_flag;        // P flag
+    uint32_t length;            // AVP length including header (3 bytes)
+    uint32_t vendor_id;         // Vendor ID (4 bytes, only if V flag set)
+    std::vector<uint8_t> data;  // AVP data
 
     nlohmann::json toJson() const;
 
@@ -268,6 +269,7 @@ struct DiameterMessage {
     std::optional<std::string> origin_host;
     std::optional<std::string> destination_realm;
     std::optional<uint32_t> result_code;
+    std::optional<std::string> subscription_id;  // Extracted from Subscription-Id AVP
 
     nlohmann::json toJson() const;
 
@@ -303,6 +305,9 @@ public:
      */
     static bool isDiameter(const uint8_t* data, size_t len);
 
+    // Register fields with FieldRegistry
+    static void registerFields();
+
 private:
     /**
      * Parse DIAMETER header
@@ -312,8 +317,7 @@ private:
     /**
      * Parse AVPs from message
      */
-    bool parseAvps(const uint8_t* data, size_t len, size_t offset,
-                   std::vector<DiameterAvp>& avps);
+    bool parseAvps(const uint8_t* data, size_t len, size_t offset, std::vector<DiameterAvp>& avps);
 
     /**
      * Parse single AVP

@@ -152,6 +152,9 @@ public:
      */
     static bool isGtp(const uint8_t* data, size_t len);
 
+    // Register fields with FieldRegistry
+    static void registerFields();
+
 private:
     /**
      * Parse GTP header

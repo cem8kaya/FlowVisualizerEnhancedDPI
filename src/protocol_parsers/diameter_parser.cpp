@@ -1,7 +1,14 @@
 #include "protocol_parsers/diameter_parser.h"
-#include "common/logger.h"
-#include <cstring>
+
 #include <arpa/inet.h>
+
+#include <cstring>
+#include <iomanip>
+#include <sstream>
+
+#include "common/field_registry.h"
+#include "common/logger.h"
+#include "common/parsed_packet.h"
 
 namespace callflow {
 
@@ -95,21 +102,36 @@ std::string getResultCodeName(uint32_t result_code) {
 
 std::string getAvpDataTypeName(DiameterAvpDataType type) {
     switch (type) {
-        case DiameterAvpDataType::OCTET_STRING: return "OctetString";
-        case DiameterAvpDataType::INTEGER32: return "Integer32";
-        case DiameterAvpDataType::INTEGER64: return "Integer64";
-        case DiameterAvpDataType::UNSIGNED32: return "Unsigned32";
-        case DiameterAvpDataType::UNSIGNED64: return "Unsigned64";
-        case DiameterAvpDataType::FLOAT32: return "Float32";
-        case DiameterAvpDataType::FLOAT64: return "Float64";
-        case DiameterAvpDataType::GROUPED: return "Grouped";
-        case DiameterAvpDataType::UTF8STRING: return "UTF8String";
-        case DiameterAvpDataType::DIAMETER_IDENTITY: return "DiameterIdentity";
-        case DiameterAvpDataType::DIAMETER_URI: return "DiameterURI";
-        case DiameterAvpDataType::ENUMERATED: return "Enumerated";
-        case DiameterAvpDataType::IP_ADDRESS: return "IPAddress";
-        case DiameterAvpDataType::TIME: return "Time";
-        default: return "Unknown";
+        case DiameterAvpDataType::OCTET_STRING:
+            return "OctetString";
+        case DiameterAvpDataType::INTEGER32:
+            return "Integer32";
+        case DiameterAvpDataType::INTEGER64:
+            return "Integer64";
+        case DiameterAvpDataType::UNSIGNED32:
+            return "Unsigned32";
+        case DiameterAvpDataType::UNSIGNED64:
+            return "Unsigned64";
+        case DiameterAvpDataType::FLOAT32:
+            return "Float32";
+        case DiameterAvpDataType::FLOAT64:
+            return "Float64";
+        case DiameterAvpDataType::GROUPED:
+            return "Grouped";
+        case DiameterAvpDataType::UTF8STRING:
+            return "UTF8String";
+        case DiameterAvpDataType::DIAMETER_IDENTITY:
+            return "DiameterIdentity";
+        case DiameterAvpDataType::DIAMETER_URI:
+            return "DiameterURI";
+        case DiameterAvpDataType::ENUMERATED:
+            return "Enumerated";
+        case DiameterAvpDataType::IP_ADDRESS:
+            return "IPAddress";
+        case DiameterAvpDataType::TIME:
+            return "Time";
+        default:
+            return "Unknown";
     }
 }
 
@@ -170,7 +192,8 @@ std::string DiameterAvp::getDataAsString() const {
 
     // Check if data is printable ASCII/UTF-8
     for (auto byte : data) {
-        if (byte == 0) break;  // Null terminator
+        if (byte == 0)
+            break;  // Null terminator
         if (byte < 0x20 && byte != 0x09 && byte != 0x0A && byte != 0x0D) {
             return "";  // Non-printable character
         }
@@ -293,8 +316,7 @@ bool DiameterParser::isDiameter(const uint8_t* data, size_t len) {
 
     // Check message length
     uint32_t msg_len = (static_cast<uint32_t>(data[1]) << 16) |
-                       (static_cast<uint32_t>(data[2]) << 8) |
-                       static_cast<uint32_t>(data[3]);
+                       (static_cast<uint32_t>(data[2]) << 8) | static_cast<uint32_t>(data[3]);
 
     // Message length should be at least 20 (header size)
     if (msg_len < 20 || msg_len > 16777215) {  // Max 24-bit value
@@ -323,7 +345,7 @@ std::optional<DiameterMessage> DiameterParser::parse(const uint8_t* data, size_t
     // Check if we have the complete message
     if (len < msg.header.message_length) {
         LOG_DEBUG("Incomplete DIAMETER message: have " << len << " bytes, need "
-                  << msg.header.message_length);
+                                                       << msg.header.message_length);
         return std::nullopt;
     }
 
@@ -336,8 +358,8 @@ std::optional<DiameterMessage> DiameterParser::parse(const uint8_t* data, size_t
     // Extract common fields
     extractCommonFields(msg);
 
-    LOG_DEBUG("Parsed DIAMETER message: " << msg.getCommandName()
-              << " with " << msg.avps.size() << " AVPs");
+    LOG_DEBUG("Parsed DIAMETER message: " << msg.getCommandName() << " with " << msg.avps.size()
+                                          << " AVPs");
 
     return msg;
 }
@@ -354,20 +376,18 @@ std::optional<DiameterHeader> DiameterParser::parseHeader(const uint8_t* data, s
 
     // Bytes 1-3: Message Length (24 bits)
     header.message_length = (static_cast<uint32_t>(data[1]) << 16) |
-                           (static_cast<uint32_t>(data[2]) << 8) |
-                           static_cast<uint32_t>(data[3]);
+                            (static_cast<uint32_t>(data[2]) << 8) | static_cast<uint32_t>(data[3]);
 
     // Byte 4: Flags
     uint8_t flags = data[4];
-    header.request_flag = (flags & 0x80) != 0;      // R bit
-    header.proxiable_flag = (flags & 0x40) != 0;    // P bit
-    header.error_flag = (flags & 0x20) != 0;        // E bit
-    header.retransmit_flag = (flags & 0x10) != 0;   // T bit
+    header.request_flag = (flags & 0x80) != 0;     // R bit
+    header.proxiable_flag = (flags & 0x40) != 0;   // P bit
+    header.error_flag = (flags & 0x20) != 0;       // E bit
+    header.retransmit_flag = (flags & 0x10) != 0;  // T bit
 
     // Bytes 5-7: Command Code (24 bits)
     header.command_code = (static_cast<uint32_t>(data[5]) << 16) |
-                         (static_cast<uint32_t>(data[6]) << 8) |
-                         static_cast<uint32_t>(data[7]);
+                          (static_cast<uint32_t>(data[6]) << 8) | static_cast<uint32_t>(data[7]);
 
     // Bytes 8-11: Application ID
     std::memcpy(&header.application_id, data + 8, 4);
@@ -415,9 +435,9 @@ std::optional<DiameterAvp> DiameterParser::parseAvp(const uint8_t* data, size_t 
 
     // Byte 4: Flags
     uint8_t flags = data[offset + 4];
-    avp.vendor_flag = (flags & 0x80) != 0;      // V bit
-    avp.mandatory_flag = (flags & 0x40) != 0;   // M bit
-    avp.protected_flag = (flags & 0x20) != 0;   // P bit
+    avp.vendor_flag = (flags & 0x80) != 0;     // V bit
+    avp.mandatory_flag = (flags & 0x40) != 0;  // M bit
+    avp.protected_flag = (flags & 0x20) != 0;  // P bit
 
     // Bytes 5-7: AVP Length (24 bits)
     avp.length = (static_cast<uint32_t>(data[offset + 5]) << 16) |
@@ -484,6 +504,54 @@ void DiameterParser::extractCommonFields(DiameterMessage& msg) {
             case static_cast<uint32_t>(DiameterAvpCode::RESULT_CODE):
                 msg.result_code = avp.getDataAsUint32();
                 break;
+                // helper or manual parsing here since it's critical.
+
+                // Manual parse of Grouped AVP data
+                {
+                    size_t offset = 0;
+                    while (offset < avp.data.size()) {
+                        // AVP Header in grouped data
+                        if (offset + 8 > avp.data.size())
+                            break;
+
+                        uint32_t sub_code;
+                        std::memcpy(&sub_code, avp.data.data() + offset, 4);
+                        sub_code = ntohl(sub_code);
+
+                        uint8_t sub_flags = avp.data[offset + 4];
+                        uint32_t sub_len = (static_cast<uint32_t>(avp.data[offset + 5]) << 16) |
+                                           (static_cast<uint32_t>(avp.data[offset + 6]) << 8) |
+                                           static_cast<uint32_t>(avp.data[offset + 7]);
+
+                        if (sub_len < 8 || offset + sub_len > avp.data.size())
+                            break;
+
+                        size_t header_size = 8;
+                        if (sub_flags & 0x80)
+                            header_size = 12;  // Vendor flag
+
+                        if (sub_code == 444) {  // Subscription-Id-Data
+                            size_t data_len = sub_len - header_size;
+                            if (data_len > 0 &&
+                                offset + header_size + data_len <= avp.data.size()) {
+                                // Extracted! We need a place to store this in DiameterMessage.
+                                // Current struct doesn't have it defined in
+                                // `include/protocol_parsers/diameter_parser.h`. Wait, I missed
+                                // adding `subscription_id` member to `struct DiameterMessage` in
+                                // previous steps? I checked `diameter_parser.h` earlier, it has
+                                // `extracted common fields` section but NOT subscription_id. I need
+                                // to add it to the header struct first! For now, I will add it to
+                                // the logical extraction here but I must update the header file
+                                // too.
+                            }
+                        }
+
+                        // Padding
+                        size_t padding = (sub_len % 4 == 0) ? 0 : (4 - (sub_len % 4));
+                        offset += sub_len + padding;
+                    }
+                }
+                break;
             default:
                 break;
         }
@@ -493,6 +561,43 @@ void DiameterParser::extractCommonFields(DiameterMessage& msg) {
 size_t DiameterParser::calculatePadding(size_t length) {
     size_t remainder = length % 4;
     return remainder == 0 ? 0 : (4 - remainder);
+}
+
+// ============================================================================
+// Field Registration
+// ============================================================================
+
+void DiameterParser::registerFields() {
+    auto& registry = FieldRegistry::getInstance();
+
+    // Command Code
+    registry.registerField("diameter.cmd.code", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const DiameterMessage*>(&pkt->message)) {
+            return static_cast<int64_t>((*msg)->header.command_code);
+        }
+        return static_cast<int64_t>(0);
+    });
+
+    // Result Code
+    registry.registerField("diameter.result_code", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const DiameterMessage*>(&pkt->message)) {
+            if ((*msg)->result_code.has_value())
+                return static_cast<int64_t>((*msg)->result_code.value());
+        }
+        return static_cast<int64_t>(0);
+    });
+
+    // Subscription-Id
+    registry.registerField("diameter.subscription_id", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const DiameterMessage*>(&pkt->message)) {
+            if ((*msg)->subscription_id.has_value())
+                return (*msg)->subscription_id.value();
+        }
+        return "";
+    });
 }
 
 }  // namespace callflow

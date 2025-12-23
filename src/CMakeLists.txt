@@ -201,6 +201,7 @@ target_include_directories(event_extractor PUBLIC
 target_link_libraries(event_extractor PUBLIC
     callflow_common
     protocol_parsers
+    session_correlation
 )
 
 # Persistence library (SQLite3)

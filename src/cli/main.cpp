@@ -8,6 +8,9 @@
 #include "pcap_ingest/pcap_reader.h"
 #include "pcap_ingest/pcapng_reader.h"
 #include "persistence/database.h"  // Moved out of ifdef as it's used in main now
+#include "protocol_parsers/diameter_parser.h"
+#include "protocol_parsers/gtp_parser.h"
+#include "protocol_parsers/sip_parser.h"
 #include "session/session_correlator.h"
 
 #ifdef BUILD_API_SERVER
@@ -292,6 +295,11 @@ int main(int argc, char** argv) {
     Logger::getInstance().setLevel(args.log_level);
 
     try {
+        // Register protocol fields
+        SipParser::registerFields();
+        GtpParser::registerFields();
+        DiameterParser::registerFields();
+
         // Check if running in API server mode
         if (args.enable_api_server) {
             return runApiServer(args);

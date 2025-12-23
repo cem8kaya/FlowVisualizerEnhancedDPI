@@ -2,23 +2,20 @@
 
 message(STATUS "Configuring unit tests")
 
-# Field Registry Tests
-add_executable(test_field_registry
-    test_field_registry.cpp
-)
+# Field Registry Test
+add_executable(test_field_registry test_field_registry.cpp)
+target_link_libraries(test_field_registry PRIVATE callflow_common GTest::gtest_main)
+gtest_discover_tests(test_field_registry)
 
-target_link_libraries(test_field_registry PRIVATE
-    callflow_common
-    GTest::gtest
-    GTest::gtest_main
-)
+# Parser Fields Test
+add_executable(test_parser_fields test_parser_fields.cpp)
+target_link_libraries(test_parser_fields PRIVATE callflow_common protocol_parsers nlohmann_json::nlohmann_json GTest::gtest GTest::gtest_main)
+gtest_discover_tests(test_parser_fields)
 
-add_test(NAME test_field_registry COMMAND test_field_registry)
-
-set_tests_properties(test_field_registry PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# Community Correlation Test
+add_executable(test_community_correlation test_community_correlation.cpp)
+target_link_libraries(test_community_correlation PRIVATE callflow_common protocol_parsers session_correlation event_extractor nlohmann_json::nlohmann_json GTest::gtest GTest::gtest_main)
+gtest_discover_tests(test_community_correlation)
 
 # PCAPNG Reader Tests
 add_executable(test_pcapng_reader

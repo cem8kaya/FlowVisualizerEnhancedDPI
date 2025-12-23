@@ -86,6 +86,13 @@ public:
     std::vector<Session> correlateBySeid(uint64_t seid) const;
 
     /**
+     * Get Master Session by IMSI (for testing/UI)
+     * @param imsi IMSI to search
+     * @return Optional VolteMasterSession
+     */
+    std::optional<VolteMasterSession> getMasterSession(const std::string& imsi) const;
+
+    /**
      * Find sessions by UE IP address
      *
      * @param ue_ip UE IP address to search for
@@ -108,6 +115,12 @@ public:
      * @return Session if found, nullopt otherwise
      */
     std::optional<Session> getSession(const std::string& session_id) const;
+
+    /**
+     * Get all Master Sessions
+     * @return Map of IMSI -> VolteMasterSession
+     */
+    const std::unordered_map<std::string, VolteMasterSession>& getAllMasterSessions() const;
 
     /**
      * Get all sessions
@@ -184,39 +197,34 @@ private:
     // Session storage
     std::unordered_map<std::string, Session> sessions_;  // session_id -> Session
 
-    // Correlation indices for fast lookup
-    std::unordered_map<std::string, std::vector<std::string>> imsi_index_;   // IMSI -> session_ids
-    std::unordered_map<std::string, std::vector<std::string>> supi_index_;   // SUPI -> session_ids
-    std::unordered_map<uint32_t, std::vector<std::string>> teid_index_;      // TEID -> session_ids
-    std::unordered_map<uint64_t, std::vector<std::string>> seid_index_;      // SEID -> session_ids
-    std::unordered_map<std::string, std::vector<std::string>> ue_ip_index_;  // UE IP -> session_ids
-    std::unordered_map<uint32_t, std::vector<std::string>>
-        mme_ue_id_index_;  // MME UE ID -> session_ids
-    std::unordered_map<uint64_t, std::vector<std::string>>
-        amf_ue_id_index_;  // AMF UE ID -> session_ids
-    std::unordered_map<std::string, std::vector<std::string>>
-        msisdn_index_;                                                      // MSISDN -> session_ids
-    std::unordered_map<std::string, std::vector<std::string>> icid_index_;  // ICID -> session_ids
+    // Correlation    // indices for O(1) lookups
+    std::unordered_map<std::string, std::vector<std::string>> imsi_index_;
+    std::unordered_map<std::string, std::vector<std::string>> supi_index_;
+    std::unordered_map<uint32_t, std::vector<std::string>> teid_index_;
+    std::unordered_map<uint64_t, std::vector<std::string>> seid_index_;
+    std::unordered_map<std::string, std::vector<std::string>> ue_ip_index_;
+    std::unordered_map<uint32_t, std::vector<std::string>> mme_ue_id_index_;
+    std::unordered_map<uint64_t, std::vector<std::string>> amf_ue_id_index_;
+    std::unordered_map<std::string, std::vector<std::string>> msisdn_index_;
+    std::unordered_map<std::string, std::vector<std::string>> icid_index_;
+
+    // Community Correlation Maps
+    std::unordered_map<std::string, std::string>
+        ip_to_imsi_map_;  // UE IP -> IMSI (populated by GTP)
+    std::unordered_map<std::string, VolteMasterSession> master_sessions_;  // IMSI -> Master Session
 
     // Thread safety
     mutable std::mutex mutex_;
 
-    /**
-     * Find existing session that matches the correlation key
-     *
-     * @param key Correlation key from new message
-     * @return Session ID if found, nullopt otherwise
-     */
+    // Helper to update indices when adding a message
+    void updateIndices(const std::string& session_id, const SessionCorrelationKey& key);
+
+    // Helper to update Master Session (Community Correlation)
+    void updateMasterSession(const std::string& session_id, const SessionMessageRef& msg);
+
+    // Private helpers
     std::optional<std::string> findMatchingSession(const SessionCorrelationKey& key) const;
-
-    /**
-     * Create a new session for a message
-     *
-     * @param msg First message of the session
-     * @return New session ID
-     */
     std::string createNewSession(const SessionMessageRef& msg);
-
     /**
      * Add message to an existing session
      *
@@ -224,14 +232,6 @@ private:
      * @param msg Message to add
      */
     void addMessageToSession(const std::string& session_id, const SessionMessageRef& msg);
-
-    /**
-     * Update correlation indices for a session
-     *
-     * @param session_id Session ID
-     * @param key Correlation key to index
-     */
-    void updateIndices(const std::string& session_id, const SessionCorrelationKey& key);
 
     /**
      * Detect session type based on message sequence

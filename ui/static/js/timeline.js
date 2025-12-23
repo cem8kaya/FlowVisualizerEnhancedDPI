@@ -134,13 +134,10 @@ const timeline = {
     },
 
     getEventClass(event) {
-        if (event.message_type && event.message_type.includes('REQUEST')) {
-            return 'request';
-        } else if (event.message_type && event.message_type.includes('RESPONSE')) {
-            return 'response';
-        } else if (event.event_type === 'ERROR') {
-            return 'error';
-        }
+        const p = (event.proto || event.protocol || '').toUpperCase();
+        if (p.includes('GTP')) return 'gtp';
+        if (p.includes('SIP')) return 'sip';
+        if (p.includes('DIAMETER')) return 'diameter';
         return 'info';
     },
 
@@ -156,13 +153,16 @@ const timeline = {
             .style('left', (event.pageX + 10) + 'px')
             .style('top', (event.pageY - 28) + 'px');
 
+        const proto = data.proto || data.protocol || 'UNKNOWN';
+
         tooltip.html(`
             <div class="timeline-tooltip-title">${data.message_type || 'Event'}</div>
             <div class="timeline-tooltip-time">${new Date(data.timestamp).toLocaleTimeString()}</div>
             <div class="timeline-tooltip-details">
-                <strong>Protocol:</strong> ${data.protocol}<br>
+                <strong>Protocol:</strong> ${proto}<br>
                 <strong>From:</strong> ${data.src_ip}:${data.src_port}<br>
                 <strong>To:</strong> ${data.dst_ip}:${data.dst_port}
+                ${data.details ? `<br><strong>Details:</strong> <pre style="margin:0; font-size:0.8em">${JSON.stringify(data.details, null, 2)}</pre>` : ''}
             </div>
         `);
     },

@@ -1,11 +1,13 @@
 #include "../../include/correlation/ladder_diagram_generator.h"
-#include "../../include/common/types.h"
-#include "../../include/correlation/procedure_state_machine.h"
+
 #include <algorithm>
+#include <iomanip>
 #include <random>
 #include <sstream>
-#include <iomanip>
 #include <unordered_set>
+
+#include "../../include/common/types.h"
+#include "../../include/correlation/procedure_state_machine.h"
 
 namespace flowviz {
 
@@ -13,11 +15,9 @@ LadderDiagramGenerator::LadderDiagramGenerator() {
     participant_detector_ = std::make_unique<ParticipantDetector>();
 }
 
-LadderDiagram LadderDiagramGenerator::generate(
-    std::vector<callflow::SessionMessageRef> messages,
-    const std::string& session_id,
-    const std::string& title
-) {
+LadderDiagram LadderDiagramGenerator::generate(std::vector<callflow::SessionMessageRef> messages,
+                                               const std::string& session_id,
+                                               const std::string& title) {
     LadderDiagram diagram;
     diagram.session_id = session_id.empty() ? generateUuid() : session_id;
     diagram.title = title.empty() ? "Network Flow Diagram" : title;
@@ -29,16 +29,15 @@ LadderDiagram LadderDiagramGenerator::generate(
 
     // Sort messages by timestamp
     std::sort(messages.begin(), messages.end(),
-        [](const callflow::SessionMessageRef& a, const callflow::SessionMessageRef& b) {
-            return a.timestamp < b.timestamp;
-        });
+              [](const callflow::SessionMessageRef& a, const callflow::SessionMessageRef& b) {
+                  return a.timestamp < b.timestamp;
+              });
 
     // Set time range
     diagram.start_time = messages.front().timestamp;
     diagram.end_time = messages.back().timestamp;
     diagram.duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-        messages.back().timestamp - messages.front().timestamp
-    );
+        messages.back().timestamp - messages.front().timestamp);
 
     // Convert messages to ladder events
     std::vector<LadderEvent> events;
@@ -76,10 +75,8 @@ LadderDiagram LadderDiagramGenerator::generate(
     return diagram;
 }
 
-LadderDiagram LadderDiagramGenerator::generateFromSession(
-    const callflow::Session& session,
-    const std::string& title
-) {
+LadderDiagram LadderDiagramGenerator::generateFromSession(const callflow::Session& session,
+                                                          const std::string& title) {
     // Get all messages from the session
     std::vector<callflow::SessionMessageRef> messages = session.getAllMessages();
 
@@ -97,19 +94,14 @@ LadderDiagram LadderDiagramGenerator::generateFromSession(
     return generate(messages, session.session_id, diagram_title);
 }
 
-void LadderDiagramGenerator::addParticipantMapping(
-    const std::string& ip,
-    const std::string& name,
-    ParticipantType type
-) {
+void LadderDiagramGenerator::addParticipantMapping(const std::string& ip, const std::string& name,
+                                                   ParticipantType type) {
     participant_detector_->addExplicitMapping(ip, name, type);
 }
 
-LadderEvent LadderDiagramGenerator::createLadderEvent(
-    const callflow::SessionMessageRef& msg,
-    const std::string& from_participant,
-    const std::string& to_participant
-) {
+LadderEvent LadderDiagramGenerator::createLadderEvent(const callflow::SessionMessageRef& msg,
+                                                      const std::string& from_participant,
+                                                      const std::string& to_participant) {
     LadderEvent event;
 
     // Generate event ID
@@ -117,9 +109,9 @@ LadderEvent LadderDiagramGenerator::createLadderEvent(
 
     // Set timestamps
     event.timestamp = msg.timestamp;
-    event.timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
-        msg.timestamp.time_since_epoch()
-    ).count();
+    event.timestamp_us =
+        std::chrono::duration_cast<std::chrono::microseconds>(msg.timestamp.time_since_epoch())
+            .count();
 
     // Set participants
     event.from_participant = from_participant;
@@ -149,6 +141,12 @@ LadderEvent LadderDiagramGenerator::createLadderEvent(
         event.correlation_id = msg.correlation_key.imsi.value();
     } else if (msg.correlation_key.sip_call_id.has_value()) {
         event.correlation_id = msg.correlation_key.sip_call_id.value();
+    }
+
+    // Set procedure type if available
+    if (msg.correlation_key.procedure_type.has_value()) {
+        event.procedure =
+            callflow::procedureTypeToString(msg.correlation_key.procedure_type.value());
     }
 
     // Store original message ID
@@ -210,12 +208,10 @@ std::string LadderDiagramGenerator::identifyInterface(const callflow::SessionMes
     }
 }
 
-std::string LadderDiagramGenerator::identifyGtpInterface(
-    const callflow::SessionMessageRef& msg,
-    ParticipantType src_type,
-    ParticipantType dst_type
-) {
-    (void)msg; // Suppress unused parameter warning
+std::string LadderDiagramGenerator::identifyGtpInterface(const callflow::SessionMessageRef& msg,
+                                                         ParticipantType src_type,
+                                                         ParticipantType dst_type) {
+    (void)msg;  // Suppress unused parameter warning
 
     // S11: MME <-> S-GW
     if ((src_type == ParticipantType::MME && dst_type == ParticipantType::SGW) ||
@@ -235,7 +231,8 @@ std::string LadderDiagramGenerator::identifyGtpInterface(
     return "GTP-C";
 }
 
-std::string LadderDiagramGenerator::identifyDiameterInterface(const callflow::SessionMessageRef& msg) {
+std::string LadderDiagramGenerator::identifyDiameterInterface(
+    const callflow::SessionMessageRef& msg) {
     // Try to extract Application-ID from parsed data
     if (msg.parsed_data.contains("application_id")) {
         uint32_t app_id = msg.parsed_data["application_id"].get<uint32_t>();
@@ -245,13 +242,13 @@ std::string LadderDiagramGenerator::identifyDiameterInterface(const callflow::Se
                 return "S6a";  // MME <-> HSS
 
             case 16777238:
-                return "Gx";   // PCRF <-> P-GW
+                return "Gx";  // PCRF <-> P-GW
 
             case 16777236:
-                return "Rx";   // P-CSCF <-> PCRF
+                return "Rx";  // P-CSCF <-> PCRF
 
             case 16777217:
-                return "Sh";   // AS <-> HSS
+                return "Sh";  // AS <-> HSS
 
             case 16777250:
                 return "S6d";  // MME <-> HSS (SMS)
@@ -260,7 +257,7 @@ std::string LadderDiagramGenerator::identifyDiameterInterface(const callflow::Se
                 return "S13";  // MME <-> EIR
 
             case 16777272:
-                return "Sy";   // PCRF <-> OCS
+                return "Sy";  // PCRF <-> OCS
 
             default:
                 return "DIAMETER";
@@ -270,7 +267,8 @@ std::string LadderDiagramGenerator::identifyDiameterInterface(const callflow::Se
     return "DIAMETER";
 }
 
-MessageDirection LadderDiagramGenerator::determineDirection(const callflow::SessionMessageRef& msg) {
+MessageDirection LadderDiagramGenerator::determineDirection(
+    const callflow::SessionMessageRef& msg) {
     if (isRequest(msg.message_type)) {
         return MessageDirection::REQUEST;
     } else if (isResponse(msg.message_type)) {
@@ -359,7 +357,8 @@ bool LadderDiagramGenerator::isResponse(callflow::MessageType msg_type) {
     }
 }
 
-std::optional<callflow::MessageType> LadderDiagramGenerator::getRequestForResponse(callflow::MessageType response_type) {
+std::optional<callflow::MessageType> LadderDiagramGenerator::getRequestForResponse(
+    callflow::MessageType response_type) {
     // Map responses to their corresponding requests
     switch (response_type) {
         case callflow::MessageType::GTP_CREATE_SESSION_RESP:
@@ -419,8 +418,7 @@ void LadderDiagramGenerator::calculateLatencies(std::vector<LadderEvent>& events
                 if (it != pending_requests.end()) {
                     // Calculate latency
                     auto latency = std::chrono::duration_cast<std::chrono::microseconds>(
-                        event.timestamp - it->second->timestamp
-                    );
+                        event.timestamp - it->second->timestamp);
                     event.latency_us = latency.count();
 
                     // Remove matched request
@@ -432,8 +430,7 @@ void LadderDiagramGenerator::calculateLatencies(std::vector<LadderEvent>& events
 }
 
 std::vector<ProcedureGroup> LadderDiagramGenerator::groupEventsByProcedure(
-    const std::vector<LadderEvent>& events
-) {
+    const std::vector<LadderEvent>& events) {
     std::vector<ProcedureGroup> procedures;
     std::unordered_map<std::string, size_t> procedure_map;  // procedure_name -> index
 
@@ -467,8 +464,7 @@ std::vector<ProcedureGroup> LadderDiagramGenerator::groupEventsByProcedure(
             // Calculate duration
             if (proc.end_time.has_value()) {
                 proc.duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    proc.end_time.value() - proc.start_time
-                );
+                    proc.end_time.value() - proc.start_time);
             }
         }
     }
@@ -477,9 +473,7 @@ std::vector<ProcedureGroup> LadderDiagramGenerator::groupEventsByProcedure(
 }
 
 LadderMetrics LadderDiagramGenerator::calculateMetrics(
-    const std::vector<LadderEvent>& events,
-    const std::vector<ProcedureGroup>& procedures
-) {
+    const std::vector<LadderEvent>& events, const std::vector<ProcedureGroup>& procedures) {
     (void)procedures;  // Suppress unused parameter warning
 
     LadderMetrics metrics;
@@ -493,22 +487,19 @@ LadderMetrics LadderDiagramGenerator::calculateMetrics(
 
     // Calculate total duration
     metrics.total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        events.back().timestamp - events.front().timestamp
-    );
+        events.back().timestamp - events.front().timestamp);
 
     // Calculate average inter-event time
     if (events.size() > 1) {
         uint64_t total_inter_event_us = 0;
         for (size_t i = 1; i < events.size(); ++i) {
             auto diff = std::chrono::duration_cast<std::chrono::microseconds>(
-                events[i].timestamp - events[i-1].timestamp
-            );
+                events[i].timestamp - events[i - 1].timestamp);
             total_inter_event_us += diff.count();
         }
         uint64_t avg_us = total_inter_event_us / (events.size() - 1);
         metrics.average_inter_event = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::microseconds(avg_us)
-        );
+            std::chrono::microseconds(avg_us));
     }
 
     // Collect named latencies
@@ -560,7 +551,8 @@ std::string LadderDiagramGenerator::generateUuid() {
     return ss.str();
 }
 
-nlohmann::json LadderDiagramGenerator::extractMessageDetails(const callflow::SessionMessageRef& msg) {
+nlohmann::json LadderDiagramGenerator::extractMessageDetails(
+    const callflow::SessionMessageRef& msg) {
     // Return a subset of parsed_data that's relevant for the ladder diagram
     nlohmann::json details;
 
@@ -600,4 +592,4 @@ std::string LadderDiagramGenerator::getProtocolName(callflow::ProtocolType proto
     return protocolTypeToString(protocol);
 }
 
-} // namespace flowviz
+}  // namespace flowviz

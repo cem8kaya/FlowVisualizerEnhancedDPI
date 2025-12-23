@@ -84,18 +84,27 @@
                 </div>
             </div>
             <div class="card-body">
+                <!-- Filters -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control form-control-sm" id="imsiFilter" placeholder="Filter by IMSI">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control form-control-sm" id="msisdnFilter" placeholder="Filter by MSISDN">
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-hover" id="sessionsTable">
                         <thead>
                             <tr>
-                                <th>Session ID</th>
-                                <th>Type</th>
+                                <th>Master ID</th>
+                                <th>IMSI</th>
+                                <th>MSISDN</th>
                                 <th>Protocols</th>
-                                <th>Key</th>
                                 <th>Start Time</th>
                                 <th>Duration</th>
-                                <th>Packets</th>
-                                <th>Bytes</th>
+                                <th>Events</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>

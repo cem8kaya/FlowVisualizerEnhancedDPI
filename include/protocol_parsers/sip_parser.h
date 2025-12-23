@@ -158,6 +158,9 @@ public:
      */
     static MessageType getMessageType(const SipMessage& msg);
 
+    // Register fields with FieldRegistry
+    static void registerFields();
+
 private:
     bool parseRequestLine(const std::string& line, SipMessage& msg);
     bool parseStatusLine(const std::string& line, SipMessage& msg);

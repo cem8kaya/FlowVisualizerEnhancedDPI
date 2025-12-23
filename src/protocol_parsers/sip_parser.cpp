@@ -4,7 +4,9 @@
 #include <cctype>
 #include <sstream>
 
+#include "common/field_registry.h"
 #include "common/logger.h"
+#include "common/parsed_packet.h"
 
 namespace callflow {
 
@@ -1004,6 +1006,91 @@ void SipParser::parseSdpMediaDirection(SipMessage::SdpInfo& sdp,
             sdp.media_direction = "inactive";
         }
     }
+}
+
+// ============================================================================
+// Field Registration
+// ============================================================================
+
+void SipParser::registerFields() {
+    auto& registry = FieldRegistry::getInstance();
+
+    // Call-ID
+    registry.registerField("sip.call_id", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const SipMessage*>(&pkt->message)) {
+            return (*msg)->call_id;
+        }
+        return "";
+    });
+
+    // Method
+    registry.registerField("sip.method", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const SipMessage*>(&pkt->message)) {
+            if ((*msg)->is_request)
+                return (*msg)->method;
+        }
+        return "";
+    });
+
+    // Status Code
+    registry.registerField("sip.status_code", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const SipMessage*>(&pkt->message)) {
+            if (!(*msg)->is_request)
+                return static_cast<int64_t>((*msg)->status_code);
+        }
+        return static_cast<int64_t>(0);
+    });
+
+    // P-Access-Network-Info Access Type
+    registry.registerField("sip.pani.access_type", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const SipMessage*>(&pkt->message)) {
+            if ((*msg)->p_access_network_info.has_value()) {
+                return SipPAccessNetworkInfo::accessTypeToString(
+                    (*msg)->p_access_network_info->access_type);
+            }
+        }
+        return "";
+    });
+
+    // Reason Cause
+    registry.registerField("sip.reason.cause", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const SipMessage*>(&pkt->message)) {
+            if ((*msg)->reason.has_value())
+                return (*msg)->reason.value();
+        }
+        return "";
+    });
+
+    // P-Asserted-Identity (Normalized MSISDN)
+    registry.registerField("sip.pai.msisdn", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const SipMessage*>(&pkt->message)) {
+            if ((*msg)->p_asserted_identity.has_value() && !(*msg)->p_asserted_identity->empty()) {
+                const auto& uri = (*msg)->p_asserted_identity->front().uri;
+                // Normalize: sip:+123456789@domain -> 123456789
+                size_t start = uri.find("sip:");
+                if (start != std::string::npos)
+                    start += 4;
+                else
+                    start = 0;
+
+                size_t end = uri.find('@', start);
+                if (end == std::string::npos)
+                    end = uri.length();
+
+                std::string user = uri.substr(start, end - start);
+                if (!user.empty() && user[0] == '+')
+                    user = user.substr(1);
+                return user;
+            }
+        }
+        return "";
+    });
 }
 
 }  // namespace callflow

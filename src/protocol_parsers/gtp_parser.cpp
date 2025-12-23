@@ -3,9 +3,12 @@
 #include <arpa/inet.h>
 
 #include <cstring>
+#include <iomanip>
 #include <sstream>
 
+#include "common/field_registry.h"
 #include "common/logger.h"
+#include "common/parsed_packet.h"
 
 namespace callflow {
 
@@ -542,6 +545,72 @@ std::string GtpParser::decodeApn(const std::vector<uint8_t>& data) {
     }
 
     return oss.str();
+}
+
+// ============================================================================
+// Field Registration
+// ============================================================================
+
+void GtpParser::registerFields() {
+    auto& registry = FieldRegistry::getInstance();
+
+    // Message Type
+    registry.registerField("gtpv2.message_type", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const GtpMessage*>(&pkt->message)) {
+            return static_cast<int64_t>((*msg)->header.message_type);
+        }
+        return static_cast<int64_t>(0);
+    });
+
+    // TEID
+    registry.registerField("gtpv2.teid", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const GtpMessage*>(&pkt->message)) {
+            if ((*msg)->header.teid_present)
+                return static_cast<int64_t>((*msg)->header.teid);
+        }
+        return static_cast<int64_t>(0);
+    });
+
+    // IMSI
+    registry.registerField("gtpv2.imsi", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const GtpMessage*>(&pkt->message)) {
+            if ((*msg)->imsi.has_value())
+                return (*msg)->imsi.value();
+        }
+        return "";
+    });
+
+    // MSISDN
+    registry.registerField("gtpv2.msisdn", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const GtpMessage*>(&pkt->message)) {
+            if ((*msg)->msisdn.has_value())
+                return (*msg)->msisdn.value();
+        }
+        return "";
+    });
+
+    // ULI (Raw bytes for now, or could decode if we had a decoder)
+    // The request said "Extract gtpv2.uli: IE Type 86".
+    // The existing parser extracts it to `msg.user_location_info` (vector<uint8_t>).
+    // We'll return it as a hex string for now or raw bytes? Variant supports string.
+    registry.registerField("gtpv2.uli", [](const void* ptr) -> FieldValue {
+        auto pkt = static_cast<const ParsedPacket*>(ptr);
+        if (auto msg = std::get_if<const GtpMessage*>(&pkt->message)) {
+            if ((*msg)->user_location_info.has_value()) {
+                const auto& data = (*msg)->user_location_info.value();
+                // Return as hex string
+                std::ostringstream oss;
+                for (uint8_t b : data)
+                    oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
+                return oss.str();
+            }
+        }
+        return "";
+    });
 }
 
 }  // namespace callflow

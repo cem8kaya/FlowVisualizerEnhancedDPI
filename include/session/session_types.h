@@ -44,6 +44,28 @@ enum class EnhancedSessionType {
 };
 
 /**
+ * Procedure Type enumeration
+ */
+enum class ProcedureType {
+    UNKNOWN = 0,
+    LTE_ATTACH,
+    LTE_DETACH,
+    LTE_SERVICE_REQUEST,
+    LTE_HANDOVER_X2,
+    LTE_HANDOVER_S1,
+    FIVEG_REGISTRATION,
+    FIVEG_DEREGISTRATION,
+    FIVEG_PDU_SESSION_ESTABLISHMENT,
+    FIVEG_PDU_SESSION_RELEASE,
+    FIVEG_HANDOVER,
+    VOLTE_CALL_SETUP,
+    VOLTE_CALL_RELEASE
+};
+
+std::string procedureTypeToString(ProcedureType type);
+ProcedureType stringToProcedureType(const std::string& str);
+
+/**
  * Interface Type enumeration
  * Identifies the 3GPP interface where a message was captured
  */
@@ -110,9 +132,10 @@ struct SessionCorrelationKey {
     std::optional<std::string> network_instance;
 
     // Application identifiers
-    std::optional<std::string> sip_call_id;  // SIP Call-ID for VoLTE
-    std::optional<std::string> icid;         // IMS Charging Identifier
-    std::optional<uint32_t> rtp_ssrc;        // RTP SSRC
+    std::optional<std::string> sip_call_id;       // SIP Call-ID for VoLTE
+    std::optional<std::string> icid;              // IMS Charging Identifier
+    std::optional<uint32_t> rtp_ssrc;             // RTP SSRC
+    std::optional<ProcedureType> procedure_type;  // Associated procedure type
 
     /**
      * Check if this key matches another key (partial match)
@@ -241,9 +264,16 @@ struct VolteMasterSession {
     std::string master_uuid;
     std::string imsi;
     std::string msisdn;
-    Session* gtp_anchor;                // Pointer to the GTP session
-    std::vector<Session*> sip_legs;     // Associated SIP calls
-    std::vector<Session*> diameter_tx;  // Associated Diameter transactions
+
+    // Linked Session IDs (instead of pointers for safety)
+    std::optional<std::string> gtp_session_id;      // Anchor GTP session
+    std::vector<std::string> sip_session_ids;       // Associated SIP calls
+    std::vector<std::string> diameter_session_ids;  // Associated Diameter transactions
+
+    std::chrono::system_clock::time_point start_time;
+    std::chrono::system_clock::time_point last_update_time;
+
+    nlohmann::json toJson() const;
 };
 
 /**

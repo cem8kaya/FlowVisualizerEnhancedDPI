@@ -12,78 +12,12 @@ nlohmann::json ProcedureStep::toJson() const {
     j["step_name"] = step_name;
     j["message_type"] = messageTypeToString(message_type);
     j["timestamp"] =
-        std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch())
-            .count();
+        std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch()).count();
     if (latency_from_previous.has_value()) {
         j["latency_ms"] = latency_from_previous->count();
     }
     j["expected"] = expected;
     return j;
-}
-
-// ============================================================================
-// ProcedureType helpers
-// ============================================================================
-
-std::string procedureTypeToString(ProcedureType type) {
-    switch (type) {
-        case ProcedureType::UNKNOWN:
-            return "UNKNOWN";
-        case ProcedureType::LTE_ATTACH:
-            return "LTE_ATTACH";
-        case ProcedureType::LTE_DETACH:
-            return "LTE_DETACH";
-        case ProcedureType::LTE_SERVICE_REQUEST:
-            return "LTE_SERVICE_REQUEST";
-        case ProcedureType::LTE_HANDOVER_X2:
-            return "LTE_HANDOVER_X2";
-        case ProcedureType::LTE_HANDOVER_S1:
-            return "LTE_HANDOVER_S1";
-        case ProcedureType::FIVEG_REGISTRATION:
-            return "5G_REGISTRATION";
-        case ProcedureType::FIVEG_DEREGISTRATION:
-            return "5G_DEREGISTRATION";
-        case ProcedureType::FIVEG_PDU_SESSION_ESTABLISHMENT:
-            return "5G_PDU_SESSION_ESTABLISHMENT";
-        case ProcedureType::FIVEG_PDU_SESSION_RELEASE:
-            return "5G_PDU_SESSION_RELEASE";
-        case ProcedureType::FIVEG_HANDOVER:
-            return "5G_HANDOVER";
-        case ProcedureType::VOLTE_CALL_SETUP:
-            return "VOLTE_CALL_SETUP";
-        case ProcedureType::VOLTE_CALL_RELEASE:
-            return "VOLTE_CALL_RELEASE";
-        default:
-            return "UNKNOWN";
-    }
-}
-
-ProcedureType stringToProcedureType(const std::string& str) {
-    if (str == "LTE_ATTACH")
-        return ProcedureType::LTE_ATTACH;
-    if (str == "LTE_DETACH")
-        return ProcedureType::LTE_DETACH;
-    if (str == "LTE_SERVICE_REQUEST")
-        return ProcedureType::LTE_SERVICE_REQUEST;
-    if (str == "LTE_HANDOVER_X2")
-        return ProcedureType::LTE_HANDOVER_X2;
-    if (str == "LTE_HANDOVER_S1")
-        return ProcedureType::LTE_HANDOVER_S1;
-    if (str == "5G_REGISTRATION")
-        return ProcedureType::FIVEG_REGISTRATION;
-    if (str == "5G_DEREGISTRATION")
-        return ProcedureType::FIVEG_DEREGISTRATION;
-    if (str == "5G_PDU_SESSION_ESTABLISHMENT")
-        return ProcedureType::FIVEG_PDU_SESSION_ESTABLISHMENT;
-    if (str == "5G_PDU_SESSION_RELEASE")
-        return ProcedureType::FIVEG_PDU_SESSION_RELEASE;
-    if (str == "5G_HANDOVER")
-        return ProcedureType::FIVEG_HANDOVER;
-    if (str == "VOLTE_CALL_SETUP")
-        return ProcedureType::VOLTE_CALL_SETUP;
-    if (str == "VOLTE_CALL_RELEASE")
-        return ProcedureType::VOLTE_CALL_RELEASE;
-    return ProcedureType::UNKNOWN;
 }
 
 // ============================================================================
@@ -160,7 +94,7 @@ std::optional<std::string> extractImsi(const nlohmann::json& parsed_data) {
 }
 
 std::optional<uint32_t> extractTeid(const nlohmann::json& parsed_data,
-                                     const std::string& interface_type) {
+                                    const std::string& interface_type) {
     if (!parsed_data.contains("fteids") || !parsed_data["fteids"].is_array()) {
         return std::nullopt;
     }
@@ -189,5 +123,5 @@ std::optional<uint32_t> extractTeid(const nlohmann::json& parsed_data,
     return std::nullopt;
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

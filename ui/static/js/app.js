@@ -104,8 +104,12 @@ const app = {
     },
 
     // Get job sessions
-    async getJobSessions(jobId, page = 1, limit = 20) {
-        return await this.apiRequest(`/jobs/${jobId}/sessions?page=${page}&limit=${limit}`);
+    // Get job sessions
+    async getJobSessions(jobId, page = 1, limit = 20, imsi = '', msisdn = '') {
+        let url = `/jobs/${jobId}/sessions?page=${page}&limit=${limit}`;
+        if (imsi) url += `&imsi=${encodeURIComponent(imsi)}`;
+        if (msisdn) url += `&msisdn=${encodeURIComponent(msisdn)}`;
+        return await this.apiRequest(url);
     },
 
     // Get session details

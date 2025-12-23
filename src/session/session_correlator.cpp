@@ -24,25 +24,29 @@ void EnhancedSessionCorrelator::addMessage(const SessionMessageRef& msg) {
     std::unordered_set<std::string> matching_session_ids;
 
     // Helper to add matches from an index lookup
-    auto addFromIndex = [&](const std::unordered_map<std::string, std::vector<std::string>>& index,
-                            const std::optional<std::string>& key_val) {
+    auto addFromIndex = [&](auto& index, const auto& key_val) {
         if (key_val.has_value()) {
             auto it = index.find(key_val.value());
             if (it != index.end()) {
-                matching_session_ids.insert(it->second.begin(), it->second.end());
+                auto& sessions = it->second;
+                for (auto list_it = sessions.begin(); list_it != sessions.end();) {
+                    if (sessions_.find(*list_it) == sessions_.end()) {
+                        // Stale entry, remove it
+                        list_it = sessions.erase(list_it);
+                    } else {
+                        matching_session_ids.insert(*list_it);
+                        ++list_it;
+                    }
+                }
+                if (sessions.empty()) {
+                    index.erase(it);
+                }
             }
         }
     };
 
-    // Numeric index helper
-    auto addFromNumericIndex = [&](const auto& index, const auto& key_val) {
-        if (key_val.has_value()) {
-            auto it = index.find(key_val.value());
-            if (it != index.end()) {
-                matching_session_ids.insert(it->second.begin(), it->second.end());
-            }
-        }
-    };
+    // Numeric index helper - unify logic
+    auto addFromNumericIndex = addFromIndex;
 
     // 1. Search all indices directly (avoiding deadlock by not calling public methods)
     addFromIndex(imsi_index_, msg.correlation_key.imsi);
@@ -420,6 +424,22 @@ nlohmann::json EnhancedSessionCorrelator::exportToJson() const {
     return j;
 }
 
+std::optional<VolteMasterSession> EnhancedSessionCorrelator::getMasterSession(
+    const std::string& imsi) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = master_sessions_.find(imsi);
+    if (it != master_sessions_.end()) {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
+const std::unordered_map<std::string, VolteMasterSession>&
+EnhancedSessionCorrelator::getAllMasterSessions() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return master_sessions_;
+}
+
 // ============================================================================
 // EnhancedSessionCorrelator Private Methods
 // ============================================================================
@@ -453,6 +473,9 @@ std::string EnhancedSessionCorrelator::createNewSession(const SessionMessageRef&
     // Update indices
     updateIndices(new_session.session_id, msg.correlation_key);
 
+    // Update Master Session (Community Correlation)
+    updateMasterSession(new_session.session_id, msg);
+
     // Store session
     sessions_[new_session.session_id] = new_session;
 
@@ -472,6 +495,9 @@ void EnhancedSessionCorrelator::addMessageToSession(const std::string& session_i
 
     // Update indices with new correlation keys
     updateIndices(session_id, msg.correlation_key);
+
+    // Update Master Session (Community Correlation)
+    updateMasterSession(session_id, msg);
 }
 
 void EnhancedSessionCorrelator::updateIndices(const std::string& session_id,
@@ -555,6 +581,91 @@ void EnhancedSessionCorrelator::updateIndices(const std::string& session_id,
         auto& sessions = icid_index_[key.icid.value()];
         if (std::find(sessions.begin(), sessions.end(), session_id) == sessions.end()) {
             sessions.push_back(session_id);
+        }
+    }
+}
+
+void EnhancedSessionCorrelator::updateMasterSession(const std::string& session_id,
+                                                    const SessionMessageRef& msg) {
+    std::string imsi;
+    bool found_imsi = false;
+
+    // 1. ANCHORING: GTP Logic (Extract IMSI + IP)
+    if (msg.protocol == ProtocolType::GTP_C &&
+        msg.message_type == MessageType::GTP_CREATE_SESSION_REQ) {
+        if (msg.correlation_key.imsi.has_value()) {
+            imsi = msg.correlation_key.imsi.value();
+            found_imsi = true;
+
+            // Map UE IP to this IMSI if available (IPv4)
+            if (msg.correlation_key.ue_ipv4.has_value()) {
+                ip_to_imsi_map_[msg.correlation_key.ue_ipv4.value()] = imsi;
+                LOG_DEBUG("Mapped IP " << msg.correlation_key.ue_ipv4.value() << " -> IMSI "
+                                       << imsi);
+            }
+            // Map UE IP (IPv6)
+            if (msg.correlation_key.ue_ipv6.has_value()) {
+                ip_to_imsi_map_[msg.correlation_key.ue_ipv6.value()] = imsi;
+            }
+        }
+    }
+
+    // 2. LINKING: SIP Logic (Lookup by IP or explicit IMSI)
+    if (msg.protocol == ProtocolType::SIP) {
+        // Try explicit IMSI first
+        if (msg.correlation_key.imsi.has_value()) {
+            imsi = msg.correlation_key.imsi.value();
+            found_imsi = true;
+        }
+        // Fallback: Look up by Source IP
+        else {
+            auto it = ip_to_imsi_map_.find(msg.src_ip);
+            if (it != ip_to_imsi_map_.end()) {
+                imsi = it->second;
+                found_imsi = true;
+            }
+        }
+    }
+
+    // 3. LINKING: Diameter Logic (Explicit IMSI)
+    if (msg.protocol == ProtocolType::DIAMETER) {
+        if (msg.correlation_key.imsi.has_value()) {
+            imsi = msg.correlation_key.imsi.value();
+            found_imsi = true;
+        }
+    }
+
+    // If we identified an IMSI, update the Master Session
+    if (found_imsi) {
+        auto& master = master_sessions_[imsi];
+
+        // Initialize if new
+        if (master.imsi.empty()) {
+            master.master_uuid = generateSessionId();  // Reuse generator for UUID
+            master.imsi = imsi;
+            master.start_time = msg.timestamp;
+        }
+
+        master.last_update_time = msg.timestamp;
+        if (msg.correlation_key.msisdn.has_value()) {
+            master.msisdn = msg.correlation_key.msisdn.value();
+        }
+
+        // Link the specific session ID
+        if (msg.protocol == ProtocolType::GTP_C || msg.protocol == ProtocolType::GTP_U) {
+            master.gtp_session_id = session_id;
+        } else if (msg.protocol == ProtocolType::SIP) {
+            // Avoid duplicates
+            if (std::find(master.sip_session_ids.begin(), master.sip_session_ids.end(),
+                          session_id) == master.sip_session_ids.end()) {
+                master.sip_session_ids.push_back(session_id);
+                LOG_DEBUG("Linked SIP session " << session_id << " to Master IMSI " << imsi);
+            }
+        } else if (msg.protocol == ProtocolType::DIAMETER) {
+            if (std::find(master.diameter_session_ids.begin(), master.diameter_session_ids.end(),
+                          session_id) == master.diameter_session_ids.end()) {
+                master.diameter_session_ids.push_back(session_id);
+            }
         }
     }
 }
@@ -712,13 +823,47 @@ void EnhancedSessionCorrelator::mergeSessions(const std::string& session_id1,
     // Merge correlation keys
     session1.correlation_key.merge(session2.correlation_key);
 
-    // Update indices
+    // Update indices for session1
     updateIndices(session_id1, session2.correlation_key);
+
+    // Clean up indices that point to session_id2
+    const auto& key = session2.correlation_key;
+    auto remove_from_index = [&](auto& index_map, const auto& key_val) {
+        if (index_map.count(key_val)) {
+            auto& sessions = index_map[key_val];
+            sessions.erase(std::remove(sessions.begin(), sessions.end(), session_id2),
+                           sessions.end());
+            if (sessions.empty()) {
+                index_map.erase(key_val);
+            }
+        }
+    };
+
+    if (key.imsi.has_value())
+        remove_from_index(imsi_index_, key.imsi.value());
+    if (key.supi.has_value())
+        remove_from_index(supi_index_, key.supi.value());
+    if (key.teid_s1u.has_value())
+        remove_from_index(teid_index_, key.teid_s1u.value());
+    if (key.teid_s5u.has_value())
+        remove_from_index(teid_index_, key.teid_s5u.value());
+    if (key.seid_n4.has_value())
+        remove_from_index(seid_index_, key.seid_n4.value());
+    if (key.ue_ipv4.has_value())
+        remove_from_index(ue_ip_index_, key.ue_ipv4.value());
+    if (key.ue_ipv6.has_value())
+        remove_from_index(ue_ip_index_, key.ue_ipv6.value());
+    if (key.mme_ue_s1ap_id.has_value())
+        remove_from_index(mme_ue_id_index_, key.mme_ue_s1ap_id.value());
+    if (key.amf_ue_ngap_id.has_value())
+        remove_from_index(amf_ue_id_index_, key.amf_ue_ngap_id.value());
+    if (key.msisdn.has_value())
+        remove_from_index(msisdn_index_, key.msisdn.value());
+    if (key.icid.has_value())
+        remove_from_index(icid_index_, key.icid.value());
 
     // Remove session2
     sessions_.erase(session_id2);
-
-    // TODO: Clean up indices that point to session_id2
 
     LOG_INFO("Merged session " << session_id2 << " into " << session_id1);
 }
