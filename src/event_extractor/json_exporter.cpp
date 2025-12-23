@@ -5,6 +5,7 @@
 #include <set>
 
 #include "common/logger.h"
+#include "common/types.h"
 #include "common/utils.h"
 #include "session/session_correlator.h"
 
@@ -186,25 +187,30 @@ std::string JsonExporter::exportMasterSessions(const EnhancedSessionCorrelator& 
             j_event["dst_port"] = msg.dst_port;
 
             // Map Protocol Type to String
+            std::string protocol_str;
             switch (msg.protocol) {
                 case ProtocolType::GTP_C:
-                    j_event["proto"] = "GTPv2-C";
+                    protocol_str = "GTPv2-C";
                     break;
                 case ProtocolType::GTP_U:
-                    j_event["proto"] = "GTPv2-U";
+                    protocol_str = "GTPv2-U";
                     break;
                 case ProtocolType::SIP:
-                    j_event["proto"] = "SIP";
+                    protocol_str = "SIP";
                     break;
                 case ProtocolType::DIAMETER:
-                    j_event["proto"] = "DIAMETER";
+                    protocol_str = "DIAMETER";
                     break;
                 default:
-                    j_event["proto"] = "UNKNOWN";
+                    protocol_str = "UNKNOWN";
             }
+            j_event["proto"] = protocol_str;
+            j_event["protocol"] = protocol_str;  // Alias for UI compatibility
 
             // Message Type
             j_event["type_id"] = static_cast<int>(msg.message_type);
+            j_event["message_type"] = messageTypeToString(msg.message_type);
+            j_event["short"] = messageTypeToString(msg.message_type);  // Short description
 
             // Add details
             j_event["details"] = {{"src_ip", msg.src_ip},
@@ -231,6 +237,9 @@ std::string JsonExporter::exportMasterSessions(const EnhancedSessionCorrelator& 
         }
 
         j_master["end_time"] = end_time;
+
+        // Add duration_ms at top level for UI compatibility
+        j_master["duration_ms"] = end_time - start_time;
 
         j_master["metrics"] = {{"packets", total_packets},
                                {"bytes", total_bytes},
