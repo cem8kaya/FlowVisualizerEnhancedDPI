@@ -177,6 +177,10 @@ add_library(pcap_ingest STATIC
     pcap_ingest/link_layer_parser.cpp
     pcap_ingest/ip_reassembler.cpp
     pcap_ingest/tcp_reassembler.cpp
+    pcap_ingest/tcp_state_machine.cpp
+    pcap_ingest/sip_framer.cpp
+    pcap_ingest/diameter_framer.cpp
+    pcap_ingest/http2_framer.cpp
     pcap_ingest/packet_processor.cpp
 )
 target_include_directories(pcap_ingest PUBLIC
