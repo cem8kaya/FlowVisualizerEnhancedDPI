@@ -84,6 +84,129 @@ struct PcapngInterface {
 };
 
 /**
+ * Extended Interface Information with Telecom-Specific Classification
+ * This structure matches the prompt requirements for enhanced telecom interface detection
+ */
+struct PcapngInterfaceInfo {
+    uint32_t interface_id;
+    uint16_t link_type;
+    uint32_t snap_len;
+    std::string name;
+    std::string description;
+    std::optional<uint8_t> ts_resolution;
+
+    /**
+     * Telecom Interface Types for Mobile Networks
+     */
+    enum class TelecomInterface {
+        UNKNOWN,
+        S1_MME,      // S1-MME (Control plane between eNodeB and MME) - SCTP port 36412
+        S1_U,        // S1-U (User plane between eNodeB and S-GW) - GTP-U port 2152
+        S5_S8_C,     // S5/S8 Control Plane - GTP-C port 2123
+        S5_S8_U,     // S5/S8 User Plane - GTP-U port 2152
+        S6A,         // S6a (MME to HSS) - Diameter port 3868
+        SG_I,        // SGi (P-GW to external PDN) - HTTP/HTTPS
+        GX,          // Gx (PCEF to PCRF) - Diameter port 3868
+        RX,          // Rx (P-CSCF to PCRF) - Diameter port 3868
+        GY,          // Gy (PCEF to OCS) - Diameter port 3868
+        X2_C,        // X2 Control Plane (eNodeB to eNodeB) - SCTP port 36422
+        N2,          // N2 (5G: gNB to AMF) - SCTP port 38412
+        N3,          // N3 (5G: gNB to UPF) - GTP-U port 2152
+        N4,          // N4 (5G: SMF to UPF) - PFCP port 8805
+        N6,          // N6 (5G: UPF to Data Network) - HTTP/HTTPS
+        IMS_SIP,     // IMS SIP Interface - SIP port 5060/5061
+        RTP_MEDIA    // RTP Media Interface - RTP ports 10000-20000
+    };
+
+    TelecomInterface telecom_type = TelecomInterface::UNKNOWN;
+
+    /**
+     * Convert PcapngInterface to PcapngInterfaceInfo
+     */
+    static PcapngInterfaceInfo fromPcapngInterface(const PcapngInterface& iface) {
+        PcapngInterfaceInfo info;
+        info.interface_id = iface.interface_id;
+        info.link_type = iface.link_type;
+        info.snap_len = iface.snap_len;
+        info.name = iface.name.value_or("");
+        info.description = iface.description.value_or("");
+        info.ts_resolution = iface.timestamp_resolution;
+        info.telecom_type = TelecomInterface::UNKNOWN;
+        return info;
+    }
+
+    /**
+     * Get timestamp resolution in nanoseconds (same logic as PcapngInterface)
+     */
+    uint64_t getTimestampResolutionNs() const {
+        if (!ts_resolution.has_value()) {
+            return 1000000;  // Default: microseconds
+        }
+        uint8_t res = ts_resolution.value();
+        if (res & 0x80) {
+            // Negative power of 2
+            return 1000000000ULL >> (res & 0x7F);
+        } else {
+            // Negative power of 10
+            uint64_t divisor = 1;
+            for (int i = 0; i < res; i++) {
+                divisor *= 10;
+            }
+            return 1000000000ULL / divisor;
+        }
+    }
+};
+
+/**
+ * Packet information extracted from Enhanced Packet Block
+ */
+struct PcapngPacketInfo {
+    uint32_t interface_id;
+    uint64_t timestamp_high;
+    uint64_t timestamp_low;
+    uint32_t captured_len;
+    uint32_t original_len;
+    std::vector<uint8_t> packet_data;
+    std::optional<uint32_t> flags;
+
+    enum class Direction { UNKNOWN, INBOUND, OUTBOUND };
+
+    /**
+     * Get packet direction from flags
+     */
+    Direction getDirection() const {
+        if (!flags.has_value()) return Direction::UNKNOWN;
+        uint32_t dir = flags.value() & 0x03;
+        if (dir == 1) return Direction::INBOUND;
+        if (dir == 2) return Direction::OUTBOUND;
+        return Direction::UNKNOWN;
+    }
+
+    /**
+     * Get timestamp in nanoseconds
+     * @param ts_resolution Timestamp resolution (default: 6 = microseconds)
+     */
+    uint64_t getTimestampNs(uint8_t ts_resolution = 6) const {
+        uint64_t timestamp = (static_cast<uint64_t>(timestamp_high) << 32) | timestamp_low;
+
+        // Convert based on resolution
+        if (ts_resolution & 0x80) {
+            // Negative power of 2
+            uint64_t resolution_ns = 1000000000ULL >> (ts_resolution & 0x7F);
+            return timestamp * resolution_ns;
+        } else {
+            // Negative power of 10
+            uint64_t divisor = 1;
+            for (int i = 0; i < ts_resolution; i++) {
+                divisor *= 10;
+            }
+            uint64_t resolution_ns = 1000000000ULL / divisor;
+            return timestamp * resolution_ns;
+        }
+    }
+};
+
+/**
  * Packet metadata extracted from Enhanced Packet Block options
  */
 struct PcapngPacketMetadata {
