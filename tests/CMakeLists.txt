@@ -501,4 +501,42 @@ set_tests_properties(test_tcp_retransmission PROPERTIES
     LABELS "unit"
 )
 
+# Interface Detection Tests
+add_executable(test_interface_detection
+    unit/test_interface_detection.cpp
+)
+
+target_link_libraries(test_interface_detection PRIVATE
+    callflow_common
+    pcap_ingest
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_interface_detection COMMAND test_interface_detection)
+
+set_tests_properties(test_interface_detection PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Multi-Interface PCAPNG Integration Tests
+add_executable(test_multi_interface_pcapng
+    integration/test_multi_interface_pcapng.cpp
+)
+
+target_link_libraries(test_multi_interface_pcapng PRIVATE
+    callflow_common
+    pcap_ingest
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_multi_interface_pcapng COMMAND test_multi_interface_pcapng)
+
+set_tests_properties(test_multi_interface_pcapng PROPERTIES
+    TIMEOUT 60
+    LABELS "integration"
+)
+
 message(STATUS "Unit tests configured successfully")

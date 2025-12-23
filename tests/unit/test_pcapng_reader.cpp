@@ -387,6 +387,163 @@ TEST(FormatDetectorTest, RecommendedReader) {
     EXPECT_EQ(PcapFormatDetector::getRecommendedReader(PcapFormat::ERF), "");
 }
 
+/**
+ * Test fixture for new PcapngInterfaceInfo and PcapngPacketInfo structures
+ */
+class PcapngEnhancedStructuresTest : public ::testing::Test {
+protected:
+    void SetUp() override {}
+    void TearDown() override {}
+};
+
+// Test PcapngInterfaceInfo structure
+TEST_F(PcapngEnhancedStructuresTest, PcapngInterfaceInfoBasic) {
+    PcapngInterfaceInfo info;
+    info.interface_id = 0;
+    info.link_type = 1;
+    info.snap_len = 65535;
+    info.name = "eth0-S1-MME";
+    info.description = "S1-MME Control Plane";
+    info.telecom_type = PcapngInterfaceInfo::TelecomInterface::S1_MME;
+
+    EXPECT_EQ(info.interface_id, 0);
+    EXPECT_EQ(info.link_type, 1);
+    EXPECT_EQ(info.snap_len, 65535);
+    EXPECT_EQ(info.name, "eth0-S1-MME");
+    EXPECT_EQ(info.telecom_type, PcapngInterfaceInfo::TelecomInterface::S1_MME);
+}
+
+// Test PcapngInterfaceInfo timestamp resolution
+TEST_F(PcapngEnhancedStructuresTest, InterfaceInfoTimestampResolution) {
+    PcapngInterfaceInfo info;
+
+    // Default (no resolution set) should be microseconds
+    EXPECT_EQ(info.getTimestampResolutionNs(), 1000000ULL);
+
+    // Nanoseconds (9)
+    info.ts_resolution = 9;
+    EXPECT_EQ(info.getTimestampResolutionNs(), 1ULL);
+
+    // Milliseconds (3)
+    info.ts_resolution = 3;
+    EXPECT_EQ(info.getTimestampResolutionNs(), 1000000ULL);
+}
+
+// Test PcapngInterfaceInfo conversion from PcapngInterface
+TEST_F(PcapngEnhancedStructuresTest, ConversionFromPcapngInterface) {
+    PcapngInterface iface;
+    iface.interface_id = 1;
+    iface.link_type = 1;
+    iface.snap_len = 65535;
+    iface.name = "eth1-S1-U";
+    iface.description = "S1-U User Plane";
+    iface.timestamp_resolution = 6;  // Microseconds
+
+    PcapngInterfaceInfo info = PcapngInterfaceInfo::fromPcapngInterface(iface);
+
+    EXPECT_EQ(info.interface_id, 1);
+    EXPECT_EQ(info.link_type, 1);
+    EXPECT_EQ(info.snap_len, 65535);
+    EXPECT_EQ(info.name, "eth1-S1-U");
+    EXPECT_EQ(info.description, "S1-U User Plane");
+    EXPECT_EQ(info.ts_resolution.value(), 6);
+    EXPECT_EQ(info.telecom_type, PcapngInterfaceInfo::TelecomInterface::UNKNOWN);
+}
+
+// Test PcapngPacketInfo structure
+TEST_F(PcapngEnhancedStructuresTest, PcapngPacketInfoBasic) {
+    PcapngPacketInfo packet;
+    packet.interface_id = 0;
+    packet.timestamp_high = 0;
+    packet.timestamp_low = 1000000;  // 1 millisecond in microseconds
+    packet.captured_len = 100;
+    packet.original_len = 100;
+    packet.packet_data.resize(100);
+
+    EXPECT_EQ(packet.interface_id, 0);
+    EXPECT_EQ(packet.captured_len, 100);
+    EXPECT_EQ(packet.original_len, 100);
+}
+
+// Test PcapngPacketInfo direction
+TEST_F(PcapngEnhancedStructuresTest, PacketInfoDirection) {
+    PcapngPacketInfo packet;
+
+    // No flags set
+    EXPECT_EQ(packet.getDirection(), PcapngPacketInfo::Direction::UNKNOWN);
+
+    // Inbound
+    packet.flags = 1;
+    EXPECT_EQ(packet.getDirection(), PcapngPacketInfo::Direction::INBOUND);
+
+    // Outbound
+    packet.flags = 2;
+    EXPECT_EQ(packet.getDirection(), PcapngPacketInfo::Direction::OUTBOUND);
+}
+
+// Test PcapngPacketInfo timestamp conversion
+TEST_F(PcapngEnhancedStructuresTest, PacketInfoTimestampConversion) {
+    PcapngPacketInfo packet;
+
+    // Set timestamp to 1 second in microseconds
+    packet.timestamp_high = 0;
+    packet.timestamp_low = 1000000;  // 1 second
+
+    // Convert with microsecond resolution (default)
+    uint64_t ts_ns = packet.getTimestampNs(6);
+    EXPECT_EQ(ts_ns, 1000000ULL * 1000);  // 1 second in nanoseconds
+
+    // Test with nanosecond resolution
+    packet.timestamp_low = 1000000000;  // 1 second in nanoseconds
+    ts_ns = packet.getTimestampNs(9);
+    EXPECT_EQ(ts_ns, 1000000000ULL);
+}
+
+// Test TelecomInterface enum values
+TEST_F(PcapngEnhancedStructuresTest, TelecomInterfaceEnum) {
+    using TI = PcapngInterfaceInfo::TelecomInterface;
+
+    PcapngInterfaceInfo info;
+
+    info.telecom_type = TI::S1_MME;
+    EXPECT_EQ(info.telecom_type, TI::S1_MME);
+
+    info.telecom_type = TI::S1_U;
+    EXPECT_EQ(info.telecom_type, TI::S1_U);
+
+    info.telecom_type = TI::N2;
+    EXPECT_EQ(info.telecom_type, TI::N2);
+
+    info.telecom_type = TI::N3;
+    EXPECT_EQ(info.telecom_type, TI::N3);
+
+    info.telecom_type = TI::GX;
+    EXPECT_EQ(info.telecom_type, TI::GX);
+
+    info.telecom_type = TI::IMS_SIP;
+    EXPECT_EQ(info.telecom_type, TI::IMS_SIP);
+
+    info.telecom_type = TI::RTP_MEDIA;
+    EXPECT_EQ(info.telecom_type, TI::RTP_MEDIA);
+}
+
+// Test all TelecomInterface enum values
+TEST_F(PcapngEnhancedStructuresTest, AllTelecomInterfaceTypes) {
+    using TI = PcapngInterfaceInfo::TelecomInterface;
+
+    std::vector<TI> all_types = {
+        TI::UNKNOWN, TI::S1_MME, TI::S1_U, TI::S5_S8_C, TI::S5_S8_U,
+        TI::S6A, TI::SG_I, TI::GX, TI::RX, TI::GY, TI::X2_C,
+        TI::N2, TI::N3, TI::N4, TI::N6, TI::IMS_SIP, TI::RTP_MEDIA
+    };
+
+    for (auto type : all_types) {
+        PcapngInterfaceInfo info;
+        info.telecom_type = type;
+        EXPECT_EQ(info.telecom_type, type);
+    }
+}
+
 // Main function
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

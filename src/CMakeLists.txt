@@ -172,6 +172,7 @@ add_library(pcap_ingest STATIC
     pcap_ingest/pcap_reader.cpp
     pcap_ingest/pcapng_reader.cpp
     pcap_ingest/multi_interface_reader.cpp
+    pcap_ingest/interface_detector.cpp
     pcap_ingest/format_detector.cpp
     pcap_ingest/packet_queue.cpp
     pcap_ingest/link_layer_parser.cpp
