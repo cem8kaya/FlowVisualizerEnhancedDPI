@@ -1,0 +1,5 @@
+if(EXISTS "/Users/cemkaya/Developer/FlowVisualizerEnhancedDPI/build_debug/tests/test_parser_fields[1]_tests.cmake")
+  include("/Users/cemkaya/Developer/FlowVisualizerEnhancedDPI/build_debug/tests/test_parser_fields[1]_tests.cmake")
+else()
+  add_test(test_parser_fields_NOT_BUILT test_parser_fields_NOT_BUILT)
+endif()

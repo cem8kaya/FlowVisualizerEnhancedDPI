@@ -146,8 +146,8 @@ class SessionsPage {
         }
 
         tbody.innerHTML = sessions.map(s => `
-            <tr onclick="window.sessionsPage.viewSession('${s.master_id}')" style="cursor: pointer;" class="hover:bg-tertiary">
-                <td class="font-mono text-xs">${s.master_id ? s.master_id.substring(0, 8) : 'N/A'}</td>
+            <tr onclick="window.sessionsPage.viewSession('${s.master_id || s.session_id}')" style="cursor: pointer;" class="hover:bg-tertiary">
+                <td class="font-mono text-xs">${(s.master_id || s.session_id || '').substring(0, 8)}</td>
                 <td><span class="badge bg-secondary text-xs font-mono">${s.imsi || '-'}</span></td>
                 <td><span class="badge bg-secondary text-xs font-mono">${s.msisdn || '-'}</span></td>
                 <td>
@@ -157,7 +157,7 @@ class SessionsPage {
                 <td class="text-sm">${window.app.formatDuration(s.duration_ms)}</td>
                 <td class="text-center">${s.events ? s.events.length : 0}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline btn-outline-primary" onclick="event.stopPropagation(); window.sessionsPage.viewSession('${s.master_id}')">
+                    <button class="btn btn-sm btn-outline btn-outline-primary" onclick="event.stopPropagation(); window.sessionsPage.viewSession('${s.master_id || s.session_id}')">
                         <i class="bi bi-eye"></i>
                     </button>
                 </td>

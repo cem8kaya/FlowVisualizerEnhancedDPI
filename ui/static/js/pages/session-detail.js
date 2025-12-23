@@ -21,6 +21,23 @@ class SessionDetailPage {
         await this.loadSession();
 
         // Initialize interactive elements if any
+        this.setupTabListeners();
+    }
+
+    setupTabListeners() {
+        // Re-render timeline when tab becomes visible to ensure correct dimensions
+        const timelineTab = document.getElementById('timeline-tab');
+        if (timelineTab) {
+            timelineTab.addEventListener('shown.bs.tab', () => {
+                if (this.sessionData && window.timeline) {
+                    console.log('Timeline tab shown, re-rendering...');
+                    // Clear previous svg to avoid duplicates if any
+                    const container = document.getElementById('timelineViz');
+                    if (container) container.innerHTML = '';
+                    this.renderTimeline();
+                }
+            });
+        }
     }
 
     updateBackLink() {

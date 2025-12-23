@@ -1,0 +1,2 @@
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar qc libasn1_wrapper.a CMakeFiles/asn1_wrapper.dir/__/thirdparty/asn1c/s1ap_asn1_wrapper.cpp.o
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib libasn1_wrapper.a

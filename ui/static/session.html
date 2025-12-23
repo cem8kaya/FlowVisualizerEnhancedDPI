@@ -12,6 +12,9 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
 
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
@@ -156,7 +159,8 @@
                 <!-- Ladder Diagram -->
                 <div class="tab-pane fade" id="ladder">
                     <div class="card">
-                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="card-header"
+                            style="display: flex; justify-content: space-between; align-items: center;">
                             <span><i class="bi bi-arrows-vertical"></i> MSC-Style Call Flow</span>
                             <div style="display: flex; gap: 8px;">
                                 <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderZoomIn()">
@@ -226,7 +230,7 @@
     <!-- Packet Inspector Modal -->
     <div class="modal fade" id="packetModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
-            <div class="modal-content bg-secondary text-primary">
+            <div class="modal-content text-primary" style="background-color: var(--bg-secondary);">
                 <div class="modal-header border-b border-border">
                     <h5 class="modal-title">Packet Inspector</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

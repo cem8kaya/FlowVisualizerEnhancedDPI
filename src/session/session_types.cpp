@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <set>
 
 namespace callflow {
 
@@ -440,11 +441,13 @@ nlohmann::json Session::toJson() const {
         metrics["setup_time_ms"] = setup_time_ms.value();
     }
     // Add QoS metrics if available
-    if (metadata.contains("rtp_loss")) {
-        metrics["rtp_loss"] = metadata["rtp_loss"];
+    auto loss_it = metadata.find("rtp_loss");
+    if (loss_it != metadata.end()) {
+        metrics["rtp_loss"] = loss_it->second;
     }
-    if (metadata.contains("rtp_jitter_ms")) {
-        metrics["rtp_jitter_ms"] = metadata["rtp_jitter_ms"];
+    auto jitter_it = metadata.find("rtp_jitter_ms");
+    if (jitter_it != metadata.end()) {
+        metrics["rtp_jitter_ms"] = jitter_it->second;
     }
     j["metrics"] = metrics;
 

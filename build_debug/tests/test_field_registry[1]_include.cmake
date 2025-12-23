@@ -1,0 +1,5 @@
+if(EXISTS "/Users/cemkaya/Developer/FlowVisualizerEnhancedDPI/build_debug/tests/test_field_registry[1]_tests.cmake")
+  include("/Users/cemkaya/Developer/FlowVisualizerEnhancedDPI/build_debug/tests/test_field_registry[1]_tests.cmake")
+else()
+  add_test(test_field_registry_NOT_BUILT test_field_registry_NOT_BUILT)
+endif()

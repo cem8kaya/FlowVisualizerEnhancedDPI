@@ -354,9 +354,9 @@ void HttpServer::setupRoutes() {
                     }
                 }
 
-                LOG_ERROR("Debugging lookup: Job=" << job->job_id
-                                                   << " File=" << job->output_filename
-                                                   << " TargetSession=" << session_id);
+                LOG_DEBUG("Looking up session: Job=" << job->job_id
+                                                     << " File=" << job->output_filename
+                                                     << " TargetSession=" << session_id);
 
                 // Load sessions from output file
                 if (!std::filesystem::exists(job->output_filename)) {

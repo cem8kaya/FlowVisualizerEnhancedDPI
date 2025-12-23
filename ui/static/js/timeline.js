@@ -26,18 +26,49 @@ window.timeline = {
             return;
         }
 
+        // Create resize observer if not already created
+        if (!this.resizeObserver) {
+            this.resizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    if (entry.contentRect.width > 0) {
+                        this.width = entry.contentRect.width;
+                        if (!this.svg) {
+                            // First time render
+                            // Create SVG
+                            this.svg = d3.select(container)
+                                .append('svg')
+                                .attr('class', 'timeline-svg')
+                                .attr('width', this.width)
+                                .attr('height', this.height);
+                            this.render();
+                        } else {
+                            // Resize existing
+                            this.svg.attr('width', this.width);
+                            this.render(); // Re-render to adjust scales
+                        }
+                    }
+                }
+            });
+            this.resizeObserver.observe(container);
+        }
+
         // Set dimensions
         this.width = container.clientWidth;
         this.height = Math.max(500, this.participants.length * 80 + this.margin.top + this.margin.bottom);
 
-        // Create SVG
-        this.svg = d3.select(container)
-            .append('svg')
-            .attr('class', 'timeline-svg')
-            .attr('width', this.width)
-            .attr('height', this.height);
+        // If we have width, render immediately
+        if (this.width > 0) {
+            // Create SVG
+            this.svg = d3.select(container)
+                .append('svg')
+                .attr('class', 'timeline-svg')
+                .attr('width', this.width)
+                .attr('height', this.height);
 
-        this.render();
+            this.render();
+        } else {
+            console.log('Timeline container has 0 width, waiting for resize...');
+        }
     },
 
     showEmptyState(container) {
@@ -54,6 +85,11 @@ window.timeline = {
 
         const innerWidth = this.width - this.margin.left - this.margin.right;
         const innerHeight = this.height - this.margin.top - this.margin.bottom;
+
+        if (innerWidth <= 0 || innerHeight <= 0) {
+            console.warn('Timeline dimensions too small to render');
+            return;
+        }
 
         // Create main group
         const g = this.svg.append('g')

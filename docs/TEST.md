@@ -9,6 +9,10 @@ cd build && cmake .. && make test_parser_fields test_ladder_generator test_parti
 
 ~/…/FlowVisualizerEnhancedDPI $ docker run -d --name callflowd -p 8080:8080 -p 8081:8081 -v $(pwd)/data:/app/data -v $(pwd)/output:/app/output -v $(pwd)/db:/app/db callflowd:latest
 
+~/…/FlowVisualizerEnhancedDPI $ docker exec callflowd-server cat /tmp/callflow-results/job-6584eb6f-30fd-37c9-463a-9fbc7b9a0956.json | head -c 1000
+
+
+
  ### Build and Run with Docker Compose
 
 ```bash
