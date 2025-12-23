@@ -191,6 +191,44 @@ set_tests_properties(test_diameter_gy PROPERTIES
     LABELS "unit"
 )
 
+# Diameter Gy Service Units Tests
+add_executable(test_gy_service_units
+    unit/test_gy_service_units.cpp
+)
+
+target_link_libraries(test_gy_service_units PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gy_service_units COMMAND test_gy_service_units)
+
+set_tests_properties(test_gy_service_units PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Diameter Gy MSCC Tests
+add_executable(test_gy_mscc
+    unit/test_gy_mscc.cpp
+)
+
+target_link_libraries(test_gy_mscc PRIVATE
+    callflow_common
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gy_mscc COMMAND test_gy_mscc)
+
+set_tests_properties(test_gy_mscc PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 # Diameter Cx Parser Tests
 add_executable(test_diameter_cx
     unit/test_diameter_cx.cpp
