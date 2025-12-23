@@ -444,4 +444,61 @@ set_tests_properties(test_ladder_generator PROPERTIES
     LABELS "unit"
 )
 
+# TCP Reassembly Tests
+add_executable(test_tcp_reassembly
+    unit/test_tcp_reassembly.cpp
+)
+
+target_link_libraries(test_tcp_reassembly PRIVATE
+    callflow_common
+    pcap_ingest
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_tcp_reassembly COMMAND test_tcp_reassembly)
+
+set_tests_properties(test_tcp_reassembly PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# TCP Out-of-Order Tests
+add_executable(test_tcp_ooo
+    unit/test_tcp_ooo.cpp
+)
+
+target_link_libraries(test_tcp_ooo PRIVATE
+    callflow_common
+    pcap_ingest
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_tcp_ooo COMMAND test_tcp_ooo)
+
+set_tests_properties(test_tcp_ooo PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# TCP Retransmission Tests
+add_executable(test_tcp_retransmission
+    unit/test_tcp_retransmission.cpp
+)
+
+target_link_libraries(test_tcp_retransmission PRIVATE
+    callflow_common
+    pcap_ingest
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_tcp_retransmission COMMAND test_tcp_retransmission)
+
+set_tests_properties(test_tcp_retransmission PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
