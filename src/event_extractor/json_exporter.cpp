@@ -116,6 +116,7 @@ std::string JsonExporter::exportMasterSessions(const EnhancedSessionCorrelator& 
     for (const auto& [imsi, master] : master_sessions) {
         nlohmann::json j_master;
         j_master["master_id"] = master.master_uuid;
+        j_master["session_id"] = master.master_uuid;  // Alias for UI compatibility
         j_master["imsi"] = master.imsi;
         j_master["msisdn"] = master.msisdn;
         j_master["start_time"] = std::chrono::duration_cast<std::chrono::milliseconds>(

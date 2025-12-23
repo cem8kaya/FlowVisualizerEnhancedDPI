@@ -1,19 +1,17 @@
 #include "api_server/http_server.h"
 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <thread>
+#include <vector>
 
-#include "api_server/routes.h"
 #include "common/logger.h"
-#include "common/utils.h"
+#include "common/utils.h"  // Needed for timestampToIso8601
 #include "config/config_manager.h"
-#include "event_extractor/json_exporter.h"
-#include "session/session_correlator.h"
 
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #include <httplib.h>
-
-#include <filesystem>
-#include <fstream>
 
 namespace callflow {
 
@@ -323,44 +321,98 @@ void HttpServer::setupRoutes() {
                                                        httplib::Response& res) {
         try {
             std::string session_id = req.path_params.at("session_id");
+            std::string filter_job_id =
+                req.has_param("job_id") ? req.get_param_value("job_id") : "";
 
-            // Search through all completed jobs for this session
-            auto all_jobs = job_manager_->getAllJobs();
-            for (const auto& job : all_jobs) {
+            std::vector<std::shared_ptr<JobInfo>> jobs_to_search;
+            if (!filter_job_id.empty()) {
+                auto job = job_manager_->getJobInfo(filter_job_id);
+                if (job) {
+                    jobs_to_search.push_back(job);
+                } else {
+                    LOG_ERROR("Requested job_id " << filter_job_id << " not found in JobManager");
+                }
+            } else {
+                jobs_to_search = job_manager_->getAllJobs();
+            }
+
+            if (jobs_to_search.empty()) {
+                LOG_ERROR("No jobs to search for session " << session_id);
+            }
+
+            for (const auto& job : jobs_to_search) {
                 if (job->status != JobStatus::COMPLETED) {
                     continue;
                 }
 
-                // Check if session is in this job
-                auto it = std::find(job->session_ids.begin(), job->session_ids.end(), session_id);
-                if (it == job->session_ids.end()) {
+                // If searching globally (no job_id), use index optimization
+                if (filter_job_id.empty()) {
+                    auto it =
+                        std::find(job->session_ids.begin(), job->session_ids.end(), session_id);
+                    if (it == job->session_ids.end()) {
+                        continue;
+                    }
+                }
+
+                LOG_ERROR("Debugging lookup: Job=" << job->job_id
+                                                   << " File=" << job->output_filename
+                                                   << " TargetSession=" << session_id);
+
+                // Load sessions from output file
+                if (!std::filesystem::exists(job->output_filename)) {
+                    LOG_ERROR("Output file does not exist: " << job->output_filename);
                     continue;
                 }
 
-                // Load sessions from output file
                 std::ifstream infile(job->output_filename);
                 if (!infile) {
+                    LOG_ERROR("Failed to open output file: " << job->output_filename);
                     continue;
                 }
 
                 nlohmann::json full_results;
-                infile >> full_results;
+                try {
+                    infile >> full_results;
+                } catch (const std::exception& e) {
+                    LOG_ERROR("Failed to parse JSON file: " << e.what());
+                    continue;
+                }
 
                 // Find the session
                 if (full_results.contains("sessions") && full_results["sessions"].is_array()) {
+                    int count = 0;
                     for (const auto& session : full_results["sessions"]) {
                         // Check for master_id (VoLTE) or fallback to session_id
-                        std::string id =
-                            session.value("master_id", session.value("session_id", ""));
-                        if (id == session_id) {
+                        std::string current_master_id = session.value("master_id", "");
+                        std::string current_session_id = session.value("session_id", "");
+
+                        // Try matching either Key
+                        if (current_master_id == session_id || current_session_id == session_id) {
+                            LOG_INFO("Found session " << session_id);
                             res.set_content(session.dump(), "application/json");
                             return;
                         }
+                        count++;
                     }
+
+                    // Debug: Dump available IDs
+                    int dump_limit = 0;
+                    for (const auto& session : full_results["sessions"]) {
+                        if (dump_limit++ >= 10)
+                            break;
+                        LOG_ERROR("Available ID: " << session.value(
+                                      "session_id", session.value("master_id", "MISSING")));
+                    }
+
+                    LOG_ERROR("Scanned " << count << " sessions in job " << job->job_id
+                                         << ", no match found.");
+                } else {
+                    LOG_ERROR("JSON file for job " << job->job_id << " has no sessions array.");
                 }
             }
 
             // Session not found
+            LOG_ERROR("Session " << session_id << " not found in any checked jobs.");
             nlohmann::json error = {{"error", "Session not found"}, {"code", "SESSION_NOT_FOUND"}};
             res.status = 404;
             res.set_content(error.dump(), "application/json");
@@ -598,7 +650,8 @@ void HttpServer::setupRoutes() {
 
                             if (matches) {
                                 nlohmann::json summary = {
-                                    {"session_id", session["session_id"]},
+                                    {"session_id",
+                                     session.value("session_id", session.value("master_id", ""))},
                                     {"job_id", job->job_id},
                                     {"session_type", session.value("session_type", "UNKNOWN")},
                                     {"correlation_keys",

@@ -454,9 +454,7 @@ tests/pcaps/
 - ✅ Unit test coverage > 90%
 
 Please implement with comprehensive error handling for malformed AVPs and detailed logging.
-```
 
----
 
 ## PROMPT 11.2: DIAMETER Rx Interface Parser
 
@@ -914,9 +912,7 @@ tests/pcaps/
 - ✅ Unit test coverage > 90%
 
 Please implement with support for correlating Rx sessions to SIP calls via ICID.
-```
 
----
 
 ## PROMPT 11.3: DIAMETER Gy Interface Parser
 

@@ -12,7 +12,8 @@ namespace utils {
 
 std::string generateUuid() {
     static std::random_device rd;
-    static std::mt19937_64 gen(rd());
+    static auto seed = rd() ^ std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    static std::mt19937_64 gen(seed);
     static std::uniform_int_distribution<uint64_t> dis;
 
     uint64_t part1 = dis(gen);

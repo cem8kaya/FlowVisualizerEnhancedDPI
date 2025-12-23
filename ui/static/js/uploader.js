@@ -159,8 +159,9 @@ const uploader = {
         this.resetUploadUI();
 
         // Reload jobs table
-        if (typeof jobsTable !== 'undefined') {
-            jobsTable.loadJobs();
+        // Reload jobs table
+        if (window.dashboard && typeof window.dashboard.loadJobs === 'function') {
+            window.dashboard.loadJobs();
         }
 
         // If job_id is returned, optionally navigate to it

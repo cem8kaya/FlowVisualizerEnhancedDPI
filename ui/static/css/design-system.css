@@ -1,0 +1,97 @@
+:root {
+  /* Colors */
+  --color-primary: #1a365d;
+  --color-primary-light: #2c5282;
+  --color-secondary: #00bcd4;
+  --color-success: #48bb78;
+  --color-warning: #ed8936;
+  --color-error: #f56565;
+  
+  /* Neutrals */
+  --color-gray-900: #1a202c;
+  --color-gray-800: #2d3748;
+  --color-gray-700: #4a5568;
+  --color-gray-600: #718096;
+  --color-gray-500: #a0aec0;
+  --color-gray-400: #cbd5e0;
+  --color-gray-300: #e2e8f0;
+  --color-gray-200: #edf2f7;
+  --color-gray-100: #f7fafc;
+  
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  
+  /* Protocol Colors */
+  --protocol-sip: #3b82f6;
+  --protocol-rtp: #10b981;
+  --protocol-gtp: #f59e0b;
+  --protocol-diameter: #8b5cf6;
+  --protocol-http2: #ec4899;
+  --protocol-s1ap: #06b6d4;
+  --protocol-ngap: #14b8a6;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --border-color: #30363d;
+  
+  --card-bg: #161b22;
+  --card-border: #30363d;
+  
+  --input-bg: #0d1117;
+  --input-border: #30363d;
+  
+  --table-hover-bg: #21262d;
+  --table-border: #30363d;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg-primary: #f7fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f0f0f0;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --border-color: #e2e8f0;
+  
+  --card-bg: #ffffff;
+  --card-border: #cbd5e0;
+  
+  --input-bg: #ffffff;
+  --input-border: #cbd5e0;
+
+  --table-hover-bg: #f7fafc;
+  --table-border: #e2e8f0;
+}
+
+/* Base Styles */
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}

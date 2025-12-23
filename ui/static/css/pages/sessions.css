@@ -1,0 +1,21 @@
+/* Sessions Page Styles */
+
+.job-info-card .card-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-4);
+}
+
+.job-info-item h6 {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--space-1);
+}
+
+.job-info-item p {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0;
+}

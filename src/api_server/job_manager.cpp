@@ -523,9 +523,10 @@ void JobManager::processJob(const JobTask& task) {
             it->second->session_count = master_sessions.size();
 
             // Store Master Session IDs
+            // Store Master Session IDs
             it->second->session_ids.clear();
-            for (const auto& [uuid, ms] : master_sessions) {
-                it->second->session_ids.push_back(uuid);
+            for (const auto& [imsi, ms] : master_sessions) {
+                it->second->session_ids.push_back(ms.master_uuid);
             }
 
             // Update database
@@ -534,9 +535,15 @@ void JobManager::processJob(const JobTask& task) {
 
                 // Insert Master Sessions into DB
                 // Mapping VolteMasterSession to SessionRecord (best effort)
-                for (const auto& [uuid, ms] : master_sessions) {
+                std::set<std::string> inserted_ids;
+                for (const auto& [imsi, ms] : master_sessions) {
+                    if (inserted_ids.count(ms.master_uuid)) {
+                        continue;
+                    }
+                    inserted_ids.insert(ms.master_uuid);
+
                     SessionRecord record;
-                    record.session_id = uuid;
+                    record.session_id = ms.master_uuid;
                     record.job_id = task.job_id;
                     record.session_type = "VoLTE Call";  // Master session type
 
