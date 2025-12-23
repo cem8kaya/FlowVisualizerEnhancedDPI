@@ -634,4 +634,64 @@ set_tests_properties(test_volte_correlation PROPERTIES
     LABELS "integration"
 )
 
+# VoLTE Call Structure Unit Tests
+add_executable(test_volte_call
+    unit/test_volte_call.cpp
+)
+
+target_link_libraries(test_volte_call PRIVATE
+    callflow_common
+    procedure_correlation
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_volte_call COMMAND test_volte_call)
+
+set_tests_properties(test_volte_call PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# VoLTE Call Correlator Unit Tests
+add_executable(test_volte_call_correlator
+    unit/test_volte_correlation.cpp
+)
+
+target_link_libraries(test_volte_call_correlator PRIVATE
+    callflow_common
+    procedure_correlation
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_volte_call_correlator COMMAND test_volte_call_correlator)
+
+set_tests_properties(test_volte_call_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# VoLTE Full Call Integration Tests
+add_executable(test_volte_full_call
+    integration/test_volte_full_call.cpp
+)
+
+target_link_libraries(test_volte_full_call PRIVATE
+    callflow_common
+    procedure_correlation
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_volte_full_call COMMAND test_volte_full_call)
+
+set_tests_properties(test_volte_full_call PROPERTIES
+    TIMEOUT 60
+    LABELS "integration"
+)
+
 message(STATUS "Unit tests configured successfully")
