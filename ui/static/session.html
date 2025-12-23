@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css">
     <link rel="stylesheet" href="/css/timeline.css"> <!-- Existing timeline CSS -->
+    <link rel="stylesheet" href="/css/ladder-diagram.css"> <!-- Ladder Diagram CSS -->
 </head>
 
 <body>
@@ -113,6 +114,12 @@
                     </button>
                 </li>
                 <li class="nav-item">
+                    <button class="nav-link btn-tab" id="ladder-tab" data-bs-toggle="tab" data-bs-target="#ladder"
+                        type="button">
+                        <i class="bi bi-arrows-vertical"></i> Ladder Diagram
+                    </button>
+                </li>
+                <li class="nav-item">
                     <button class="nav-link btn-tab" id="events-tab" data-bs-toggle="tab" data-bs-target="#events"
                         type="button">
                         <i class="bi bi-list-ul"></i> Events
@@ -142,6 +149,35 @@
                     <div class="card">
                         <div class="card-body overflow-auto">
                             <div id="flowchartViz" class="flowchart-container" style="min-height: 400px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ladder Diagram -->
+                <div class="tab-pane fade" id="ladder">
+                    <div class="card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span><i class="bi bi-arrows-vertical"></i> MSC-Style Call Flow</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderZoomIn()">
+                                    <i class="bi bi-zoom-in"></i>
+                                </button>
+                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderZoomOut()">
+                                    <i class="bi bi-zoom-out"></i>
+                                </button>
+                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderResetZoom()">
+                                    <i class="bi bi-aspect-ratio"></i>
+                                </button>
+                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderExportSVG()">
+                                    <i class="bi bi-filetype-svg"></i>
+                                </button>
+                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderExportPNG()">
+                                    <i class="bi bi-file-image"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" style="padding: 0; position: relative;">
+                            <div id="ladderViz" class="ladder-diagram-container" style="min-height: 600px;"></div>
                         </div>
                     </div>
                 </div>
@@ -255,6 +291,7 @@
     <script src="/js/timeline.js"></script>
     <script src="/js/flowchart.js"></script>
     <script src="/js/packet-inspector.js"></script>
+    <script src="/js/components/ladder-diagram.js"></script>
 
     <!-- Page Logic -->
     <script src="/js/pages/session-detail.js"></script>

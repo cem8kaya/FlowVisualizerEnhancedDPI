@@ -6,6 +6,7 @@ class SessionDetailPage {
         this.sessionId = new URLSearchParams(window.location.search).get('session');
         this.jobId = new URLSearchParams(window.location.search).get('job');
         this.sessionData = null;
+        this.ladderDiagram = null;
 
         this.init();
     }
@@ -39,6 +40,7 @@ class SessionDetailPage {
             this.renderEvents();
             this.renderTimeline();
             this.renderFlowchart();
+            this.renderLadderDiagram();
             this.renderMetrics();
         } catch (e) {
             console.error(e);
@@ -102,6 +104,140 @@ class SessionDetailPage {
     renderFlowchart() {
         if (!window.flowchart || !this.sessionData?.events) return;
         window.flowchart.init('flowchartViz', this.sessionData.events);
+    }
+
+    renderLadderDiagram() {
+        if (!window.LadderDiagram || !this.sessionData?.events) return;
+
+        // Initialize ladder diagram if not already initialized
+        if (!this.ladderDiagram) {
+            this.ladderDiagram = new LadderDiagram('ladderViz');
+
+            // Listen for message selection
+            document.getElementById('ladderViz').addEventListener('message-selected', (e) => {
+                this.onLadderMessageSelected(e.detail.message);
+            });
+        }
+
+        // Convert session events to ladder diagram data format
+        const ladderData = this.convertToLadderData(this.sessionData);
+
+        // Render the diagram
+        this.ladderDiagram.render(ladderData);
+    }
+
+    convertToLadderData(sessionData) {
+        // Extract unique participants from events
+        const participantMap = new Map();
+        const events = sessionData.events || [];
+
+        events.forEach(event => {
+            const srcKey = `${event.src_ip}:${event.src_port}`;
+            const dstKey = `${event.dst_ip}:${event.dst_port}`;
+
+            if (!participantMap.has(srcKey)) {
+                participantMap.set(srcKey, {
+                    id: srcKey,
+                    label: this.getParticipantLabel(event.src_ip, event.src_port),
+                    ip: `${event.src_ip}:${event.src_port}`,
+                    type: 'endpoint'
+                });
+            }
+
+            if (!participantMap.has(dstKey)) {
+                participantMap.set(dstKey, {
+                    id: dstKey,
+                    label: this.getParticipantLabel(event.dst_ip, event.dst_port),
+                    ip: `${event.dst_ip}:${event.dst_port}`,
+                    type: 'endpoint'
+                });
+            }
+        });
+
+        // Convert events to messages
+        const messages = events.map((event, index) => ({
+            id: `msg${index}`,
+            timestamp: event.timestamp,
+            from: `${event.src_ip}:${event.src_port}`,
+            to: `${event.dst_ip}:${event.dst_port}`,
+            protocol: event.proto || event.protocol || 'UNKNOWN',
+            type: event.message_type || event.type || 'Message',
+            label: event.short || event.message_type || 'Message',
+            details: {
+                src: `${event.src_ip}:${event.src_port}`,
+                dst: `${event.dst_ip}:${event.dst_port}`,
+                size: event.size,
+                ...event.details
+            },
+            duration_ms: event.duration_ms || 0
+        }));
+
+        return {
+            participants: Array.from(participantMap.values()),
+            messages: messages
+        };
+    }
+
+    getParticipantLabel(ip, port) {
+        // Try to infer participant type based on port or protocol
+        const commonPorts = {
+            '5060': 'SIP',
+            '5061': 'SIP-TLS',
+            '3868': 'DIAMETER',
+            '2123': 'GTP-C',
+            '2152': 'GTP-U'
+        };
+
+        if (commonPorts[port]) {
+            return `${commonPorts[port]}\n${ip}`;
+        }
+
+        // Otherwise just return the IP
+        return ip;
+    }
+
+    onLadderMessageSelected(message) {
+        // Could show message details in a modal or panel
+        console.log('Ladder message selected:', message);
+
+        // Find the original event index and show in packet inspector
+        if (this.sessionData?.events) {
+            const msgIndex = parseInt(message.id.replace('msg', ''));
+            if (msgIndex >= 0 && msgIndex < this.sessionData.events.length) {
+                this.showEventInspector(msgIndex);
+            }
+        }
+    }
+
+    // Ladder diagram control methods
+    ladderZoomIn() {
+        if (this.ladderDiagram) {
+            this.ladderDiagram.zoomIn();
+        }
+    }
+
+    ladderZoomOut() {
+        if (this.ladderDiagram) {
+            this.ladderDiagram.zoomOut();
+        }
+    }
+
+    ladderResetZoom() {
+        if (this.ladderDiagram) {
+            this.ladderDiagram.resetZoom();
+        }
+    }
+
+    ladderExportSVG() {
+        if (this.ladderDiagram) {
+            this.ladderDiagram.exportSVG();
+        }
+    }
+
+    ladderExportPNG() {
+        if (this.ladderDiagram) {
+            this.ladderDiagram.exportPNG(2);
+        }
     }
 
     renderMetrics() {
