@@ -266,3 +266,13 @@
     border-color: var(--text-primary);
     color: var(--text-primary);
 }
+
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 0.875rem;
+}
+
+.btn-secondary:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--color-primary-light);
+}

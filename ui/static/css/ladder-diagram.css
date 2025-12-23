@@ -1,0 +1,427 @@
+/* Ladder Diagram Styles */
+
+.ladder-diagram-svg {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: grab;
+}
+
+.ladder-diagram-svg:active {
+    cursor: grabbing;
+}
+
+/* Participant Boxes */
+.participant-box {
+    fill: var(--bg-tertiary);
+    stroke: var(--border-color);
+    stroke-width: 2;
+    transition: all 0.2s ease;
+}
+
+.participant-box:hover {
+    stroke: var(--color-primary-light);
+    filter: brightness(1.1);
+}
+
+.participant-endpoint {
+    fill: var(--bg-secondary);
+    stroke: var(--protocol-sip);
+}
+
+.participant-proxy {
+    fill: var(--bg-secondary);
+    stroke: var(--protocol-diameter);
+}
+
+.participant-server {
+    fill: var(--bg-secondary);
+    stroke: var(--protocol-gtp);
+}
+
+.participant-label {
+    fill: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    pointer-events: none;
+}
+
+.participant-ip {
+    fill: var(--text-secondary);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    pointer-events: none;
+}
+
+/* Lifelines */
+.lifeline {
+    stroke: var(--border-color);
+    stroke-width: 1.5;
+    opacity: 0.6;
+}
+
+/* Messages */
+.message {
+    transition: opacity 0.2s ease;
+}
+
+.message:hover {
+    opacity: 1;
+}
+
+.message.selected .message-line,
+.message.selected .message-arrow {
+    stroke-width: 3;
+    filter: drop-shadow(0 0 4px currentColor);
+}
+
+.message-line {
+    stroke: var(--text-primary);
+    stroke-width: 2;
+    fill: none;
+    transition: stroke-width 0.2s ease;
+}
+
+.message-arrow {
+    fill: var(--text-primary);
+    stroke: none;
+    transition: all 0.2s ease;
+}
+
+/* Protocol-specific colors */
+.message-sip .message-line,
+.message-sip .message-arrow {
+    stroke: var(--protocol-sip);
+    fill: var(--protocol-sip);
+}
+
+.message-rtp .message-line,
+.message-rtp .message-arrow {
+    stroke: var(--protocol-rtp);
+    fill: var(--protocol-rtp);
+}
+
+.message-gtp .message-line,
+.message-gtp .message-arrow {
+    stroke: var(--protocol-gtp);
+    fill: var(--protocol-gtp);
+}
+
+.message-diameter .message-line,
+.message-diameter .message-arrow {
+    stroke: var(--protocol-diameter);
+    fill: var(--protocol-diameter);
+}
+
+.message-http2 .message-line,
+.message-http2 .message-arrow {
+    stroke: var(--protocol-http2);
+    fill: var(--protocol-http2);
+}
+
+.message-s1ap .message-line,
+.message-s1ap .message-arrow {
+    stroke: var(--protocol-s1ap);
+    fill: var(--protocol-s1ap);
+}
+
+.message-ngap .message-line,
+.message-ngap .message-arrow {
+    stroke: var(--protocol-ngap);
+    fill: var(--protocol-ngap);
+}
+
+/* Message Labels */
+.message-label-bg {
+    fill: var(--bg-secondary);
+    stroke: none;
+}
+
+.message-label {
+    fill: var(--text-primary);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    pointer-events: none;
+}
+
+/* Protocol Badges */
+.protocol-badge-bg {
+    stroke: none;
+    opacity: 0.9;
+}
+
+.protocol-badge-text {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: var(--font-sans);
+    pointer-events: none;
+}
+
+.badge-sip {
+    fill: rgba(59, 130, 246, 0.2);
+}
+
+.badge-sip .protocol-badge-text {
+    fill: var(--protocol-sip);
+}
+
+.badge-rtp {
+    fill: rgba(16, 185, 129, 0.2);
+}
+
+.badge-rtp .protocol-badge-text {
+    fill: var(--protocol-rtp);
+}
+
+.badge-gtp {
+    fill: rgba(245, 158, 11, 0.2);
+}
+
+.badge-gtp .protocol-badge-text {
+    fill: var(--protocol-gtp);
+}
+
+.badge-diameter {
+    fill: rgba(139, 92, 246, 0.2);
+}
+
+.badge-diameter .protocol-badge-text {
+    fill: var(--protocol-diameter);
+}
+
+.badge-http2 {
+    fill: rgba(236, 72, 153, 0.2);
+}
+
+.badge-http2 .protocol-badge-text {
+    fill: var(--protocol-http2);
+}
+
+.badge-s1ap {
+    fill: rgba(6, 182, 212, 0.2);
+}
+
+.badge-s1ap .protocol-badge-text {
+    fill: var(--protocol-s1ap);
+}
+
+.badge-ngap {
+    fill: rgba(20, 184, 166, 0.2);
+}
+
+.badge-ngap .protocol-badge-text {
+    fill: var(--protocol-ngap);
+}
+
+/* Timeline */
+.timeline-label {
+    fill: var(--text-secondary);
+    font-size: 10px;
+    font-family: var(--font-mono);
+}
+
+.timeline-group .domain,
+.timeline-group .tick line {
+    stroke: var(--border-color);
+}
+
+/* Tooltip */
+.ladder-tooltip {
+    position: absolute;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    max-width: 300px;
+    line-height: 1.4;
+    transition: opacity 0.2s ease;
+}
+
+.ladder-tooltip strong {
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 4px;
+}
+
+/* Empty State */
+.ladder-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    color: var(--text-secondary);
+    gap: var(--space-3);
+}
+
+/* Zoom Controls Container */
+.ladder-controls {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    display: flex;
+    gap: var(--space-2);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ladder-control-btn {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ladder-control-btn:hover {
+    background-color: var(--bg-primary);
+    border-color: var(--color-primary-light);
+}
+
+.ladder-control-btn:active {
+    transform: scale(0.95);
+}
+
+.ladder-control-btn i {
+    font-size: 16px;
+}
+
+/* Message Selection Highlight */
+.message.selected .message-label-bg {
+    fill: var(--color-primary);
+    opacity: 0.2;
+}
+
+.message.selected .message-label {
+    font-weight: 700;
+}
+
+/* Container */
+.ladder-diagram-container {
+    position: relative;
+    width: 100%;
+    min-height: 400px;
+    overflow: hidden;
+}
+
+/* Dark Mode Adjustments */
+[data-theme="dark"] .ladder-diagram-svg {
+    background-color: var(--bg-secondary);
+}
+
+[data-theme="dark"] .participant-box {
+    fill: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .message-label-bg {
+    fill: var(--bg-secondary);
+}
+
+[data-theme="dark"] .ladder-tooltip {
+    background-color: var(--bg-tertiary);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+}
+
+/* Light Mode Adjustments */
+[data-theme="light"] .ladder-diagram-svg {
+    background-color: #ffffff;
+}
+
+[data-theme="light"] .participant-box {
+    fill: #f7fafc;
+}
+
+[data-theme="light"] .message-label-bg {
+    fill: #ffffff;
+}
+
+[data-theme="light"] .ladder-tooltip {
+    background-color: #ffffff;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .lifeline {
+    stroke: #cbd5e0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .participant-label {
+        font-size: 12px;
+    }
+
+    .participant-ip {
+        font-size: 9px;
+    }
+
+    .message-label {
+        font-size: 11px;
+    }
+
+    .ladder-controls {
+        top: var(--space-2);
+        right: var(--space-2);
+    }
+}
+
+/* Animation for message rendering */
+@keyframes fadeInMessage {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message {
+    animation: fadeInMessage 0.3s ease-out;
+}
+
+/* Notes and Groups (for future enhancement) */
+.diagram-note {
+    fill: rgba(237, 137, 54, 0.1);
+    stroke: var(--color-warning);
+    stroke-width: 1;
+    stroke-dasharray: 3,3;
+}
+
+.diagram-note-text {
+    fill: var(--color-warning);
+    font-size: 11px;
+    font-style: italic;
+}
+
+.diagram-group {
+    fill: rgba(59, 130, 246, 0.05);
+    stroke: var(--protocol-sip);
+    stroke-width: 1;
+    stroke-dasharray: 5,5;
+}
+
+.diagram-group-label {
+    fill: var(--protocol-sip);
+    font-size: 11px;
+    font-weight: 600;
+}

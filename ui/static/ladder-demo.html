@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ladder Diagram Demo - FlowVisualizer</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <!-- Design System & Layout -->
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/ladder-diagram.css">
+
+    <style>
+        .demo-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .demo-header {
+            margin-bottom: 2rem;
+        }
+
+        .demo-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .demo-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .demo-section h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .btn {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: var(--font-sans);
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background-color: var(--bg-primary);
+            border-color: var(--color-primary-light);
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--color-primary-light);
+            border-color: var(--color-primary-light);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 0.25rem;
+        }
+
+        .message-details {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .message-details pre {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .ladder-diagram-container {
+            position: relative;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            min-height: 600px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="demo-container">
+        <!-- Header -->
+        <div class="demo-header">
+            <h1 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">
+                <i class="bi bi-diagram-3"></i> Ladder Diagram Renderer Demo
+            </h1>
+            <p style="color: var(--text-secondary); margin: 0;">
+                MSC-Style Call Flow Visualization with D3.js v7
+            </p>
+        </div>
+
+        <!-- Controls -->
+        <div class="demo-controls">
+            <button class="btn btn-primary" onclick="demo.loadSampleData()">
+                <i class="bi bi-arrow-clockwise"></i> Load Sample Data
+            </button>
+            <button class="btn" onclick="demo.loadLargeDataset()">
+                <i class="bi bi-database"></i> Load Large Dataset (100 msgs)
+            </button>
+            <button class="btn" onclick="demo.zoomIn()">
+                <i class="bi bi-zoom-in"></i> Zoom In
+            </button>
+            <button class="btn" onclick="demo.zoomOut()">
+                <i class="bi bi-zoom-out"></i> Zoom Out
+            </button>
+            <button class="btn" onclick="demo.resetZoom()">
+                <i class="bi bi-aspect-ratio"></i> Reset Zoom
+            </button>
+            <button class="btn" onclick="demo.exportSVG()">
+                <i class="bi bi-filetype-svg"></i> Export SVG
+            </button>
+            <button class="btn" onclick="demo.exportPNG()">
+                <i class="bi bi-file-image"></i> Export PNG
+            </button>
+            <button class="btn" onclick="demo.toggleTheme()">
+                <i class="bi bi-moon-fill"></i> Toggle Theme
+            </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Participants</div>
+                <div class="stat-value" id="statParticipants">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Messages</div>
+                <div class="stat-value" id="statMessages">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Render Time</div>
+                <div class="stat-value" id="statRenderTime">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Selected Message</div>
+                <div class="stat-value" id="statSelected" style="font-size: 1rem;">None</div>
+            </div>
+        </div>
+
+        <!-- Diagram Section -->
+        <div class="demo-section">
+            <h3>Call Flow Diagram</h3>
+            <div class="ladder-diagram-container">
+                <div id="ladderDiagram"></div>
+            </div>
+        </div>
+
+        <!-- Message Details -->
+        <div class="demo-section" id="messageDetailsSection" style="display: none;">
+            <h3>Selected Message Details</h3>
+            <div class="message-details">
+                <pre id="messageDetailsContent"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="/js/components/ladder-diagram.js"></script>
+
+    <script>
+        class LadderDemo {
+            constructor() {
+                this.diagram = null;
+                this.init();
+            }
+
+            init() {
+                // Initialize diagram
+                this.diagram = new LadderDiagram('ladderDiagram');
+
+                // Listen for message selection events
+                document.getElementById('ladderDiagram').addEventListener('message-selected', (e) => {
+                    this.onMessageSelected(e.detail.message);
+                });
+
+                // Listen for render events
+                document.getElementById('ladderDiagram').addEventListener('ladder-rendered', (e) => {
+                    document.getElementById('statRenderTime').textContent =
+                        `${e.detail.duration.toFixed(2)}ms`;
+                });
+
+                // Load sample data
+                this.loadSampleData();
+            }
+
+            loadSampleData() {
+                const data = {
+                    participants: [
+                        { id: 'ue', label: 'UE', ip: '10.0.0.1', type: 'endpoint' },
+                        { id: 'pcscf', label: 'P-CSCF', ip: '10.0.1.1', type: 'proxy' },
+                        { id: 'scscf', label: 'S-CSCF', ip: '10.0.1.2', type: 'proxy' },
+                        { id: 'hss', label: 'HSS', ip: '10.0.2.1', type: 'server' }
+                    ],
+                    messages: [
+                        {
+                            id: 'msg1',
+                            timestamp: '2024-01-15T10:30:00.123Z',
+                            from: 'ue',
+                            to: 'pcscf',
+                            protocol: 'SIP',
+                            type: 'INVITE',
+                            label: 'INVITE',
+                            details: { call_id: 'abc123@ue', method: 'INVITE' },
+                            duration_ms: 5
+                        },
+                        {
+                            id: 'msg2',
+                            timestamp: '2024-01-15T10:30:00.130Z',
+                            from: 'pcscf',
+                            to: 'scscf',
+                            protocol: 'SIP',
+                            type: 'INVITE',
+                            label: 'INVITE',
+                            details: { call_id: 'abc123@ue', method: 'INVITE' },
+                            duration_ms: 7
+                        },
+                        {
+                            id: 'msg3',
+                            timestamp: '2024-01-15T10:30:00.140Z',
+                            from: 'scscf',
+                            to: 'hss',
+                            protocol: 'DIAMETER',
+                            type: 'UAR',
+                            label: 'User-Authorization-Request',
+                            details: { session_id: 'hss.session.1', user: 'user@example.com' },
+                            duration_ms: 3
+                        },
+                        {
+                            id: 'msg4',
+                            timestamp: '2024-01-15T10:30:00.145Z',
+                            from: 'hss',
+                            to: 'scscf',
+                            protocol: 'DIAMETER',
+                            type: 'UAA',
+                            label: 'User-Authorization-Answer',
+                            details: { session_id: 'hss.session.1', result_code: 2001 },
+                            duration_ms: 2
+                        },
+                        {
+                            id: 'msg5',
+                            timestamp: '2024-01-15T10:30:00.150Z',
+                            from: 'scscf',
+                            to: 'pcscf',
+                            protocol: 'SIP',
+                            type: '100',
+                            label: '100 Trying',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 1
+                        },
+                        {
+                            id: 'msg6',
+                            timestamp: '2024-01-15T10:30:00.160Z',
+                            from: 'pcscf',
+                            to: 'ue',
+                            protocol: 'SIP',
+                            type: '100',
+                            label: '100 Trying',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 1
+                        },
+                        {
+                            id: 'msg7',
+                            timestamp: '2024-01-15T10:30:00.200Z',
+                            from: 'scscf',
+                            to: 'pcscf',
+                            protocol: 'SIP',
+                            type: '180',
+                            label: '180 Ringing',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 2
+                        },
+                        {
+                            id: 'msg8',
+                            timestamp: '2024-01-15T10:30:00.205Z',
+                            from: 'pcscf',
+                            to: 'ue',
+                            protocol: 'SIP',
+                            type: '180',
+                            label: '180 Ringing',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 2
+                        },
+                        {
+                            id: 'msg9',
+                            timestamp: '2024-01-15T10:30:01.500Z',
+                            from: 'scscf',
+                            to: 'pcscf',
+                            protocol: 'SIP',
+                            type: '200',
+                            label: '200 OK',
+                            details: { call_id: 'abc123@ue', sdp: 'present' },
+                            duration_ms: 3
+                        },
+                        {
+                            id: 'msg10',
+                            timestamp: '2024-01-15T10:30:01.505Z',
+                            from: 'pcscf',
+                            to: 'ue',
+                            protocol: 'SIP',
+                            type: '200',
+                            label: '200 OK',
+                            details: { call_id: 'abc123@ue', sdp: 'present' },
+                            duration_ms: 3
+                        },
+                        {
+                            id: 'msg11',
+                            timestamp: '2024-01-15T10:30:01.510Z',
+                            from: 'ue',
+                            to: 'pcscf',
+                            protocol: 'SIP',
+                            type: 'ACK',
+                            label: 'ACK',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 1
+                        },
+                        {
+                            id: 'msg12',
+                            timestamp: '2024-01-15T10:30:01.515Z',
+                            from: 'pcscf',
+                            to: 'scscf',
+                            protocol: 'SIP',
+                            type: 'ACK',
+                            label: 'ACK',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 1
+                        },
+                        // Add RTP flow
+                        {
+                            id: 'msg13',
+                            timestamp: '2024-01-15T10:30:01.520Z',
+                            from: 'ue',
+                            to: 'pcscf',
+                            protocol: 'RTP',
+                            type: 'MEDIA',
+                            label: 'RTP Media Stream',
+                            details: { codec: 'AMR-WB', packets: 1500 },
+                            duration_ms: 100
+                        },
+                        // GTP control plane
+                        {
+                            id: 'msg14',
+                            timestamp: '2024-01-15T10:30:01.600Z',
+                            from: 'ue',
+                            to: 'pcscf',
+                            protocol: 'GTP',
+                            type: 'CREATE_SESSION_REQ',
+                            label: 'Create Session Request',
+                            details: { imsi: '310170845466094', apn: 'ims' },
+                            duration_ms: 5
+                        },
+                        {
+                            id: 'msg15',
+                            timestamp: '2024-01-15T10:30:01.610Z',
+                            from: 'pcscf',
+                            to: 'ue',
+                            protocol: 'GTP',
+                            type: 'CREATE_SESSION_RESP',
+                            label: 'Create Session Response',
+                            details: { cause: 'request_accepted' },
+                            duration_ms: 3
+                        },
+                        // BYE to end call
+                        {
+                            id: 'msg16',
+                            timestamp: '2024-01-15T10:30:30.000Z',
+                            from: 'ue',
+                            to: 'pcscf',
+                            protocol: 'SIP',
+                            type: 'BYE',
+                            label: 'BYE',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 2
+                        },
+                        {
+                            id: 'msg17',
+                            timestamp: '2024-01-15T10:30:30.005Z',
+                            from: 'pcscf',
+                            to: 'scscf',
+                            protocol: 'SIP',
+                            type: 'BYE',
+                            label: 'BYE',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 2
+                        },
+                        {
+                            id: 'msg18',
+                            timestamp: '2024-01-15T10:30:30.010Z',
+                            from: 'scscf',
+                            to: 'pcscf',
+                            protocol: 'SIP',
+                            type: '200',
+                            label: '200 OK',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 1
+                        },
+                        {
+                            id: 'msg19',
+                            timestamp: '2024-01-15T10:30:30.015Z',
+                            from: 'pcscf',
+                            to: 'ue',
+                            protocol: 'SIP',
+                            type: '200',
+                            label: '200 OK',
+                            details: { call_id: 'abc123@ue' },
+                            duration_ms: 1
+                        }
+                    ]
+                };
+
+                this.renderData(data);
+            }
+
+            loadLargeDataset() {
+                const participants = [
+                    { id: 'ue', label: 'UE', ip: '10.0.0.1', type: 'endpoint' },
+                    { id: 'enb', label: 'eNodeB', ip: '10.0.0.2', type: 'proxy' },
+                    { id: 'mme', label: 'MME', ip: '10.0.1.1', type: 'server' },
+                    { id: 'sgw', label: 'SGW', ip: '10.0.1.2', type: 'server' },
+                    { id: 'pgw', label: 'PGW', ip: '10.0.1.3', type: 'server' },
+                    { id: 'pcrf', label: 'PCRF', ip: '10.0.2.1', type: 'server' }
+                ];
+
+                const protocols = ['SIP', 'DIAMETER', 'GTP', 'S1AP', 'HTTP2'];
+                const messages = [];
+                const baseTime = new Date('2024-01-15T10:30:00.000Z').getTime();
+
+                for (let i = 0; i < 100; i++) {
+                    const fromIdx = Math.floor(Math.random() * participants.length);
+                    let toIdx = Math.floor(Math.random() * participants.length);
+                    while (toIdx === fromIdx) {
+                        toIdx = Math.floor(Math.random() * participants.length);
+                    }
+
+                    const protocol = protocols[Math.floor(Math.random() * protocols.length)];
+
+                    messages.push({
+                        id: `msg${i + 1}`,
+                        timestamp: new Date(baseTime + (i * 50)).toISOString(),
+                        from: participants[fromIdx].id,
+                        to: participants[toIdx].id,
+                        protocol: protocol,
+                        type: `MSG_${i + 1}`,
+                        label: `${protocol} Message ${i + 1}`,
+                        details: { sequence: i + 1 },
+                        duration_ms: Math.floor(Math.random() * 10) + 1
+                    });
+                }
+
+                this.renderData({ participants, messages });
+            }
+
+            renderData(data) {
+                this.diagram.render(data);
+
+                // Update stats
+                document.getElementById('statParticipants').textContent = data.participants.length;
+                document.getElementById('statMessages').textContent = data.messages.length;
+            }
+
+            onMessageSelected(message) {
+                const detailsSection = document.getElementById('messageDetailsSection');
+                const detailsContent = document.getElementById('messageDetailsContent');
+
+                detailsSection.style.display = 'block';
+                detailsContent.textContent = JSON.stringify(message, null, 2);
+
+                document.getElementById('statSelected').textContent = message.label || message.type;
+            }
+
+            zoomIn() {
+                this.diagram.zoomIn();
+            }
+
+            zoomOut() {
+                this.diagram.zoomOut();
+            }
+
+            resetZoom() {
+                this.diagram.resetZoom();
+            }
+
+            exportSVG() {
+                this.diagram.exportSVG();
+            }
+
+            exportPNG() {
+                this.diagram.exportPNG(2);
+            }
+
+            toggleTheme() {
+                const html = document.documentElement;
+                const currentTheme = html.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                html.setAttribute('data-theme', newTheme);
+            }
+        }
+
+        // Initialize demo
+        let demo;
+        document.addEventListener('DOMContentLoaded', () => {
+            demo = new LadderDemo();
+        });
+    </script>
+</body>
+
+</html>
