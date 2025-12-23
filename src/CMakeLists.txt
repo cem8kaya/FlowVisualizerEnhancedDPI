@@ -6,6 +6,7 @@ add_library(callflow_common STATIC
     common/config_loader.cpp
     common/crypto_utils.cpp
     common/nas_security_context.cpp
+    common/packet_filter.cpp
 )
 target_include_directories(callflow_common PUBLIC
     ${PROJECT_SOURCE_DIR}/include

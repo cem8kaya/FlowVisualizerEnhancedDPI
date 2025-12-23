@@ -2,6 +2,24 @@
 
 message(STATUS "Configuring unit tests")
 
+# Field Registry Tests
+add_executable(test_field_registry
+    test_field_registry.cpp
+)
+
+target_link_libraries(test_field_registry PRIVATE
+    callflow_common
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_field_registry COMMAND test_field_registry)
+
+set_tests_properties(test_field_registry PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 # PCAPNG Reader Tests
 add_executable(test_pcapng_reader
     unit/test_pcapng_reader.cpp
