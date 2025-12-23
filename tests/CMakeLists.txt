@@ -539,4 +539,99 @@ set_tests_properties(test_multi_interface_pcapng PROPERTIES
     LABELS "integration"
 )
 
+# Subscriber Context Unit Tests
+add_executable(test_subscriber_context
+    unit/test_subscriber_context.cpp
+)
+
+target_link_libraries(test_subscriber_context PRIVATE
+    callflow_common
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_subscriber_context COMMAND test_subscriber_context)
+
+set_tests_properties(test_subscriber_context PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Context Lookup Unit Tests
+add_executable(test_context_lookup
+    unit/test_context_lookup.cpp
+)
+
+target_link_libraries(test_context_lookup PRIVATE
+    callflow_common
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_context_lookup COMMAND test_context_lookup)
+
+set_tests_properties(test_context_lookup PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Context Merge Unit Tests
+add_executable(test_context_merge
+    unit/test_context_merge.cpp
+)
+
+target_link_libraries(test_context_merge PRIVATE
+    callflow_common
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_context_merge COMMAND test_context_merge)
+
+set_tests_properties(test_context_merge PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# LTE Attach Correlation Integration Tests
+add_executable(test_lte_attach_correlation
+    integration/test_lte_attach_correlation.cpp
+)
+
+target_link_libraries(test_lte_attach_correlation PRIVATE
+    callflow_common
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_lte_attach_correlation COMMAND test_lte_attach_correlation)
+
+set_tests_properties(test_lte_attach_correlation PROPERTIES
+    TIMEOUT 60
+    LABELS "integration"
+)
+
+# VoLTE Correlation Integration Tests
+add_executable(test_volte_correlation
+    integration/test_volte_correlation.cpp
+)
+
+target_link_libraries(test_volte_correlation PRIVATE
+    callflow_common
+    procedure_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_volte_correlation COMMAND test_volte_correlation)
+
+set_tests_properties(test_volte_correlation PROPERTIES
+    TIMEOUT 60
+    LABELS "integration"
+)
+
 message(STATUS "Unit tests configured successfully")
