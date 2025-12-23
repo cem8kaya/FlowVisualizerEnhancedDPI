@@ -1,7 +1,7 @@
 // Flowchart / Sequence Diagram Visualization
 // Placeholder for M4 - Basic implementation
 
-const flowchart = {
+window.flowchart = {
     svg: null,
 
     init(containerId, events) {

@@ -1,6 +1,6 @@
 // Packet Inspector Modal
 
-const packetInspector = {
+window.packetInspector = {
     currentEvent: null,
     allEvents: [],
     currentIndex: 0,
@@ -43,9 +43,10 @@ const packetInspector = {
         // Summary tab
         const summaryBody = document.getElementById('packetSummaryBody');
         if (summaryBody) {
+            const protocol = this.currentEvent.proto || this.currentEvent.protocol || 'UNKNOWN';
             summaryBody.innerHTML = `
                 <tr><th>Timestamp</th><td>${new Date(this.currentEvent.timestamp).toLocaleString()}</td></tr>
-                <tr><th>Protocol</th><td>${this.currentEvent.protocol}</td></tr>
+                <tr><th>Protocol</th><td>${protocol}</td></tr>
                 <tr><th>Message Type</th><td>${this.currentEvent.message_type || '-'}</td></tr>
                 <tr><th>Source</th><td>${this.currentEvent.src_ip}:${this.currentEvent.src_port}</td></tr>
                 <tr><th>Destination</th><td>${this.currentEvent.dst_ip}:${this.currentEvent.dst_port}</td></tr>
@@ -95,6 +96,6 @@ const packetInspector = {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('packetModal')) {
-        packetInspector.init();
+        window.packetInspector.init();
     }
 });

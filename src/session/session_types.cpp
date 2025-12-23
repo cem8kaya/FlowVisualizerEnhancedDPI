@@ -368,6 +368,7 @@ nlohmann::json Session::toJson() const {
     nlohmann::json j;
     j["session_id"] = session_id;
     j["session_type"] = enhancedSessionTypeToString(session_type);
+    j["type"] = enhancedSessionTypeToString(session_type);  // Alias for UI
     j["correlation_key"] = correlation_key.toJson();
     // Add missing fields expected by UI
     j["session_key"] = correlation_key.getPrimaryIdentifier();
@@ -429,6 +430,35 @@ nlohmann::json Session::toJson() const {
         }
     }
     j["protocols"] = protocols;
+
+    // Add metrics object for UI compatibility
+    nlohmann::json metrics;
+    metrics["packets"] = total_packets;
+    metrics["bytes"] = total_bytes;
+    metrics["duration_ms"] = getDurationMs();
+    if (setup_time_ms.has_value()) {
+        metrics["setup_time_ms"] = setup_time_ms.value();
+    }
+    // Add QoS metrics if available
+    if (metadata.contains("rtp_loss")) {
+        metrics["rtp_loss"] = metadata["rtp_loss"];
+    }
+    if (metadata.contains("rtp_jitter_ms")) {
+        metrics["rtp_jitter_ms"] = metadata["rtp_jitter_ms"];
+    }
+    j["metrics"] = metrics;
+
+    // Extract unique participants (IP:port combinations) for UI compatibility
+    std::set<std::string> participants_set;
+    for (const auto& msg : all_msgs) {
+        participants_set.insert(msg.src_ip + ":" + std::to_string(msg.src_port));
+        participants_set.insert(msg.dst_ip + ":" + std::to_string(msg.dst_port));
+    }
+    nlohmann::json participants_json = nlohmann::json::array();
+    for (const auto& p : participants_set) {
+        participants_json.push_back(p);
+    }
+    j["participants"] = participants_json;
 
     return j;
 }

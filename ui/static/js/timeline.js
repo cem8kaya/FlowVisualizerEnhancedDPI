@@ -1,6 +1,6 @@
 // Timeline Visualization using D3.js
 
-const timeline = {
+window.timeline = {
     svg: null,
     width: 0,
     height: 0,
@@ -199,6 +199,6 @@ const timeline = {
 document.addEventListener('DOMContentLoaded', () => {
     const exportBtn = document.getElementById('exportTimelineBtn');
     if (exportBtn) {
-        exportBtn.addEventListener('click', () => timeline.exportSVG());
+        exportBtn.addEventListener('click', () => window.timeline.exportSVG());
     }
 });
