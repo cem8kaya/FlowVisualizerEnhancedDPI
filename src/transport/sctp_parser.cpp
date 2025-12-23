@@ -306,14 +306,52 @@ std::optional<SctpPacket> SctpParser::parse(const uint8_t* data, size_t len,
     assoc.packets_received++;
     assoc.bytes_received += len;
 
-    // Process INIT chunk if present
-    if (packet.init_chunk.has_value()) {
-        const auto& init = packet.init_chunk.value();
-        assoc.peer_verification_tag = init.initiate_tag;
-        assoc.num_inbound_streams = init.num_outbound_streams;
-        assoc.num_outbound_streams = init.num_inbound_streams;
-        assoc.peer_tsn = init.initial_tsn;
-        updateAssociationState(assoc, SctpChunkType::INIT);
+    // Process all chunks for state transitions
+    for (const auto& chunk : packet.chunks) {
+        auto chunk_type = static_cast<SctpChunkType>(chunk.type);
+
+        switch (chunk_type) {
+            case SctpChunkType::INIT:
+                if (packet.init_chunk.has_value()) {
+                    const auto& init = packet.init_chunk.value();
+                    assoc.peer_verification_tag = init.initiate_tag;
+                    assoc.num_inbound_streams = init.num_outbound_streams;
+                    assoc.num_outbound_streams = init.num_inbound_streams;
+                    assoc.peer_tsn = init.initial_tsn;
+                    updateAssociationState(assoc, SctpChunkType::INIT);
+                }
+                break;
+            case SctpChunkType::INIT_ACK:
+                updateAssociationState(assoc, SctpChunkType::INIT_ACK);
+                break;
+            case SctpChunkType::COOKIE_ECHO:
+                updateAssociationState(assoc, SctpChunkType::COOKIE_ECHO);
+                break;
+            case SctpChunkType::COOKIE_ACK:
+                updateAssociationState(assoc, SctpChunkType::COOKIE_ACK);
+                break;
+            case SctpChunkType::SHUTDOWN:
+                updateAssociationState(assoc, SctpChunkType::SHUTDOWN);
+                break;
+            case SctpChunkType::SHUTDOWN_ACK:
+                updateAssociationState(assoc, SctpChunkType::SHUTDOWN_ACK);
+                break;
+            case SctpChunkType::SHUTDOWN_COMPLETE:
+                updateAssociationState(assoc, SctpChunkType::SHUTDOWN_COMPLETE);
+                break;
+            case SctpChunkType::HEARTBEAT:
+                LOG_DEBUG("SCTP Association " << assoc.association_id << " | HEARTBEAT chunk received");
+                break;
+            case SctpChunkType::HEARTBEAT_ACK:
+                LOG_DEBUG("SCTP Association " << assoc.association_id << " | HEARTBEAT_ACK chunk received");
+                break;
+            case SctpChunkType::ABORT:
+                LOG_WARN("SCTP Association " << assoc.association_id << " | ABORT chunk received - connection aborted");
+                assoc.state = SctpAssociationState::CLOSED;
+                break;
+            default:
+                break;
+        }
     }
 
     // Process data chunks
@@ -617,23 +655,56 @@ SctpAssociation& SctpParser::getOrCreateAssociation(const FiveTuple& five_tuple,
 }
 
 void SctpParser::updateAssociationState(SctpAssociation& assoc, SctpChunkType chunk_type) {
+    auto old_state = assoc.state;
+
     switch (chunk_type) {
         case SctpChunkType::INIT:
             assoc.state = SctpAssociationState::COOKIE_WAIT;
+            LOG_INFO("SCTP Association " << assoc.association_id
+                     << " state transition: CLOSED -> COOKIE_WAIT (INIT received)"
+                     << " | vtag=0x" << std::hex << assoc.peer_verification_tag
+                     << " streams=" << std::dec << assoc.num_outbound_streams
+                     << "/" << assoc.num_inbound_streams);
             break;
         case SctpChunkType::INIT_ACK:
             assoc.state = SctpAssociationState::COOKIE_ECHOED;
+            LOG_INFO("SCTP Association " << assoc.association_id
+                     << " state transition: COOKIE_WAIT -> COOKIE_ECHOED (INIT_ACK received)");
+            break;
+        case SctpChunkType::COOKIE_ECHO:
+            if (old_state == SctpAssociationState::CLOSED) {
+                assoc.state = SctpAssociationState::ESTABLISHED;
+                LOG_INFO("SCTP Association " << assoc.association_id
+                         << " state transition: CLOSED -> ESTABLISHED (COOKIE_ECHO received, server side)");
+            }
             break;
         case SctpChunkType::COOKIE_ACK:
             assoc.state = SctpAssociationState::ESTABLISHED;
+            LOG_INFO("SCTP Association " << assoc.association_id
+                     << " state transition: COOKIE_ECHOED -> ESTABLISHED (COOKIE_ACK received)"
+                     << " | Ready for data transfer on " << assoc.num_outbound_streams << " streams");
             break;
         case SctpChunkType::SHUTDOWN:
             assoc.state = SctpAssociationState::SHUTDOWN_RECEIVED;
+            LOG_INFO("SCTP Association " << assoc.association_id
+                     << " state transition: ESTABLISHED -> SHUTDOWN_RECEIVED (SHUTDOWN received)"
+                     << " | Total data chunks: " << assoc.data_chunks_received);
+            break;
+        case SctpChunkType::SHUTDOWN_ACK:
+            assoc.state = SctpAssociationState::SHUTDOWN_ACK_SENT;
+            LOG_INFO("SCTP Association " << assoc.association_id
+                     << " state transition -> SHUTDOWN_ACK_SENT (SHUTDOWN_ACK received)");
             break;
         case SctpChunkType::SHUTDOWN_COMPLETE:
             assoc.state = SctpAssociationState::CLOSED;
+            LOG_INFO("SCTP Association " << assoc.association_id
+                     << " state transition -> CLOSED (SHUTDOWN_COMPLETE received)"
+                     << " | Lifetime stats: " << assoc.packets_received << " packets, "
+                     << assoc.bytes_received << " bytes, "
+                     << assoc.data_chunks_received << " data chunks");
             break;
         default:
+            // For DATA, SACK, HEARTBEAT, etc. - no state change
             break;
     }
 }
@@ -649,10 +720,33 @@ void SctpParser::processDataChunks(SctpAssociation& assoc,
 
     for (const auto& data_chunk : data_chunks) {
         auto fragment = data_chunk.toFragment();
+
+        // Log fragment details
+        LOG_DEBUG("SCTP Association " << assoc.association_id
+                  << " | Stream " << fragment.stream_id
+                  << " | TSN=" << fragment.tsn
+                  << " SSN=" << fragment.stream_sequence
+                  << " PPID=" << fragment.payload_protocol
+                  << " (" << getSctpPpidName(fragment.payload_protocol) << ")"
+                  << " | Flags: " << (fragment.beginning ? "B" : "-")
+                  << (fragment.ending ? "E" : "-")
+                  << (fragment.unordered ? "U" : "-")
+                  << " | Data: " << fragment.data.size() << " bytes");
+
         auto msg_opt = reassembler.addFragment(fragment);
 
         if (msg_opt.has_value() && message_callback_) {
-            message_callback_(msg_opt.value());
+            const auto& msg = msg_opt.value();
+            LOG_INFO("SCTP Association " << assoc.association_id
+                     << " | Stream " << msg.stream_id
+                     << " | SSN=" << msg.stream_sequence
+                     << " | Reassembled complete message"
+                     << " | PPID=" << msg.payload_protocol
+                     << " (" << getSctpPpidName(msg.payload_protocol) << ")"
+                     << " | TSN range: " << msg.start_tsn << "-" << msg.end_tsn
+                     << " | Fragments: " << msg.fragment_count
+                     << " | Total size: " << msg.data.size() << " bytes");
+            message_callback_(msg);
         }
     }
 
@@ -660,7 +754,12 @@ void SctpParser::processDataChunks(SctpAssociation& assoc,
     while (reassembler.hasCompleteMessages()) {
         auto msg_opt = reassembler.getCompleteMessage();
         if (msg_opt.has_value() && message_callback_) {
-            message_callback_(msg_opt.value());
+            const auto& msg = msg_opt.value();
+            LOG_INFO("SCTP Association " << assoc.association_id
+                     << " | Retrieved buffered complete message"
+                     << " | Stream " << msg.stream_id
+                     << " | SSN=" << msg.stream_sequence);
+            message_callback_(msg);
         }
     }
 }

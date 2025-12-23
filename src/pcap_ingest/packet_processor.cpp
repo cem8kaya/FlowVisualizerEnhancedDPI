@@ -14,7 +14,9 @@
 #include "protocol_parsers/nas5g_parser.h"
 #include "protocol_parsers/ngap_parser.h"
 #include "protocol_parsers/pfcp_parser.h"
+#include "protocol_parsers/nas_parser.h"
 #include "protocol_parsers/rtp_parser.h"
+#include "protocol_parsers/s1ap_parser.h"
 #include "protocol_parsers/sip_parser.h"
 
 namespace callflow {
@@ -515,12 +517,25 @@ void PacketProcessor::processSctpMessage(const SctpReassembledMessage& message,
     switch (message.payload_protocol) {
         case 18: {  // S1AP
             LOG_DEBUG("Routing SCTP payload to S1AP parser");
-            // TODO: Implement S1AP parsing when S1AP parser is available
-            // S1apParser s1ap_parser;
-            // auto s1ap_msg = s1ap_parser.parse(message.data.data(), message.data.size());
-            // if (s1ap_msg.has_value()) {
-            //     correlator_.processPacket(metadata, ProtocolType::NGAP, s1ap_msg->toJson());
-            // }
+            S1apParser s1ap_parser;
+            auto s1ap_msg = s1ap_parser.parse(message.data.data(), message.data.size());
+            if (s1ap_msg.has_value()) {
+                auto& msg = s1ap_msg.value();
+                auto json = msg.toJson();
+
+                // Check for embedded NAS PDU (LTE NAS)
+                if (msg.nas_pdu.has_value()) {
+                    NasParser nas_parser;
+                    const auto& nas_data = msg.nas_pdu.value();
+
+                    auto nas_msg_opt = nas_parser.parse(nas_data.data(), nas_data.size(), nullptr);
+                    if (nas_msg_opt.has_value()) {
+                        json["nas"] = nas_msg_opt->toJson();
+                    }
+                }
+
+                correlator_.processPacket(metadata, ProtocolType::S1AP, json);
+            }
             break;
         }
 
