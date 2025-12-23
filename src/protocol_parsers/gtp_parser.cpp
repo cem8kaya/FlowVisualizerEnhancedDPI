@@ -3,7 +3,6 @@
 #include <arpa/inet.h>
 
 #include <cstring>
-#include <iomanip>
 #include <sstream>
 
 #include "common/logger.h"

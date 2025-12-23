@@ -5,7 +5,6 @@
 
 #include "common/logger.h"
 #include "flow_manager/session_correlator.h"
-#include "protocol_parsers/gtp_parser.h"
 #include "protocol_parsers/sip_parser.h"
 
 using namespace callflow;

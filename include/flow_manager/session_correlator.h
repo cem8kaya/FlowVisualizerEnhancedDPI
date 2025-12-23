@@ -2,11 +2,11 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <vector>
 
 #include "common/types.h"
-#include "flow_manager/flow_tracker.h"
 
 namespace callflow {
 

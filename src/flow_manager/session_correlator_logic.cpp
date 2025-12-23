@@ -1,3 +1,11 @@
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include "flow_manager/session_correlator.h"
+
+namespace callflow {
+
 void SessionCorrelator::linkSessionMetadata(std::shared_ptr<FlowSession> session,
                                             const PacketMetadata& packet,
                                             const nlohmann::json& parsed_data) {
@@ -74,7 +82,7 @@ nlohmann::json SessionCorrelator::exportMasterSessions() {
     nlohmann::json result = nlohmann::json::array();
 
     // Group sessions by IMSI
-    std::unordered_map<std::string, VolteMasterSession> master_sessions;
+    std::unordered_map<std::string, FlowVolteMasterSession> master_sessions;
     std::vector<std::shared_ptr<FlowSession>> unassociated_sessions;
 
     for (const auto& [key, session] : sessions_) {
@@ -128,3 +136,5 @@ nlohmann::json SessionCorrelator::exportMasterSessions() {
 
     return result;
 }
+
+}  // namespace callflow

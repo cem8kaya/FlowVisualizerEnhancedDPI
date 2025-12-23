@@ -5,7 +5,6 @@
 #include <sstream>
 
 #include "common/logger.h"
-#include "common/utils.h"
 
 namespace callflow {
 
