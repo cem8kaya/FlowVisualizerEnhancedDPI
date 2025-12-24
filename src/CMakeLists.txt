@@ -111,6 +111,18 @@ target_link_libraries(gtpv2_correlation PUBLIC
     protocol_parsers
 )
 
+# RTP correlation library
+add_library(rtp_correlation STATIC
+    correlation/rtp/rtp_stream.cpp
+    correlation/rtp/rtp_correlator.cpp
+)
+target_include_directories(rtp_correlation PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(rtp_correlation PUBLIC
+    callflow_common
+)
+
 # NAS/S1AP correlation library
 add_library(nas_s1ap_correlation STATIC
     correlation/nas/nas_types.cpp

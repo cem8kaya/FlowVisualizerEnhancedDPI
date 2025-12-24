@@ -1066,4 +1066,43 @@ set_tests_properties(test_s1ap_correlator PROPERTIES
     LABELS "unit"
 )
 
+# RTP Correlation Tests
+# RTP Stream Tests
+add_executable(test_rtp_stream
+    unit/rtp/test_rtp_stream.cpp
+)
+
+target_link_libraries(test_rtp_stream PRIVATE
+    callflow_common
+    rtp_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_rtp_stream COMMAND test_rtp_stream)
+
+set_tests_properties(test_rtp_stream PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# RTP Correlator Tests
+add_executable(test_rtp_correlator
+    unit/rtp/test_rtp_correlator.cpp
+)
+
+target_link_libraries(test_rtp_correlator PRIVATE
+    callflow_common
+    rtp_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_rtp_correlator COMMAND test_rtp_correlator)
+
+set_tests_properties(test_rtp_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
