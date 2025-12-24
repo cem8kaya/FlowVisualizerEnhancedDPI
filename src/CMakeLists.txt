@@ -370,6 +370,8 @@ if(BUILD_API_SERVER)
         api_server/auth_routes.cpp
         api_server/analytics_manager.cpp
         api_server/analytics_routes.cpp
+        api_server/analytics_service.cpp
+        api_server/diagram_formatter.cpp
     )
     target_include_directories(api_server PUBLIC
         ${PROJECT_SOURCE_DIR}/include

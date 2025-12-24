@@ -211,7 +211,7 @@ int runApiServer(const CliArgs& args) {
     // Create components
     auto job_manager = std::make_shared<JobManager>(config, db_manager);
     auto ws_handler = std::make_shared<WebSocketHandler>(config);
-    auto http_server = std::make_shared<HttpServer>(config, job_manager, ws_handler);
+    auto http_server = std::make_shared<HttpServer>(config, job_manager, ws_handler, db_manager);
 
     // Set callbacks
     job_manager->setProgressCallback([ws_handler](const JobId& job_id, int progress,
