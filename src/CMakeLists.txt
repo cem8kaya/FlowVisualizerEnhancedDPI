@@ -147,6 +147,7 @@ target_link_libraries(nas_s1ap_correlation PUBLIC
 # VoLTE inter-protocol correlation library
 add_library(volte_correlation STATIC
     correlation/volte/volte_correlator.cpp
+    correlation/volte/volte_json.cpp
 )
 target_include_directories(volte_correlation PUBLIC
     ${PROJECT_SOURCE_DIR}/include
