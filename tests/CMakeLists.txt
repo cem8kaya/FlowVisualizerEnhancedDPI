@@ -945,4 +945,164 @@ set_tests_properties(test_diameter_correlator PROPERTIES
     LABELS "unit"
 )
 
+# GTPv2 Correlation Tests
+# GTPv2 Bearer Tests
+add_executable(test_gtpv2_bearer
+    unit/gtpv2/test_gtpv2_bearer.cpp
+)
+
+target_link_libraries(test_gtpv2_bearer PRIVATE
+    callflow_common
+    gtpv2_correlation
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gtpv2_bearer COMMAND test_gtpv2_bearer)
+
+set_tests_properties(test_gtpv2_bearer PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# GTPv2 Session Tests
+add_executable(test_gtpv2_session
+    unit/gtpv2/test_gtpv2_session.cpp
+)
+
+target_link_libraries(test_gtpv2_session PRIVATE
+    callflow_common
+    gtpv2_correlation
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gtpv2_session COMMAND test_gtpv2_session)
+
+set_tests_properties(test_gtpv2_session PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# GTPv2 F-TEID Manager Tests
+add_executable(test_gtpv2_fteid_manager
+    unit/gtpv2/test_gtpv2_fteid_manager.cpp
+)
+
+target_link_libraries(test_gtpv2_fteid_manager PRIVATE
+    callflow_common
+    gtpv2_correlation
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gtpv2_fteid_manager COMMAND test_gtpv2_fteid_manager)
+
+set_tests_properties(test_gtpv2_fteid_manager PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# GTPv2 Correlator Tests
+add_executable(test_gtpv2_correlator
+    unit/gtpv2/test_gtpv2_correlator.cpp
+)
+
+target_link_libraries(test_gtpv2_correlator PRIVATE
+    callflow_common
+    gtpv2_correlation
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_gtpv2_correlator COMMAND test_gtpv2_correlator)
+
+set_tests_properties(test_gtpv2_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# NAS Correlator Tests
+add_executable(test_nas_correlator
+    unit/test_nas_correlator.cpp
+)
+
+target_link_libraries(test_nas_correlator PRIVATE
+    callflow_common
+    identity_correlation
+    nas_s1ap_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_nas_correlator COMMAND test_nas_correlator)
+
+set_tests_properties(test_nas_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# S1AP Correlator Tests
+add_executable(test_s1ap_correlator
+    unit/test_s1ap_correlator.cpp
+)
+
+target_link_libraries(test_s1ap_correlator PRIVATE
+    callflow_common
+    identity_correlation
+    nas_s1ap_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_s1ap_correlator COMMAND test_s1ap_correlator)
+
+set_tests_properties(test_s1ap_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# RTP Correlation Tests
+# RTP Stream Tests
+add_executable(test_rtp_stream
+    unit/rtp/test_rtp_stream.cpp
+)
+
+target_link_libraries(test_rtp_stream PRIVATE
+    callflow_common
+    rtp_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_rtp_stream COMMAND test_rtp_stream)
+
+set_tests_properties(test_rtp_stream PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# RTP Correlator Tests
+add_executable(test_rtp_correlator
+    unit/rtp/test_rtp_correlator.cpp
+)
+
+target_link_libraries(test_rtp_correlator PRIVATE
+    callflow_common
+    rtp_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_rtp_correlator COMMAND test_rtp_correlator)
+
+set_tests_properties(test_rtp_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")

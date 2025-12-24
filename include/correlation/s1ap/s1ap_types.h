@@ -1,0 +1,381 @@
+#pragma once
+
+#include <cstdint>
+#include <string>
+
+namespace callflow {
+namespace correlation {
+
+/**
+ * @brief S1AP Procedure Codes (TS 36.413)
+ */
+enum class S1apProcedureCode : uint8_t {
+    // UE-associated signalling procedures
+    HANDOVER_PREPARATION = 0,
+    HANDOVER_RESOURCE_ALLOCATION = 1,
+    HANDOVER_NOTIFY = 2,
+    PATH_SWITCH_REQUEST = 3,
+    HANDOVER_CANCEL = 4,
+    E_RAB_SETUP = 5,
+    E_RAB_MODIFY = 6,
+    E_RAB_RELEASE = 7,
+    E_RAB_RELEASE_INDICATION = 8,
+    INITIAL_CONTEXT_SETUP = 9,
+    PAGING = 10,
+    DOWNLINK_NAS_TRANSPORT = 11,
+    INITIAL_UE_MESSAGE = 12,
+    UPLINK_NAS_TRANSPORT = 13,
+    RESET = 14,
+    ERROR_INDICATION = 15,
+    NAS_NON_DELIVERY_INDICATION = 16,
+    S1_SETUP = 17,
+    UE_CONTEXT_RELEASE_REQUEST = 18,
+    DOWNLINK_S1_CDMA2000_TUNNELLING = 19,
+    UPLINK_S1_CDMA2000_TUNNELLING = 20,
+    UE_CONTEXT_MODIFICATION = 21,
+    UE_CAPABILITY_INFO_INDICATION = 22,
+    UE_CONTEXT_RELEASE = 23,
+    ENB_STATUS_TRANSFER = 24,
+    MME_STATUS_TRANSFER = 25,
+    DEACTIVATE_TRACE = 26,
+    TRACE_START = 27,
+    TRACE_FAILURE_INDICATION = 28,
+    ENB_CONFIGURATION_UPDATE = 29,
+    MME_CONFIGURATION_UPDATE = 30,
+    LOCATION_REPORTING_CONTROL = 31,
+    LOCATION_REPORTING_FAILURE_INDICATION = 32,
+    LOCATION_REPORT = 33,
+    OVERLOAD_START = 34,
+    OVERLOAD_STOP = 35,
+    WRITE_REPLACE_WARNING = 36,
+    ENB_DIRECT_INFORMATION_TRANSFER = 37,
+    MME_DIRECT_INFORMATION_TRANSFER = 38,
+    PRIVATE_MESSAGE = 39,
+    ENB_CONFIGURATION_TRANSFER = 40,
+    MME_CONFIGURATION_TRANSFER = 41,
+    CELL_TRAFFIC_TRACE = 42,
+    KILL = 43,
+    DOWNLINK_UE_ASSOCIATED_LPPA_TRANSPORT = 44,
+    UPLINK_UE_ASSOCIATED_LPPA_TRANSPORT = 45,
+    DOWNLINK_NON_UE_ASSOCIATED_LPPA_TRANSPORT = 46,
+    UPLINK_NON_UE_ASSOCIATED_LPPA_TRANSPORT = 47,
+    UE_RADIO_CAPABILITY_MATCH = 48,
+    UE_INFORMATION_TRANSFER = 49,
+    ENB_CP_RELOCATION_INDICATION = 50,
+    MME_CP_RELOCATION_INDICATION = 51,
+    E_RAB_MODIFICATION_INDICATION = 52,
+    RRC_INACTIVE_TRANSITION_REPORT = 53,
+    CONNECTION_ESTABLISHMENT_INDICATION = 54,
+    AMF_CONFIGURATION_UPDATE = 55,
+    AMF_STATUS_INDICATION = 56,
+    RAN_CONFIGURATION_UPDATE = 57,
+    RAN_CONFIGURATION_UPDATE_ACKNOWLEDGE = 58,
+    DOWNLINK_RAN_STATUS_TRANSFER = 59,
+    UPLINK_RAN_STATUS_TRANSFER = 60
+};
+
+/**
+ * @brief S1AP Message Type (based on procedureCode and direction)
+ */
+enum class S1apMessageType {
+    // Initial UE Message
+    INITIAL_UE_MESSAGE,
+
+    // NAS Transport
+    DOWNLINK_NAS_TRANSPORT,
+    UPLINK_NAS_TRANSPORT,
+
+    // Initial Context Setup
+    INITIAL_CONTEXT_SETUP_REQUEST,
+    INITIAL_CONTEXT_SETUP_RESPONSE,
+    INITIAL_CONTEXT_SETUP_FAILURE,
+
+    // UE Context Release
+    UE_CONTEXT_RELEASE_REQUEST,
+    UE_CONTEXT_RELEASE_COMMAND,
+    UE_CONTEXT_RELEASE_COMPLETE,
+
+    // UE Context Modification
+    UE_CONTEXT_MODIFICATION_REQUEST,
+    UE_CONTEXT_MODIFICATION_RESPONSE,
+    UE_CONTEXT_MODIFICATION_FAILURE,
+
+    // E-RAB Setup
+    E_RAB_SETUP_REQUEST,
+    E_RAB_SETUP_RESPONSE,
+
+    // E-RAB Modify
+    E_RAB_MODIFY_REQUEST,
+    E_RAB_MODIFY_RESPONSE,
+
+    // E-RAB Release
+    E_RAB_RELEASE_COMMAND,
+    E_RAB_RELEASE_RESPONSE,
+    E_RAB_RELEASE_INDICATION,
+
+    // Handover
+    HANDOVER_REQUIRED,
+    HANDOVER_REQUEST,
+    HANDOVER_REQUEST_ACKNOWLEDGE,
+    HANDOVER_COMMAND,
+    HANDOVER_PREPARATION_FAILURE,
+    HANDOVER_NOTIFY,
+    HANDOVER_CANCEL,
+    HANDOVER_CANCEL_ACKNOWLEDGE,
+
+    // Path Switch
+    PATH_SWITCH_REQUEST,
+    PATH_SWITCH_REQUEST_ACKNOWLEDGE,
+    PATH_SWITCH_REQUEST_FAILURE,
+
+    // Paging
+    PAGING,
+
+    // S1 Setup
+    S1_SETUP_REQUEST,
+    S1_SETUP_RESPONSE,
+    S1_SETUP_FAILURE,
+
+    // eNB Configuration Update
+    ENB_CONFIGURATION_UPDATE,
+    ENB_CONFIGURATION_UPDATE_ACKNOWLEDGE,
+    ENB_CONFIGURATION_UPDATE_FAILURE,
+
+    // MME Configuration Update
+    MME_CONFIGURATION_UPDATE,
+    MME_CONFIGURATION_UPDATE_ACKNOWLEDGE,
+    MME_CONFIGURATION_UPDATE_FAILURE,
+
+    // Reset
+    RESET,
+    RESET_ACKNOWLEDGE,
+
+    // Error Indication
+    ERROR_INDICATION,
+
+    // Others
+    NAS_NON_DELIVERY_INDICATION,
+    UE_CAPABILITY_INFO_INDICATION,
+
+    UNKNOWN
+};
+
+/**
+ * @brief S1AP IE Type (Information Element Type)
+ */
+enum class S1apIEType : uint16_t {
+    // UE Identifiers
+    MME_UE_S1AP_ID = 0,
+    ENB_UE_S1AP_ID = 8,
+
+    // NAS-PDU
+    NAS_PDU = 26,
+
+    // E-RAB
+    E_RAB_TO_BE_SETUP_LIST_BEARER_SU_REQ = 16,
+    E_RAB_TO_BE_SETUP_LIST_CTXT_SU_REQ = 24,
+    E_RAB_SETUP_LIST_BEARER_SU_RES = 27,
+    E_RAB_SETUP_LIST_CTXT_SU_RES = 50,
+    E_RAB_TO_BE_MODIFIED_LIST_BEARER_MOD_REQ = 69,
+    E_RAB_MODIFY_LIST_BEARER_MOD_RES = 70,
+    E_RAB_RELEASE_LIST = 69,
+    E_RAB_RELEASED_LIST = 69,
+
+    // Cause
+    CAUSE = 2,
+
+    // Tracking Area Identity (TAI)
+    TAI = 67,
+
+    // E-UTRAN CGI
+    EUTRAN_CGI = 100,
+
+    // RRC Container
+    RRC_ESTABLISHMENT_CAUSE = 134,
+    SOURCE_TO_TARGET_TRANSPARENT_CONTAINER = 104,
+    TARGET_TO_SOURCE_TRANSPARENT_CONTAINER = 105,
+
+    // S-TMSI
+    S_TMSI = 96,
+
+    // GUMMEI
+    GUMMEI = 75,
+
+    // CSG ID
+    CSG_ID = 77,
+    CSG_ID_LIST = 78,
+
+    // UE Security Capabilities
+    UE_SECURITY_CAPABILITIES = 107,
+
+    // Security Key
+    SECURITY_KEY = 73,
+
+    // Aggregate Maximum Bit Rate
+    UE_AGGREGATE_MAX_BIT_RATE = 66,
+
+    // E-RAB Level QoS Parameters
+    E_RAB_LEVEL_QOS_PARAMETERS = 64,
+
+    // GTP-TEID
+    GTP_TEID = 97,
+
+    // Transport Layer Address
+    TRANSPORT_LAYER_ADDRESS = 98,
+
+    // Handover
+    HANDOVER_TYPE = 6,
+    HANDOVER_RESTRICTION_LIST = 53,
+    TARGET_ID = 60,
+    SOURCE_MME_UE_S1AP_ID = 53,
+    SOURCE_ENB_ID = 52,
+    TARGET_ENB_ID = 53,
+
+    // Paging
+    UE_IDENTITY_INDEX_VALUE = 74,
+    UE_PAGING_ID = 43,
+    PAGING_DRX = 44,
+    CN_DOMAIN = 109,
+    TAI_LIST = 56,
+
+    // Others
+    CRITICALITY_DIAGNOSTICS = 58,
+    GLOBAL_ENB_ID = 59,
+    ENB_NAME = 60,
+    MME_NAME = 61,
+    SERVED_GUMMEIS = 105,
+    RELATIVE_MME_CAPACITY = 87,
+    MME_RELAY_SUPPORT_INDICATOR = 102,
+    EMERGENCY_AREA_ID_LIST = 46,
+    WARNING_AREA_LIST = 45,
+    OVERLOAD_RESPONSE = 91,
+    TRACE_ACTIVATION = 25
+};
+
+/**
+ * @brief S1AP Cause Type (TS 36.413 section 9.2.1.3)
+ */
+enum class S1apCauseType : uint8_t {
+    RADIO_NETWORK = 0,
+    TRANSPORT = 1,
+    NAS = 2,
+    PROTOCOL = 3,
+    MISC = 4
+};
+
+/**
+ * @brief S1AP Radio Network Cause values
+ */
+enum class S1apRadioNetworkCause : uint8_t {
+    UNSPECIFIED = 0,
+    TX2_RELOCOVERALL_EXPIRY = 1,
+    SUCCESSFUL_HANDOVER = 2,
+    RELEASE_DUE_TO_EUTRAN_GENERATED_REASON = 3,
+    HANDOVER_CANCELLED = 4,
+    PARTIAL_HANDOVER = 5,
+    HO_FAILURE_IN_TARGET_EPC_ENB_OR_TARGET_SYSTEM = 6,
+    HO_TARGET_NOT_ALLOWED = 7,
+    TS1_RELOCOVERALL_EXPIRY = 8,
+    TS1_RELOCPREP_EXPIRY = 9,
+    CELL_NOT_AVAILABLE = 10,
+    UNKNOWN_TARGET_ID = 11,
+    NO_RADIO_RESOURCES_AVAILABLE_IN_TARGET_CELL = 12,
+    UNKNOWN_MME_UE_S1AP_ID = 13,
+    UNKNOWN_ENB_UE_S1AP_ID = 14,
+    UNKNOWN_PAIR_UE_S1AP_ID = 15,
+    HANDOVER_DESIRABLE_FOR_RADIO_REASON = 16,
+    TIME_CRITICAL_HANDOVER = 17,
+    RESOURCE_OPTIMISATION_HANDOVER = 18,
+    REDUCE_LOAD_IN_SERVING_CELL = 19,
+    USER_INACTIVITY = 20,
+    RADIO_CONNECTION_WITH_UE_LOST = 21,
+    LOAD_BALANCING_TAU_REQUIRED = 22,
+    CS_FALLBACK_TRIGGERED = 23,
+    UE_NOT_AVAILABLE_FOR_PS_SERVICE = 24,
+    RADIO_RESOURCES_NOT_AVAILABLE = 25,
+    FAILURE_IN_RADIO_INTERFACE_PROCEDURE = 26,
+    INVALID_QOS_COMBINATION = 27,
+    INTERRAT_REDIRECTION = 28,
+    INTERACTION_WITH_OTHER_PROCEDURE = 29,
+    UNKNOWN_E_RAB_ID = 30,
+    MULTIPLE_E_RAB_ID_INSTANCES = 31,
+    ENCRYPTION_AND_OR_INTEGRITY_PROTECTION_ALGORITHMS_NOT_SUPPORTED = 32,
+    S1_INTRA_SYSTEM_HANDOVER_TRIGGERED = 33,
+    S1_INTER_SYSTEM_HANDOVER_TRIGGERED = 34,
+    X2_HANDOVER_TRIGGERED = 35,
+    REDIRECTION_TOWARDS_1XRTT = 36,
+    NOT_SUPPORTED_QCI_VALUE = 37,
+    INVALID_CSG_ID = 38
+};
+
+/**
+ * @brief S1AP NAS Cause values
+ */
+enum class S1apNasCause : uint8_t {
+    NORMAL_RELEASE = 0,
+    AUTHENTICATION_FAILURE = 1,
+    DETACH = 2,
+    UNSPECIFIED = 3,
+    CSG_SUBSCRIPTION_EXPIRY = 4
+};
+
+/**
+ * @brief RRC Establishment Cause (TS 36.331)
+ */
+enum class RrcEstablishmentCause : uint8_t {
+    EMERGENCY = 0,
+    HIGH_PRIORITY_ACCESS = 1,
+    MT_ACCESS = 2,
+    MO_SIGNALLING = 3,
+    MO_DATA = 4,
+    DELAY_TOLERANT_ACCESS = 5,
+    MO_VOICE_CALL = 6,
+    MO_EXCEPTION_DATA = 7
+};
+
+/**
+ * @brief Helper Functions
+ */
+
+/**
+ * @brief Get S1AP procedure code name
+ */
+std::string getS1apProcedureCodeName(S1apProcedureCode code);
+
+/**
+ * @brief Get S1AP message type name
+ */
+std::string getS1apMessageTypeName(S1apMessageType type);
+
+/**
+ * @brief Get S1AP cause type name
+ */
+std::string getS1apCauseTypeName(S1apCauseType type);
+
+/**
+ * @brief Get S1AP radio network cause name
+ */
+std::string getS1apRadioNetworkCauseName(S1apRadioNetworkCause cause);
+
+/**
+ * @brief Get S1AP NAS cause name
+ */
+std::string getS1apNasCauseName(S1apNasCause cause);
+
+/**
+ * @brief Get RRC establishment cause name
+ */
+std::string getRrcEstablishmentCauseName(RrcEstablishmentCause cause);
+
+/**
+ * @brief Check if procedure is UE-associated
+ */
+bool isUeAssociated(S1apProcedureCode code);
+
+/**
+ * @brief Check if message contains NAS-PDU
+ */
+bool containsNasPdu(S1apProcedureCode code);
+
+} // namespace correlation
+} // namespace callflow
