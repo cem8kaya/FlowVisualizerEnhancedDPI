@@ -828,4 +828,23 @@ set_tests_properties(test_identity_matcher PROPERTIES
     LABELS "unit"
 )
 
+# Subscriber Context Manager Tests
+add_executable(test_subscriber_context_manager
+    unit/identity/test_subscriber_context_manager.cpp
+)
+
+target_link_libraries(test_subscriber_context_manager PRIVATE
+    callflow_common
+    identity_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_subscriber_context_manager COMMAND test_subscriber_context_manager)
+
+set_tests_properties(test_subscriber_context_manager PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
