@@ -1105,4 +1105,29 @@ set_tests_properties(test_rtp_correlator PROPERTIES
     LABELS "unit"
 )
 
+# VoLTE Inter-Protocol Correlator Tests
+add_executable(test_volte_correlator
+    unit/volte/test_volte_correlator.cpp
+)
+
+target_link_libraries(test_volte_correlator PRIVATE
+    callflow_common
+    volte_correlation
+    sip_correlation
+    diameter_correlation
+    gtpv2_correlation
+    nas_s1ap_correlation
+    rtp_correlation
+    identity_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_volte_correlator COMMAND test_volte_correlator)
+
+set_tests_properties(test_volte_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
