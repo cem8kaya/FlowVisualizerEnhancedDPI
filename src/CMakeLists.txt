@@ -77,6 +77,22 @@ target_link_libraries(sip_correlation PUBLIC
     identity_correlation
 )
 
+# Diameter correlation library
+add_library(diameter_correlation STATIC
+    correlation/diameter/diameter_types.cpp
+    correlation/diameter/diameter_message.cpp
+    correlation/diameter/diameter_session.cpp
+    correlation/diameter/diameter_correlator.cpp
+)
+target_include_directories(diameter_correlation PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(diameter_correlation PUBLIC
+    callflow_common
+    identity_correlation
+    protocol_parsers
+)
+
 # Procedure state machines library
 add_library(procedure_correlation STATIC
     correlation/procedure_state_machine.cpp
