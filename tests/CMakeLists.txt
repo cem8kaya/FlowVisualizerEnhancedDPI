@@ -732,4 +732,100 @@ set_tests_properties(test_volte_full_call PROPERTIES
     LABELS "integration"
 )
 
+# Identity Management Tests
+# MSISDN Normalizer Tests
+add_executable(test_msisdn_normalizer
+    unit/identity/test_msisdn_normalizer.cpp
+)
+
+target_link_libraries(test_msisdn_normalizer PRIVATE
+    callflow_common
+    identity_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_msisdn_normalizer COMMAND test_msisdn_normalizer)
+
+set_tests_properties(test_msisdn_normalizer PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# IMSI Normalizer Tests
+add_executable(test_imsi_normalizer
+    unit/identity/test_imsi_normalizer.cpp
+)
+
+target_link_libraries(test_imsi_normalizer PRIVATE
+    callflow_common
+    identity_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_imsi_normalizer COMMAND test_imsi_normalizer)
+
+set_tests_properties(test_imsi_normalizer PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# IMEI Normalizer Tests
+add_executable(test_imei_normalizer
+    unit/identity/test_imei_normalizer.cpp
+)
+
+target_link_libraries(test_imei_normalizer PRIVATE
+    callflow_common
+    identity_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_imei_normalizer COMMAND test_imei_normalizer)
+
+set_tests_properties(test_imei_normalizer PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# GUTI Parser Tests
+add_executable(test_guti_parser
+    unit/identity/test_guti_parser.cpp
+)
+
+target_link_libraries(test_guti_parser PRIVATE
+    callflow_common
+    identity_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_guti_parser COMMAND test_guti_parser)
+
+set_tests_properties(test_guti_parser PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Identity Matcher Tests
+add_executable(test_identity_matcher
+    unit/identity/test_identity_matcher.cpp
+)
+
+target_link_libraries(test_identity_matcher PRIVATE
+    callflow_common
+    identity_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_identity_matcher COMMAND test_identity_matcher)
+
+set_tests_properties(test_identity_matcher PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")

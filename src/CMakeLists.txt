@@ -42,6 +42,22 @@ target_link_libraries(session_correlation PUBLIC
     callflow_common
 )
 
+# Identity correlation library
+add_library(identity_correlation STATIC
+    correlation/identity/subscriber_identity.cpp
+    correlation/identity/msisdn_normalizer.cpp
+    correlation/identity/imsi_normalizer.cpp
+    correlation/identity/imei_normalizer.cpp
+    correlation/identity/guti_parser.cpp
+    correlation/identity/identity_matcher.cpp
+)
+target_include_directories(identity_correlation PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(identity_correlation PUBLIC
+    callflow_common
+)
+
 # Procedure state machines library
 add_library(procedure_correlation STATIC
     correlation/procedure_state_machine.cpp
@@ -66,6 +82,7 @@ target_link_libraries(procedure_correlation PUBLIC
     callflow_common
     session_correlation
     protocol_parsers
+    identity_correlation
 )
 
 
