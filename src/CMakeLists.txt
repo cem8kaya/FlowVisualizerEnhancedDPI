@@ -59,6 +59,24 @@ target_link_libraries(identity_correlation PUBLIC
     callflow_common
 )
 
+# SIP correlation library
+add_library(sip_correlation STATIC
+    correlation/sip/sip_types.cpp
+    correlation/sip/sip_message.cpp
+    correlation/sip/sip_transaction.cpp
+    correlation/sip/sip_dialog.cpp
+    correlation/sip/sip_call_detector.cpp
+    correlation/sip/sip_session.cpp
+    correlation/sip/sip_correlator.cpp
+)
+target_include_directories(sip_correlation PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(sip_correlation PUBLIC
+    callflow_common
+    identity_correlation
+)
+
 # Procedure state machines library
 add_library(procedure_correlation STATIC
     correlation/procedure_state_machine.cpp
