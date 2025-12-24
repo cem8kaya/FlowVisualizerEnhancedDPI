@@ -54,3 +54,4 @@ yarn-error.log
 *.tmp
 *.bak
 core
+build_debug/
