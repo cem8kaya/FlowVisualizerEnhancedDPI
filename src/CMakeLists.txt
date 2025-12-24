@@ -50,6 +50,7 @@ add_library(identity_correlation STATIC
     correlation/identity/imei_normalizer.cpp
     correlation/identity/guti_parser.cpp
     correlation/identity/identity_matcher.cpp
+    correlation/identity/subscriber_context_manager.cpp
 )
 target_include_directories(identity_correlation PUBLIC
     ${PROJECT_SOURCE_DIR}/include
