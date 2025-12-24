@@ -179,7 +179,9 @@ window.timeline = {
 
     getEventParticipant(event) {
         // Return source participant (IP:port)
-        return `${event.src_ip}:${event.src_port}`;
+        const ip = event.src_ip || event.source_ip || '?';
+        const port = event.src_port || event.source_port || '?';
+        return `${ip}:${port}`;
     },
 
     showTooltip(event, data) {
@@ -190,14 +192,16 @@ window.timeline = {
             .style('top', (event.pageY - 28) + 'px');
 
         const proto = data.proto || data.protocol || 'UNKNOWN';
+        const src = `${data.src_ip || data.source_ip || '?'}:${data.src_port || data.source_port || '?'}`;
+        const dst = `${data.dst_ip || data.dest_ip || '?'}:${data.dst_port || data.dest_port || '?'}`;
 
         tooltip.html(`
             <div class="timeline-tooltip-title">${data.message_type || 'Event'}</div>
             <div class="timeline-tooltip-time">${new Date(data.timestamp).toLocaleTimeString()}</div>
             <div class="timeline-tooltip-details">
                 <strong>Protocol:</strong> ${proto}<br>
-                <strong>From:</strong> ${data.src_ip}:${data.src_port}<br>
-                <strong>To:</strong> ${data.dst_ip}:${data.dst_port}
+                <strong>From:</strong> ${src}<br>
+                <strong>To:</strong> ${dst}
                 ${data.details ? `<br><strong>Details:</strong> <pre style="margin:0; font-size:0.8em">${JSON.stringify(data.details, null, 2)}</pre>` : ''}
             </div>
         `);

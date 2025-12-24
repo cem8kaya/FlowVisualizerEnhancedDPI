@@ -105,32 +105,27 @@
             <ul class="nav nav-tabs mb-4 border-b border-border" id="sessionTabs" role="tablist"
                 style="display: flex; gap: 1rem; border-bottom: 1px solid var(--border-color); padding: 0 var(--space-4);">
                 <li class="nav-item">
-                    <button class="nav-link active btn-tab" id="timeline-tab" data-bs-toggle="tab"
-                        data-bs-target="#timeline" type="button">
+                    <button class="nav-link active btn-tab" id="timeline-tab" data-target="#timeline" type="button">
                         <i class="bi bi-clock-history"></i> Timeline
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link btn-tab" id="flowchart-tab" data-bs-toggle="tab" data-bs-target="#flowchart"
-                        type="button">
+                    <button class="nav-link btn-tab" id="flowchart-tab" data-target="#flowchart" type="button">
                         <i class="bi bi-diagram-3"></i> Flow Diagram
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link btn-tab" id="ladder-tab" data-bs-toggle="tab" data-bs-target="#ladder"
-                        type="button">
+                    <button class="nav-link btn-tab" id="ladder-tab" data-target="#ladder" type="button">
                         <i class="bi bi-arrows-vertical"></i> Ladder Diagram
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link btn-tab" id="events-tab" data-bs-toggle="tab" data-bs-target="#events"
-                        type="button">
+                    <button class="nav-link btn-tab" id="events-tab" data-target="#events" type="button">
                         <i class="bi bi-list-ul"></i> Events
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link btn-tab" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics"
-                        type="button">
+                    <button class="nav-link btn-tab" id="metrics-tab" data-target="#metrics" type="button">
                         <i class="bi bi-bar-chart"></i> Metrics
                     </button>
                 </li>
@@ -139,7 +134,7 @@
             <!-- Tab Content -->
             <div class="tab-content" id="sessionTabsContent">
                 <!-- Timeline -->
-                <div class="tab-pane fade show active" id="timeline">
+                <div class="tab-pane show active" id="timeline">
                     <div class="card">
                         <div class="card-body">
                             <div id="timelineViz" class="timeline-container" style="min-height: 400px;"></div>
@@ -148,7 +143,7 @@
                 </div>
 
                 <!-- Flowchart -->
-                <div class="tab-pane fade" id="flowchart">
+                <div class="tab-pane" id="flowchart">
                     <div class="card">
                         <div class="card-body overflow-auto">
                             <div id="flowchartViz" class="flowchart-container" style="min-height: 400px;"></div>
@@ -157,37 +152,39 @@
                 </div>
 
                 <!-- Ladder Diagram -->
-                <div class="tab-pane fade" id="ladder">
+                <div class="tab-pane" id="ladder">
                     <div class="card">
                         <div class="card-header"
                             style="display: flex; justify-content: space-between; align-items: center;">
                             <span><i class="bi bi-arrows-vertical"></i> MSC-Style Call Flow</span>
                             <div style="display: flex; gap: 8px;">
-                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderZoomIn()">
+                                <button class="btn btn-sm btn-secondary" id="btnZoomIn">
                                     <i class="bi bi-zoom-in"></i>
                                 </button>
-                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderZoomOut()">
+                                <button class="btn btn-sm btn-secondary" id="btnZoomOut">
                                     <i class="bi bi-zoom-out"></i>
                                 </button>
-                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderResetZoom()">
+                                <button class="btn btn-sm btn-secondary" id="btnResetZoom">
                                     <i class="bi bi-aspect-ratio"></i>
                                 </button>
-                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderExportSVG()">
+                                <button class="btn btn-sm btn-secondary" id="btnExportSvg">
                                     <i class="bi bi-filetype-svg"></i>
                                 </button>
-                                <button class="btn btn-sm btn-secondary" onclick="sessionDetail.ladderExportPNG()">
+                                <button class="btn btn-sm btn-secondary" id="btnExportPng">
                                     <i class="bi bi-file-image"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="card-body" style="padding: 0; position: relative;">
-                            <div id="ladderViz" class="ladder-diagram-container" style="min-height: 600px;"></div>
+                            <div id="ladderViz" class="ladder-diagram-container" style="min-height: 600px;">
+                                <div id="ladderDiagramContainer"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Events -->
-                <div class="tab-pane fade" id="events">
+                <div class="tab-pane" id="events">
                     <div class="card">
                         <div class="data-table-container border-0">
                             <table class="data-table">
@@ -195,15 +192,14 @@
                                     <tr>
                                         <th>Time</th>
                                         <th>Protocol</th>
+                                        <th>Direction</th>
                                         <th>Type</th>
-                                        <th>Source</th>
-                                        <th>Destination</th>
                                         <th>Details</th>
                                     </tr>
                                 </thead>
                                 <tbody id="eventsTableBody">
                                     <tr>
-                                        <td colspan="6" class="text-center p-4">Loading...</td>
+                                        <td colspan="5" class="text-center p-4">Loading...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -212,7 +208,7 @@
                 </div>
 
                 <!-- Metrics -->
-                <div class="tab-pane fade" id="metrics">
+                <div class="tab-pane" id="metrics">
                     <div class="card" style="max-width: 600px;">
                         <div class="card-header">Detailed Metrics</div>
                         <div class="card-body">
@@ -225,55 +221,6 @@
             </div>
 
         </main>
-    </div>
-
-    <!-- Packet Inspector Modal -->
-    <div class="modal fade" id="packetModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content text-primary" style="background-color: var(--bg-secondary);">
-                <div class="modal-header border-b border-border">
-                    <h5 class="modal-title">Packet Inspector</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Similar to original packet modal content -->
-                    <ul class="nav nav-pills mb-3" id="packetTabs" role="tablist">
-                        <li class="nav-item">
-                            <button class="nav-link active" data-bs-toggle="tab"
-                                data-bs-target="#packetSummary">Summary</button>
-                        </li>
-                        <li class="nav-item">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#packetDetails">Protocol
-                                Details</button>
-                        </li>
-                        <li class="nav-item">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#packetRaw">Raw Data</button>
-                        </li>
-                    </ul>
-                    <div class="tab-content">
-                        <div class="tab-pane fade show active" id="packetSummary">
-                            <table class="table table-sm text-sm">
-                                <tbody id="packetSummaryBody"></tbody>
-                            </table>
-                        </div>
-                        <div class="tab-pane fade" id="packetDetails">
-                            <pre id="packetDetailsContent" class="bg-tertiary p-3 overflow-auto max-h-96"></pre>
-                        </div>
-                        <div class="tab-pane fade" id="packetRaw">
-                            <pre id="packetRawContent"
-                                class="bg-black text-green-400 p-3 font-mono overflow-auto max-h-96 text-xs"></pre>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-t border-border">
-                    <button type="button" class="btn btn-secondary" id="prevPacketBtn"><i class="bi bi-arrow-left"></i>
-                        Previous</button>
-                    <button type="button" class="btn btn-secondary" id="nextPacketBtn">Next <i
-                            class="bi bi-arrow-right"></i></button>
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Toast Container -->
@@ -294,7 +241,7 @@
     <!-- Visualizations managed by legacy or refactored scripts -->
     <script src="/js/timeline.js"></script>
     <script src="/js/flowchart.js"></script>
-    <script src="/js/packet-inspector.js"></script>
+    <script src="/js/components/packet-inspector.js"></script>
     <script src="/js/components/ladder-diagram.js"></script>
 
     <!-- Page Logic -->

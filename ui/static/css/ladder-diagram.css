@@ -47,6 +47,13 @@
     pointer-events: none;
 }
 
+.participant-sublabel {
+    fill: var(--text-secondary);
+    font-size: 9px;
+    font-family: var(--font-sans);
+    pointer-events: none;
+}
+
 .participant-ip {
     fill: var(--text-secondary);
     font-size: 11px;
