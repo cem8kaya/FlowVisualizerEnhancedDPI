@@ -16,13 +16,13 @@ namespace callflow {
 namespace correlation {
 
 /**
- * Subscriber Context - Unified view of all identifiers for a single subscriber
+ * VolteSubscriberContext - Unified view of all identifiers for a single subscriber in VoLTE correlation
  *
  * This structure maintains the complete identity profile of a subscriber across
  * all network layers (radio, core, IMS) and tracks the evolution of identifiers
  * as they change during mobility events and service establishment.
  */
-struct SubscriberContext {
+struct VolteSubscriberContext {
     std::string context_id;
 
     // ========================================================================
@@ -196,42 +196,42 @@ struct SubscriberContext {
 };
 
 /**
- * Subscriber Context Manager
+ * VolteSubscriberContextManager
  *
- * Central registry and lookup service for subscriber contexts.
+ * Central registry and lookup service for subscriber contexts for VoLTE correlation.
  * Provides fast O(1) lookups by any identifier type and maintains
  * consistency across identifier updates and context merges.
  *
  * Thread-safe for concurrent access from multiple packet processing threads.
  */
-class SubscriberContextManager {
+class VolteSubscriberContextManager {
 public:
     /**
      * Construct a subscriber context manager
      * @param max_contexts Maximum number of contexts to track (LRU eviction beyond this)
      */
-    explicit SubscriberContextManager(size_t max_contexts = 1000000);
-    ~SubscriberContextManager();
+    explicit VolteSubscriberContextManager(size_t max_contexts = 1000000);
+    ~VolteSubscriberContextManager();
 
     // ========================================================================
     // Lookup Methods - All return nullptr if not found
     // ========================================================================
 
-    std::shared_ptr<SubscriberContext> findByImsi(const std::string& imsi);
-    std::shared_ptr<SubscriberContext> findBySupi(const std::string& supi);
-    std::shared_ptr<SubscriberContext> findByMsisdn(const std::string& msisdn);
-    std::shared_ptr<SubscriberContext> findByGuti(const SubscriberContext::GUTI& guti);
-    std::shared_ptr<SubscriberContext> findByGuti5G(const SubscriberContext::GUTI5G& guti);
-    std::shared_ptr<SubscriberContext> findByUeIp(const std::string& ip);
-    std::shared_ptr<SubscriberContext> findByTeid(uint32_t teid);
-    std::shared_ptr<SubscriberContext> findBySeid(uint64_t seid);
-    std::shared_ptr<SubscriberContext> findBySipUri(const std::string& uri);
-    std::shared_ptr<SubscriberContext> findBySipCallId(const std::string& call_id);
-    std::shared_ptr<SubscriberContext> findByMmeUeId(uint32_t mme_ue_s1ap_id);
-    std::shared_ptr<SubscriberContext> findByEnbUeId(uint32_t enb_ue_s1ap_id);
-    std::shared_ptr<SubscriberContext> findByAmfUeId(uint64_t amf_ue_ngap_id);
-    std::shared_ptr<SubscriberContext> findByRanUeId(uint64_t ran_ue_ngap_id);
-    std::shared_ptr<SubscriberContext> findByContextId(const std::string& context_id);
+    std::shared_ptr<VolteSubscriberContext> findByImsi(const std::string& imsi);
+    std::shared_ptr<VolteSubscriberContext> findBySupi(const std::string& supi);
+    std::shared_ptr<VolteSubscriberContext> findByMsisdn(const std::string& msisdn);
+    std::shared_ptr<VolteSubscriberContext> findByGuti(const VolteSubscriberContext::GUTI& guti);
+    std::shared_ptr<VolteSubscriberContext> findByGuti5G(const VolteSubscriberContext::GUTI5G& guti);
+    std::shared_ptr<VolteSubscriberContext> findByUeIp(const std::string& ip);
+    std::shared_ptr<VolteSubscriberContext> findByTeid(uint32_t teid);
+    std::shared_ptr<VolteSubscriberContext> findBySeid(uint64_t seid);
+    std::shared_ptr<VolteSubscriberContext> findBySipUri(const std::string& uri);
+    std::shared_ptr<VolteSubscriberContext> findBySipCallId(const std::string& call_id);
+    std::shared_ptr<VolteSubscriberContext> findByMmeUeId(uint32_t mme_ue_s1ap_id);
+    std::shared_ptr<VolteSubscriberContext> findByEnbUeId(uint32_t enb_ue_s1ap_id);
+    std::shared_ptr<VolteSubscriberContext> findByAmfUeId(uint64_t amf_ue_ngap_id);
+    std::shared_ptr<VolteSubscriberContext> findByRanUeId(uint64_t ran_ue_ngap_id);
+    std::shared_ptr<VolteSubscriberContext> findByContextId(const std::string& context_id);
 
     // ========================================================================
     // Registration Methods
@@ -240,17 +240,17 @@ public:
     /**
      * Get existing context or create new one identified by IMSI
      */
-    std::shared_ptr<SubscriberContext> getOrCreate(const std::string& imsi);
+    std::shared_ptr<VolteSubscriberContext> getOrCreate(const std::string& imsi);
 
     /**
      * Get existing context or create new one identified by SUPI
      */
-    std::shared_ptr<SubscriberContext> getOrCreateBySupi(const std::string& supi);
+    std::shared_ptr<VolteSubscriberContext> getOrCreateBySupi(const std::string& supi);
 
     /**
      * Create a new context without a permanent identifier (will be linked later)
      */
-    std::shared_ptr<SubscriberContext> createTemporaryContext();
+    std::shared_ptr<VolteSubscriberContext> createTemporaryContext();
 
     // ========================================================================
     // Update Methods - All update indices atomically
@@ -260,13 +260,13 @@ public:
     void updateSupi(const std::string& context_id, const std::string& supi);
     void updateMsisdn(const std::string& context_id, const std::string& msisdn);
     void updateImei(const std::string& context_id, const std::string& imei);
-    void updateGuti(const std::string& context_id, const SubscriberContext::GUTI& guti);
-    void updateGuti5G(const std::string& context_id, const SubscriberContext::GUTI5G& guti);
+    void updateGuti(const std::string& context_id, const VolteSubscriberContext::GUTI& guti);
+    void updateGuti5G(const std::string& context_id, const VolteSubscriberContext::GUTI5G& guti);
     void updateUeIp(const std::string& context_id, const std::string& ipv4,
                     const std::string& ipv6 = "");
-    void addBearer(const std::string& context_id, const SubscriberContext::BearerInfo& bearer);
+    void addBearer(const std::string& context_id, const VolteSubscriberContext::BearerInfo& bearer);
     void removeBearer(const std::string& context_id, uint32_t teid);
-    void addPduSession(const std::string& context_id, const SubscriberContext::PduSessionInfo& session);
+    void addPduSession(const std::string& context_id, const VolteSubscriberContext::PduSessionInfo& session);
     void removePduSession(const std::string& context_id, uint8_t pdu_session_id);
     void addSeid(const std::string& context_id, uint64_t seid);
     void updateMmeUeId(const std::string& context_id, uint32_t mme_ue_s1ap_id);
@@ -342,7 +342,7 @@ private:
     mutable std::shared_mutex mutex_;  // Readers-writer lock for thread-safety
 
     // Main context storage
-    std::unordered_map<std::string, std::shared_ptr<SubscriberContext>> contexts_;
+    std::unordered_map<std::string, std::shared_ptr<VolteSubscriberContext>> contexts_;
 
     // Lookup indices - all map identifier -> context_id
     std::unordered_map<std::string, std::string> imsi_index_;
@@ -370,7 +370,7 @@ private:
 
     std::string generateContextId();
     void updateLastModified(const std::string& context_id);
-    void removeFromAllIndices(const std::shared_ptr<SubscriberContext>& context);
+    void removeFromAllIndices(const std::shared_ptr<VolteSubscriberContext>& context);
 
     // Index update helpers
     void addToImsiIndex(const std::string& context_id, const std::string& imsi);
@@ -380,7 +380,7 @@ private:
 
     // Generic lookup helper
     template<typename KeyType>
-    std::shared_ptr<SubscriberContext> lookupInIndex(
+    std::shared_ptr<VolteSubscriberContext> lookupInIndex(
         const std::unordered_map<KeyType, std::string>& index,
         const KeyType& key) const;
 };

@@ -433,7 +433,7 @@ nlohmann::json VolteCall::toLadderDiagramJson() const {
 // VolteCallCorrelator implementation
 // ============================================================================
 
-VolteCallCorrelator::VolteCallCorrelator(std::shared_ptr<SubscriberContextManager> context_mgr)
+VolteCallCorrelator::VolteCallCorrelator(std::shared_ptr<VolteSubscriberContextManager> context_mgr)
     : context_mgr_(context_mgr) {
     LOG_INFO("VolteCallCorrelator initialized");
 }

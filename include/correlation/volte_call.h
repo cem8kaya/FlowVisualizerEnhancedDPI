@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "correlation/subscriber_context.h"
+#include "correlation/volte_subscriber_context.h"
 #include "protocol_parsers/diameter_parser.h"
 #include "protocol_parsers/gtp_parser.h"
 #include "protocol_parsers/rtp_parser.h"
@@ -248,7 +248,7 @@ struct VolteCall {
  *
  * Correlation strategy:
  * 1. SIP INVITE → Create new call with Call-ID as primary key
- * 2. Extract IMSI from P-Asserted-Identity or via IP lookup in SubscriberContextManager
+ * 2. Extract IMSI from P-Asserted-Identity or via IP lookup in VolteSubscriberContextManager
  * 3. DIAMETER Rx AAR with matching ICID → Link to call
  * 4. DIAMETER Gx RAR with same UE IP → Link to call
  * 5. GTP Create Bearer with same IMSI + QCI=1 → Link to call
@@ -261,7 +261,7 @@ public:
     /**
      * @brief Construct correlator with subscriber context manager
      */
-    explicit VolteCallCorrelator(std::shared_ptr<SubscriberContextManager> context_mgr);
+    explicit VolteCallCorrelator(std::shared_ptr<VolteSubscriberContextManager> context_mgr);
 
     /**
      * @brief Process a SIP message and correlate to call
@@ -364,7 +364,7 @@ public:
     Stats getStats() const;
 
 private:
-    std::shared_ptr<SubscriberContextManager> context_mgr_;
+    std::shared_ptr<VolteSubscriberContextManager> context_mgr_;
 
     // Primary index: Call-ID → Call
     std::unordered_map<std::string, std::shared_ptr<VolteCall>> calls_by_call_id_;

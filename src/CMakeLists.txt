@@ -107,7 +107,7 @@ add_library(procedure_correlation STATIC
     correlation/ladder_types.cpp
     correlation/participant_detector.cpp
     correlation/ladder_diagram_generator.cpp
-    correlation/subscriber_context.cpp
+    correlation/volte_subscriber_context.cpp
     correlation/volte_call.cpp
 )
 target_include_directories(procedure_correlation PUBLIC
@@ -330,7 +330,6 @@ endif()
 # Main CLI executable
 add_executable(callflowd
     cli/main.cpp
-    cli/cli_parser.cpp
     cli/cli_parser.cpp
 )
 

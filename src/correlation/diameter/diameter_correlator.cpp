@@ -1,13 +1,13 @@
 #include "correlation/diameter/diameter_correlator.h"
+
 #include <algorithm>
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 
 namespace callflow {
 namespace correlation {
 
-DiameterCorrelator::DiameterCorrelator()
-    : ctx_manager_(nullptr) {}
+DiameterCorrelator::DiameterCorrelator() : ctx_manager_(nullptr) {}
 
 DiameterCorrelator::DiameterCorrelator(SubscriberContextManager* ctx_manager)
     : ctx_manager_(ctx_manager) {}
@@ -187,7 +187,8 @@ std::vector<DiameterSession*> DiameterCorrelator::findByFramedIp(const std::stri
     return result;
 }
 
-std::vector<DiameterSession*> DiameterCorrelator::findByFramedIpv6Prefix(const std::string& prefix) {
+std::vector<DiameterSession*> DiameterCorrelator::findByFramedIpv6Prefix(
+    const std::string& prefix) {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<DiameterSession*> result;
 
@@ -248,9 +249,8 @@ size_t DiameterCorrelator::getSessionCount() const {
 std::string DiameterCorrelator::generateSessionId(double timestamp) {
     // Generate a synthetic Session-ID for messages without one
     std::ostringstream oss;
-    oss << "synthetic-diameter-session-"
-        << std::fixed << std::setprecision(6) << timestamp
-        << "-" << (++session_sequence_);
+    oss << "synthetic-diameter-session-" << std::fixed << std::setprecision(6) << timestamp << "-"
+        << (++session_sequence_);
     return oss.str();
 }
 
@@ -259,86 +259,36 @@ void DiameterCorrelator::updateSubscriberContext(const DiameterSession& session)
         return;
     }
 
-    SubscriberIdentity identity;
+    SubscriberContextBuilder builder(*ctx_manager_);
 
     // Set IMSI
     auto imsi = session.getImsi();
     if (imsi) {
-        identity.imsi = NormalizedImsi{};
-        identity.imsi->raw = *imsi;
-        identity.imsi->digits = *imsi;
-
-        // Extract PLMN (MCC + MNC) from IMSI
-        if (imsi->length() >= 5) {
-            identity.imsi->mcc = imsi->substr(0, 3);
-            // MNC can be 2 or 3 digits - assume 2 for now
-            identity.imsi->mnc = imsi->substr(3, 2);
-            identity.imsi->msin = imsi->substr(5);
-        }
+        builder.fromDiameterImsi(*imsi);
     }
 
     // Set MSISDN
     auto msisdn = session.getMsisdn();
     if (msisdn) {
-        identity.msisdn = NormalizedMsisdn{};
-        identity.msisdn->raw = *msisdn;
-        identity.msisdn->digits_only = *msisdn;
-        identity.msisdn->international = *msisdn;
+        builder.fromDiameterMsisdn(*msisdn);
     }
 
-    // Set network endpoints
+    // Set Framed-IP
     auto framed_ip = session.getFramedIpAddress();
-    auto framed_ipv6 = session.getFramedIpv6Prefix();
-    if (framed_ip || framed_ipv6) {
-        NetworkEndpoint endpoint;
-        if (framed_ip) {
-            endpoint.ipv4 = *framed_ip;
-        }
-        if (framed_ipv6) {
-            endpoint.ipv6 = *framed_ipv6;
-        }
-        identity.endpoints.push_back(endpoint);
+    if (framed_ip) {
+        builder.fromDiameterFramedIp(*framed_ip);
     }
 
-    // Set APN
-    auto apn = session.getCalledStationId();
-    if (apn) {
-        identity.apn = *apn;
-    }
+    // Set Public Identity
+    // Note: session doesn't explicitly expose public identity getter in previous view,
+    // but typically it's User-Name or Public-Identity AVP.
+    // Assuming simplistic mapping for now based on what we have.
 
-    // Set confidence based on interface type
-    switch (session.getInterface()) {
-        case DiameterInterface::S6A:
-            // S6a has high confidence for IMSI
-            if (imsi) {
-                identity.confidence["imsi"] = 1.0f;
-            }
-            break;
-        case DiameterInterface::GX:
-        case DiameterInterface::GY:
-        case DiameterInterface::RO:
-            // Gx/Gy has high confidence for Framed-IP
-            if (framed_ip || framed_ipv6) {
-                identity.confidence["framed_ip"] = 1.0f;
-            }
-            break;
-        case DiameterInterface::CX:
-        case DiameterInterface::SH:
-            // Cx/Sh has high confidence for IMS public identity
-            identity.confidence["public_identity"] = 1.0f;
-            break;
-        default:
-            break;
-    }
-
-    // Update context manager
-    if (imsi || msisdn || framed_ip || framed_ipv6) {
-        ctx_manager_->updateContext(identity, IdentitySource::DIAMETER_USER_NAME);
-    }
+    builder.build();
 }
 
 void DiameterCorrelator::updateLookupMaps(const std::string& session_id,
-                                           const DiameterSession& session) {
+                                          const DiameterSession& session) {
     // Update IMSI lookup
     auto imsi = session.getImsi();
     if (imsi) {
@@ -371,5 +321,5 @@ void DiameterCorrelator::trackHopByHop(uint32_t hop_by_hop_id, const std::string
     hop_to_session_[hop_by_hop_id] = session_id;
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

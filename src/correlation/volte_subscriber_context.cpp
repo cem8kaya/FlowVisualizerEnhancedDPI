@@ -1,4 +1,4 @@
-#include "correlation/subscriber_context.h"
+#include "correlation/volte_subscriber_context.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -11,10 +11,10 @@ namespace callflow {
 namespace correlation {
 
 // ============================================================================
-// SubscriberContext::GUTI Implementation
+// VolteSubscriberContext::GUTI Implementation
 // ============================================================================
 
-std::string SubscriberContext::GUTI::toString() const {
+std::string VolteSubscriberContext::GUTI::toString() const {
     std::ostringstream oss;
     oss << "GUTI{" << mcc_mnc << ":" << std::hex << std::setfill('0') << std::setw(4)
         << mme_group_id << ":" << std::setw(2) << static_cast<int>(mme_code) << ":" << std::setw(8)
@@ -22,16 +22,16 @@ std::string SubscriberContext::GUTI::toString() const {
     return oss.str();
 }
 
-bool SubscriberContext::GUTI::operator==(const GUTI& other) const {
+bool VolteSubscriberContext::GUTI::operator==(const GUTI& other) const {
     return mcc_mnc == other.mcc_mnc && mme_group_id == other.mme_group_id &&
            mme_code == other.mme_code && m_tmsi == other.m_tmsi;
 }
 
 // ============================================================================
-// SubscriberContext::GUTI5G Implementation
+// VolteSubscriberContext::GUTI5G Implementation
 // ============================================================================
 
-std::string SubscriberContext::GUTI5G::toString() const {
+std::string VolteSubscriberContext::GUTI5G::toString() const {
     std::ostringstream oss;
     oss << "5G-GUTI{" << mcc_mnc << ":" << std::hex << std::setfill('0') << std::setw(2)
         << amf_region_id << ":" << std::setw(4) << amf_set_id << ":" << std::setw(2)
@@ -39,17 +39,17 @@ std::string SubscriberContext::GUTI5G::toString() const {
     return oss.str();
 }
 
-bool SubscriberContext::GUTI5G::operator==(const GUTI5G& other) const {
+bool VolteSubscriberContext::GUTI5G::operator==(const GUTI5G& other) const {
     return mcc_mnc == other.mcc_mnc && amf_region_id == other.amf_region_id &&
            amf_set_id == other.amf_set_id && amf_pointer == other.amf_pointer &&
            tmsi_5g == other.tmsi_5g;
 }
 
 // ============================================================================
-// SubscriberContext Implementation
+// VolteSubscriberContext Implementation
 // ============================================================================
 
-bool SubscriberContext::hasIdentifier(const std::string& id) const {
+bool VolteSubscriberContext::hasIdentifier(const std::string& id) const {
     if (imsi && *imsi == id)
         return true;
     if (supi && *supi == id)
@@ -75,7 +75,7 @@ bool SubscriberContext::hasIdentifier(const std::string& id) const {
     return false;
 }
 
-std::string SubscriberContext::getPrimaryIdentifier() const {
+std::string VolteSubscriberContext::getPrimaryIdentifier() const {
     if (imsi)
         return *imsi;
     if (supi)
@@ -95,7 +95,7 @@ std::string SubscriberContext::getPrimaryIdentifier() const {
     return context_id;
 }
 
-std::string SubscriberContext::getDisplayName() const {
+std::string VolteSubscriberContext::getDisplayName() const {
     if (msisdn)
         return *msisdn;
     if (imsi)
@@ -107,17 +107,17 @@ std::string SubscriberContext::getDisplayName() const {
     return getPrimaryIdentifier();
 }
 
-size_t SubscriberContext::getActiveBearerCount() const {
+size_t VolteSubscriberContext::getActiveBearerCount() const {
     return std::count_if(bearers.begin(), bearers.end(),
                          [](const BearerInfo& b) { return b.is_active(); });
 }
 
-size_t SubscriberContext::getActivePduSessionCount() const {
+size_t VolteSubscriberContext::getActivePduSessionCount() const {
     return std::count_if(pdu_sessions.begin(), pdu_sessions.end(),
                          [](const PduSessionInfo& p) { return p.is_active(); });
 }
 
-nlohmann::json SubscriberContext::toJson() const {
+nlohmann::json VolteSubscriberContext::toJson() const {
     nlohmann::json j;
 
     j["context_id"] = context_id;
@@ -273,17 +273,18 @@ nlohmann::json SubscriberContext::toJson() const {
 }
 
 // ============================================================================
-// SubscriberContextManager Implementation
+// VolteSubscriberContextManager Implementation
 // ============================================================================
 
-SubscriberContextManager::SubscriberContextManager(size_t max_contexts)
+VolteSubscriberContextManager::VolteSubscriberContextManager(size_t max_contexts)
     : max_contexts_(max_contexts) {
-    LOG_INFO("SubscriberContextManager initialized with max_contexts=" << max_contexts);
+    LOG_INFO("VolteSubscriberContextManager initialized with max_contexts=" << max_contexts);
 }
 
-SubscriberContextManager::~SubscriberContextManager() {
+VolteSubscriberContextManager::~VolteSubscriberContextManager() {
     std::unique_lock<std::shared_mutex> lock(mutex_);
-    LOG_INFO("SubscriberContextManager destroyed. Total contexts tracked: " << contexts_.size());
+    LOG_INFO(
+        "VolteSubscriberContextManager destroyed. Total contexts tracked: " << contexts_.size());
 }
 
 // ============================================================================
@@ -291,7 +292,7 @@ SubscriberContextManager::~SubscriberContextManager() {
 // ============================================================================
 
 template <typename KeyType>
-std::shared_ptr<SubscriberContext> SubscriberContextManager::lookupInIndex(
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::lookupInIndex(
     const std::unordered_map<KeyType, std::string>& index, const KeyType& key) const {
     std::shared_lock<std::shared_mutex> lock(mutex_);
     // We traverse `stats_` which is mutable, so const method is fine
@@ -313,71 +314,75 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::lookupInIndex(
     return ctx_it->second;
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByImsi(const std::string& imsi) {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByImsi(
+    const std::string& imsi) {
     return lookupInIndex(imsi_index_, imsi);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findBySupi(const std::string& supi) {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findBySupi(
+    const std::string& supi) {
     return lookupInIndex(supi_index_, supi);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByMsisdn(
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByMsisdn(
     const std::string& msisdn) {
     return lookupInIndex(msisdn_index_, msisdn);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByGuti(
-    const SubscriberContext::GUTI& guti) {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByGuti(
+    const VolteSubscriberContext::GUTI& guti) {
     return lookupInIndex(guti_index_, guti.toString());
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByGuti5G(
-    const SubscriberContext::GUTI5G& guti) {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByGuti5G(
+    const VolteSubscriberContext::GUTI5G& guti) {
     return lookupInIndex(guti_5g_index_, guti.toString());
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByUeIp(const std::string& ip) {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByUeIp(
+    const std::string& ip) {
     return lookupInIndex(ue_ip_index_, ip);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByTeid(uint32_t teid) {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByTeid(uint32_t teid) {
     return lookupInIndex(teid_index_, teid);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findBySeid(uint64_t seid) {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findBySeid(uint64_t seid) {
     return lookupInIndex(seid_index_, seid);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findBySipUri(const std::string& uri) {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findBySipUri(
+    const std::string& uri) {
     return lookupInIndex(sip_uri_index_, uri);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findBySipCallId(
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findBySipCallId(
     const std::string& call_id) {
     return lookupInIndex(sip_call_id_index_, call_id);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByMmeUeId(
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByMmeUeId(
     uint32_t mme_ue_s1ap_id) {
     return lookupInIndex(mme_ue_id_index_, mme_ue_s1ap_id);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByEnbUeId(
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByEnbUeId(
     uint32_t enb_ue_s1ap_id) {
     return lookupInIndex(enb_ue_id_index_, enb_ue_s1ap_id);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByAmfUeId(
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByAmfUeId(
     uint64_t amf_ue_ngap_id) {
     return lookupInIndex(amf_ue_id_index_, amf_ue_ngap_id);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByRanUeId(
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByRanUeId(
     uint64_t ran_ue_ngap_id) {
     return lookupInIndex(ran_ue_id_index_, ran_ue_ngap_id);
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::findByContextId(
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::findByContextId(
     const std::string& context_id) {
     std::shared_lock<std::shared_mutex> lock(mutex_);
 
@@ -389,7 +394,8 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::findByContextId(
 // Registration Methods
 // ============================================================================
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::getOrCreate(const std::string& imsi) {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::getOrCreate(
+    const std::string& imsi) {
     // Try read lock first (fast path)
     {
         std::shared_lock<std::shared_mutex> lock(mutex_);
@@ -415,7 +421,7 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::getOrCreate(const s
     }
 
     // Create new context
-    auto context = std::make_shared<SubscriberContext>();
+    auto context = std::make_shared<VolteSubscriberContext>();
     context->context_id = generateContextId();
     context->imsi = imsi;
     context->first_seen = std::chrono::system_clock::now();
@@ -432,7 +438,7 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::getOrCreate(const s
     return context;
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::getOrCreateBySupi(
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::getOrCreateBySupi(
     const std::string& supi) {
     // Try read lock first (fast path)
     {
@@ -459,7 +465,7 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::getOrCreateBySupi(
     }
 
     // Create new context
-    auto context = std::make_shared<SubscriberContext>();
+    auto context = std::make_shared<VolteSubscriberContext>();
     context->context_id = generateContextId();
     context->supi = supi;
     context->first_seen = std::chrono::system_clock::now();
@@ -476,10 +482,10 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::getOrCreateBySupi(
     return context;
 }
 
-std::shared_ptr<SubscriberContext> SubscriberContextManager::createTemporaryContext() {
+std::shared_ptr<VolteSubscriberContext> VolteSubscriberContextManager::createTemporaryContext() {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
-    auto context = std::make_shared<SubscriberContext>();
+    auto context = std::make_shared<VolteSubscriberContext>();
     context->context_id = generateContextId();
     context->first_seen = std::chrono::system_clock::now();
     context->last_updated = context->first_seen;
@@ -496,7 +502,8 @@ std::shared_ptr<SubscriberContext> SubscriberContextManager::createTemporaryCont
 // Update Methods
 // ============================================================================
 
-void SubscriberContextManager::updateImsi(const std::string& context_id, const std::string& imsi) {
+void VolteSubscriberContextManager::updateImsi(const std::string& context_id,
+                                               const std::string& imsi) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -521,7 +528,8 @@ void SubscriberContextManager::updateImsi(const std::string& context_id, const s
     LOG_DEBUG("Updated IMSI for context " << context_id << ": " << imsi);
 }
 
-void SubscriberContextManager::updateSupi(const std::string& context_id, const std::string& supi) {
+void VolteSubscriberContextManager::updateSupi(const std::string& context_id,
+                                               const std::string& supi) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -545,8 +553,8 @@ void SubscriberContextManager::updateSupi(const std::string& context_id, const s
     LOG_DEBUG("Updated SUPI for context " << context_id << ": " << supi);
 }
 
-void SubscriberContextManager::updateMsisdn(const std::string& context_id,
-                                            const std::string& msisdn) {
+void VolteSubscriberContextManager::updateMsisdn(const std::string& context_id,
+                                                 const std::string& msisdn) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -570,7 +578,8 @@ void SubscriberContextManager::updateMsisdn(const std::string& context_id,
     LOG_DEBUG("Updated MSISDN for context " << context_id << ": " << msisdn);
 }
 
-void SubscriberContextManager::updateImei(const std::string& context_id, const std::string& imei) {
+void VolteSubscriberContextManager::updateImei(const std::string& context_id,
+                                               const std::string& imei) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -586,8 +595,8 @@ void SubscriberContextManager::updateImei(const std::string& context_id, const s
     LOG_DEBUG("Updated IMEI for context " << context_id << ": " << imei);
 }
 
-void SubscriberContextManager::updateGuti(const std::string& context_id,
-                                          const SubscriberContext::GUTI& guti) {
+void VolteSubscriberContextManager::updateGuti(const std::string& context_id,
+                                               const VolteSubscriberContext::GUTI& guti) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -615,8 +624,8 @@ void SubscriberContextManager::updateGuti(const std::string& context_id,
     LOG_DEBUG("Updated GUTI for context " << context_id << ": " << guti.toString());
 }
 
-void SubscriberContextManager::updateGuti5G(const std::string& context_id,
-                                            const SubscriberContext::GUTI5G& guti) {
+void VolteSubscriberContextManager::updateGuti5G(const std::string& context_id,
+                                                 const VolteSubscriberContext::GUTI5G& guti) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -642,8 +651,8 @@ void SubscriberContextManager::updateGuti5G(const std::string& context_id,
     LOG_DEBUG("Updated 5G-GUTI for context " << context_id << ": " << guti.toString());
 }
 
-void SubscriberContextManager::updateUeIp(const std::string& context_id, const std::string& ipv4,
-                                          const std::string& ipv6) {
+void VolteSubscriberContextManager::updateUeIp(const std::string& context_id,
+                                               const std::string& ipv4, const std::string& ipv6) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -685,8 +694,8 @@ void SubscriberContextManager::updateUeIp(const std::string& context_id, const s
     context->last_updated = std::chrono::system_clock::now();
 }
 
-void SubscriberContextManager::addBearer(const std::string& context_id,
-                                         const SubscriberContext::BearerInfo& bearer) {
+void VolteSubscriberContextManager::addBearer(const std::string& context_id,
+                                              const VolteSubscriberContext::BearerInfo& bearer) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -717,7 +726,7 @@ void SubscriberContextManager::addBearer(const std::string& context_id,
                                          << static_cast<int>(bearer.eps_bearer_id));
 }
 
-void SubscriberContextManager::removeBearer(const std::string& context_id, uint32_t teid) {
+void VolteSubscriberContextManager::removeBearer(const std::string& context_id, uint32_t teid) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -748,8 +757,8 @@ void SubscriberContextManager::removeBearer(const std::string& context_id, uint3
     LOG_WARN("Bearer with TEID " << teid << " not found in context " << context_id);
 }
 
-void SubscriberContextManager::addPduSession(const std::string& context_id,
-                                             const SubscriberContext::PduSessionInfo& session) {
+void VolteSubscriberContextManager::addPduSession(
+    const std::string& context_id, const VolteSubscriberContext::PduSessionInfo& session) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -773,8 +782,8 @@ void SubscriberContextManager::addPduSession(const std::string& context_id,
               << context_id << ": session_id=" << static_cast<int>(session.pdu_session_id));
 }
 
-void SubscriberContextManager::removePduSession(const std::string& context_id,
-                                                uint8_t pdu_session_id) {
+void VolteSubscriberContextManager::removePduSession(const std::string& context_id,
+                                                     uint8_t pdu_session_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -804,7 +813,7 @@ void SubscriberContextManager::removePduSession(const std::string& context_id,
                             << context_id);
 }
 
-void SubscriberContextManager::addSeid(const std::string& context_id, uint64_t seid) {
+void VolteSubscriberContextManager::addSeid(const std::string& context_id, uint64_t seid) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -821,8 +830,8 @@ void SubscriberContextManager::addSeid(const std::string& context_id, uint64_t s
     LOG_DEBUG("Added SEID to context " << context_id << ": " << seid);
 }
 
-void SubscriberContextManager::updateMmeUeId(const std::string& context_id,
-                                             uint32_t mme_ue_s1ap_id) {
+void VolteSubscriberContextManager::updateMmeUeId(const std::string& context_id,
+                                                  uint32_t mme_ue_s1ap_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -844,8 +853,8 @@ void SubscriberContextManager::updateMmeUeId(const std::string& context_id,
     LOG_DEBUG("Updated MME UE S1AP ID for context " << context_id << ": " << mme_ue_s1ap_id);
 }
 
-void SubscriberContextManager::updateEnbUeId(const std::string& context_id,
-                                             uint32_t enb_ue_s1ap_id) {
+void VolteSubscriberContextManager::updateEnbUeId(const std::string& context_id,
+                                                  uint32_t enb_ue_s1ap_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -867,8 +876,8 @@ void SubscriberContextManager::updateEnbUeId(const std::string& context_id,
     LOG_DEBUG("Updated eNB UE S1AP ID for context " << context_id << ": " << enb_ue_s1ap_id);
 }
 
-void SubscriberContextManager::updateAmfUeId(const std::string& context_id,
-                                             uint64_t amf_ue_ngap_id) {
+void VolteSubscriberContextManager::updateAmfUeId(const std::string& context_id,
+                                                  uint64_t amf_ue_ngap_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -890,8 +899,8 @@ void SubscriberContextManager::updateAmfUeId(const std::string& context_id,
     LOG_DEBUG("Updated AMF UE NGAP ID for context " << context_id << ": " << amf_ue_ngap_id);
 }
 
-void SubscriberContextManager::updateRanUeId(const std::string& context_id,
-                                             uint64_t ran_ue_ngap_id) {
+void VolteSubscriberContextManager::updateRanUeId(const std::string& context_id,
+                                                  uint64_t ran_ue_ngap_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -913,7 +922,8 @@ void SubscriberContextManager::updateRanUeId(const std::string& context_id,
     LOG_DEBUG("Updated RAN UE NGAP ID for context " << context_id << ": " << ran_ue_ngap_id);
 }
 
-void SubscriberContextManager::updateSipUri(const std::string& context_id, const std::string& uri) {
+void VolteSubscriberContextManager::updateSipUri(const std::string& context_id,
+                                                 const std::string& uri) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -937,8 +947,8 @@ void SubscriberContextManager::updateSipUri(const std::string& context_id, const
     LOG_DEBUG("Updated SIP URI for context " << context_id << ": " << uri);
 }
 
-void SubscriberContextManager::addSipCallId(const std::string& context_id,
-                                            const std::string& call_id) {
+void VolteSubscriberContextManager::addSipCallId(const std::string& context_id,
+                                                 const std::string& call_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -955,7 +965,8 @@ void SubscriberContextManager::addSipCallId(const std::string& context_id,
     LOG_DEBUG("Added SIP Call-ID to context " << context_id << ": " << call_id);
 }
 
-void SubscriberContextManager::addIcid(const std::string& context_id, const std::string& icid) {
+void VolteSubscriberContextManager::addIcid(const std::string& context_id,
+                                            const std::string& icid) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -972,8 +983,8 @@ void SubscriberContextManager::addIcid(const std::string& context_id, const std:
     LOG_DEBUG("Added ICID to context " << context_id << ": " << icid);
 }
 
-void SubscriberContextManager::addSessionId(const std::string& context_id,
-                                            const std::string& session_id) {
+void VolteSubscriberContextManager::addSessionId(const std::string& context_id,
+                                                 const std::string& session_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -993,8 +1004,8 @@ void SubscriberContextManager::addSessionId(const std::string& context_id,
 // Context Merge
 // ============================================================================
 
-bool SubscriberContextManager::mergeContexts(const std::string& context_id_keep,
-                                             const std::string& context_id_merge) {
+bool VolteSubscriberContextManager::mergeContexts(const std::string& context_id_keep,
+                                                  const std::string& context_id_merge) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it_keep = contexts_.find(context_id_keep);
@@ -1142,7 +1153,7 @@ bool SubscriberContextManager::mergeContexts(const std::string& context_id_keep,
 // Cleanup
 // ============================================================================
 
-size_t SubscriberContextManager::cleanupStaleContexts(
+size_t VolteSubscriberContextManager::cleanupStaleContexts(
     std::chrono::system_clock::time_point cutoff) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
@@ -1172,7 +1183,7 @@ size_t SubscriberContextManager::cleanupStaleContexts(
     return to_remove.size();
 }
 
-bool SubscriberContextManager::removeContext(const std::string& context_id) {
+bool VolteSubscriberContextManager::removeContext(const std::string& context_id) {
     std::unique_lock<std::shared_mutex> lock(mutex_);
 
     auto it = contexts_.find(context_id);
@@ -1189,8 +1200,8 @@ bool SubscriberContextManager::removeContext(const std::string& context_id) {
     return true;
 }
 
-void SubscriberContextManager::removeFromAllIndices(
-    const std::shared_ptr<SubscriberContext>& context) {
+void VolteSubscriberContextManager::removeFromAllIndices(
+    const std::shared_ptr<VolteSubscriberContext>& context) {
     if (context->imsi) {
         imsi_index_.erase(*context->imsi);
         stats_.with_imsi--;
@@ -1266,7 +1277,7 @@ void SubscriberContextManager::removeFromAllIndices(
 // Statistics
 // ============================================================================
 
-nlohmann::json SubscriberContextManager::Stats::toJson() const {
+nlohmann::json VolteSubscriberContextManager::Stats::toJson() const {
     nlohmann::json j;
     j["total_contexts"] = total_contexts;
     j["with_imsi"] = with_imsi;
@@ -1284,12 +1295,12 @@ nlohmann::json SubscriberContextManager::Stats::toJson() const {
     return j;
 }
 
-SubscriberContextManager::Stats SubscriberContextManager::getStats() const {
+VolteSubscriberContextManager::Stats VolteSubscriberContextManager::getStats() const {
     std::shared_lock<std::shared_mutex> lock(mutex_);
     return stats_;
 }
 
-void SubscriberContextManager::resetStats() {
+void VolteSubscriberContextManager::resetStats() {
     std::unique_lock<std::shared_mutex> lock(mutex_);
     stats_.lookups_total = 0;
     stats_.lookups_hit = 0;
@@ -1301,7 +1312,7 @@ void SubscriberContextManager::resetStats() {
 // Internal Helper Methods
 // ============================================================================
 
-std::string SubscriberContextManager::generateContextId() {
+std::string VolteSubscriberContextManager::generateContextId() {
     static std::random_device rd;
     static std::mt19937_64 gen(rd());
     static std::uniform_int_distribution<uint64_t> dis;
@@ -1311,27 +1322,27 @@ std::string SubscriberContextManager::generateContextId() {
     return oss.str();
 }
 
-void SubscriberContextManager::updateLastModified(const std::string& context_id) {
+void VolteSubscriberContextManager::updateLastModified(const std::string& context_id) {
     auto it = contexts_.find(context_id);
     if (it != contexts_.end()) {
         it->second->last_updated = std::chrono::system_clock::now();
     }
 }
 
-void SubscriberContextManager::addToImsiIndex(const std::string& context_id,
-                                              const std::string& imsi) {
+void VolteSubscriberContextManager::addToImsiIndex(const std::string& context_id,
+                                                   const std::string& imsi) {
     imsi_index_[imsi] = context_id;
 }
 
-void SubscriberContextManager::removeFromImsiIndex(const std::string& imsi) {
+void VolteSubscriberContextManager::removeFromImsiIndex(const std::string& imsi) {
     imsi_index_.erase(imsi);
 }
 
-void SubscriberContextManager::addToTeidIndex(const std::string& context_id, uint32_t teid) {
+void VolteSubscriberContextManager::addToTeidIndex(const std::string& context_id, uint32_t teid) {
     teid_index_[teid] = context_id;
 }
 
-void SubscriberContextManager::removeFromTeidIndex(uint32_t teid) {
+void VolteSubscriberContextManager::removeFromTeidIndex(uint32_t teid) {
     teid_index_.erase(teid);
 }
 

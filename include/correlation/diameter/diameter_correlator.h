@@ -1,12 +1,13 @@
 #pragma once
 
-#include "correlation/diameter/diameter_session.h"
-#include "correlation/identity/subscriber_context_manager.h"
-#include <unordered_map>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+#include "correlation/diameter/diameter_session.h"
+#include "correlation/identity/subscriber_context_manager.h"
 
 namespace callflow {
 namespace correlation {
@@ -164,7 +165,7 @@ public:
     size_t getSessionCount() const;
 
 private:
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::unordered_map<std::string, std::unique_ptr<DiameterSession>> sessions_;
 
     // Hop-by-Hop to Session-ID mapping for request/answer correlation
@@ -187,5 +188,5 @@ private:
     void trackHopByHop(uint32_t hop_by_hop_id, const std::string& session_id);
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow
