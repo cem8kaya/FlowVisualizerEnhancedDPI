@@ -732,6 +732,31 @@ set_tests_properties(test_volte_full_call PROPERTIES
     LABELS "integration"
 )
 
+# VoLTE Integration Tests (REST API & Performance)
+add_executable(test_volte_integration
+    integration/test_volte_integration.cpp
+)
+
+target_link_libraries(test_volte_integration PRIVATE
+    callflow_common
+    volte_correlation
+    sip_correlation
+    diameter_correlation
+    gtpv2_correlation
+    nas_s1ap_correlation
+    rtp_correlation
+    identity_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_volte_integration COMMAND test_volte_integration)
+
+set_tests_properties(test_volte_integration PROPERTIES
+    TIMEOUT 120
+    LABELS "integration;volte;api"
+)
+
 # Identity Management Tests
 # MSISDN Normalizer Tests
 add_executable(test_msisdn_normalizer
