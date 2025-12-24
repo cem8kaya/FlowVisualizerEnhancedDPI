@@ -1026,4 +1026,44 @@ set_tests_properties(test_gtpv2_correlator PROPERTIES
     LABELS "unit"
 )
 
+# NAS Correlator Tests
+add_executable(test_nas_correlator
+    unit/test_nas_correlator.cpp
+)
+
+target_link_libraries(test_nas_correlator PRIVATE
+    callflow_common
+    identity_correlation
+    nas_s1ap_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_nas_correlator COMMAND test_nas_correlator)
+
+set_tests_properties(test_nas_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# S1AP Correlator Tests
+add_executable(test_s1ap_correlator
+    unit/test_s1ap_correlator.cpp
+)
+
+target_link_libraries(test_s1ap_correlator PRIVATE
+    callflow_common
+    identity_correlation
+    nas_s1ap_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_s1ap_correlator COMMAND test_s1ap_correlator)
+
+set_tests_properties(test_s1ap_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
