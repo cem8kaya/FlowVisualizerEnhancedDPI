@@ -260,7 +260,7 @@ bool AuthManager::verifyPassword(const std::string& password, const std::string&
 }
 
 std::string AuthManager::generateJwt(const User& user, int expiry_hours) {
-    auto now = std::chrono::system_clock::now();
+    // auto now = std::chrono::system_clock::now();
     // auto expiry = now + std::chrono::hours(expiry_hours);
 
     // Convert roles to JSON array

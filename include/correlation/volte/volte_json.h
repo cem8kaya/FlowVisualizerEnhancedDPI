@@ -1,7 +1,10 @@
 #pragma once
 
-#include "correlation/volte/volte_types.h"
 #include <nlohmann/json.hpp>
+#include <string>
+#include <vector>
+
+#include "correlation/volte/volte_types.h"
 
 namespace callflow {
 namespace correlation {
@@ -40,13 +43,12 @@ public:
      *
      * Generates aggregate statistics for a collection of call flows.
      */
-    static nlohmann::json callFlowsSummaryToJson(
-        const std::vector<VolteCallFlow*>& flows);
+    static nlohmann::json callFlowsSummaryToJson(const std::vector<VolteCallFlow*>& flows);
 
     /**
      * @brief Convert correlation statistics to JSON
      */
-    template<typename Stats>
+    template <typename Stats>
     static nlohmann::json statsToJson(const Stats& stats) {
         nlohmann::json j;
         j["total_call_flows"] = stats.total_call_flows;
@@ -56,17 +58,15 @@ public:
         j["registrations"] = stats.registrations;
         j["data_sessions"] = stats.data_sessions;
 
-        j["uncorrelated"] = {
-            {"sip_sessions", stats.uncorrelated_sip_sessions},
-            {"diameter_sessions", stats.uncorrelated_diameter_sessions},
-            {"gtp_sessions", stats.uncorrelated_gtp_sessions},
-            {"nas_sessions", stats.uncorrelated_nas_sessions},
-            {"rtp_streams", stats.uncorrelated_rtp_streams}
-        };
+        j["uncorrelated"] = {{"sip_sessions", stats.uncorrelated_sip_sessions},
+                             {"diameter_sessions", stats.uncorrelated_diameter_sessions},
+                             {"gtp_sessions", stats.uncorrelated_gtp_sessions},
+                             {"nas_sessions", stats.uncorrelated_nas_sessions},
+                             {"rtp_streams", stats.uncorrelated_rtp_streams}};
 
         return j;
     }
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

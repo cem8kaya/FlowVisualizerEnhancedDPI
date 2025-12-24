@@ -1,7 +1,11 @@
-#include "protocol_parsers/diameter_s6a.h"
-#include "common/logger.h"
-#include <cstring>
 #include <arpa/inet.h>
+
+#include <cstdio>
+#include <cstring>
+#include <nlohmann/json.hpp>
+
+#include "common/logger.h"
+#include "protocol_parsers/diameter_s6a.h"
 
 namespace callflow {
 
@@ -343,7 +347,8 @@ std::optional<DiameterS6aMessage> DiameterS6aParser::parse(const DiameterMessage
     }
 
     // Extract Visited-PLMN-ID
-    auto visited_plmn_avp = findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::VISITED_PLMN_ID));
+    auto visited_plmn_avp =
+        findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::VISITED_PLMN_ID));
     if (visited_plmn_avp.has_value()) {
         auto octets = getAVPOctetString(visited_plmn_avp.value());
         if (octets.has_value()) {
@@ -422,14 +427,15 @@ std::optional<DiameterS6aMessage> DiameterS6aParser::parse(const DiameterMessage
 // ============================================================================
 
 UpdateLocationRequest DiameterS6aParser::parseULR(const DiameterMessage& msg) {
-    UpdateLocationRequest ulr;
+    UpdateLocationRequest ulr = {};
 
     auto user_name = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::USER_NAME));
     if (user_name.has_value()) {
         ulr.user_name = getAVPString(user_name.value()).value_or("");
     }
 
-    auto visited_plmn = findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::VISITED_PLMN_ID));
+    auto visited_plmn =
+        findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::VISITED_PLMN_ID));
     if (visited_plmn.has_value()) {
         auto octets = getAVPOctetString(visited_plmn.value());
         if (octets.has_value()) {
@@ -457,7 +463,7 @@ UpdateLocationRequest DiameterS6aParser::parseULR(const DiameterMessage& msg) {
 }
 
 UpdateLocationAnswer DiameterS6aParser::parseULA(const DiameterMessage& msg) {
-    UpdateLocationAnswer ula;
+    UpdateLocationAnswer ula = {};
 
     auto result_code = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::RESULT_CODE));
     if (result_code.has_value()) {
@@ -469,7 +475,8 @@ UpdateLocationAnswer DiameterS6aParser::parseULA(const DiameterMessage& msg) {
         ula.ula_flags = parseULAFlags(ula_flags_avp.value());
     }
 
-    auto subscription_data_avp = findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::SUBSCRIPTION_DATA));
+    auto subscription_data_avp =
+        findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::SUBSCRIPTION_DATA));
     if (subscription_data_avp.has_value()) {
         ula.subscription_data = parseSubscriptionData(subscription_data_avp.value());
     }
@@ -478,14 +485,15 @@ UpdateLocationAnswer DiameterS6aParser::parseULA(const DiameterMessage& msg) {
 }
 
 AuthenticationInformationRequest DiameterS6aParser::parseAIR(const DiameterMessage& msg) {
-    AuthenticationInformationRequest air;
+    AuthenticationInformationRequest air = {};
 
     auto user_name = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::USER_NAME));
     if (user_name.has_value()) {
         air.user_name = getAVPString(user_name.value()).value_or("");
     }
 
-    auto visited_plmn = findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::VISITED_PLMN_ID));
+    auto visited_plmn =
+        findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::VISITED_PLMN_ID));
     if (visited_plmn.has_value()) {
         auto octets = getAVPOctetString(visited_plmn.value());
         if (octets.has_value()) {
@@ -499,7 +507,8 @@ AuthenticationInformationRequest DiameterS6aParser::parseAIR(const DiameterMessa
         }
     }
 
-    auto num_vectors = findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::NUMBER_OF_REQUESTED_VECTORS));
+    auto num_vectors =
+        findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::NUMBER_OF_REQUESTED_VECTORS));
     if (num_vectors.has_value()) {
         air.number_of_requested_vectors = getAVPUint32(num_vectors.value()).value_or(1);
     }
@@ -508,14 +517,15 @@ AuthenticationInformationRequest DiameterS6aParser::parseAIR(const DiameterMessa
 }
 
 AuthenticationInformationAnswer DiameterS6aParser::parseAIA(const DiameterMessage& msg) {
-    AuthenticationInformationAnswer aia;
+    AuthenticationInformationAnswer aia = {};
 
     auto result_code = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::RESULT_CODE));
     if (result_code.has_value()) {
         aia.result_code = getAVPUint32(result_code.value()).value_or(0);
     }
 
-    auto auth_info_avp = findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::AUTHENTICATION_INFO));
+    auto auth_info_avp =
+        findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::AUTHENTICATION_INFO));
     if (auth_info_avp.has_value()) {
         aia.auth_info = parseAuthenticationInfo(auth_info_avp.value());
     }
@@ -524,7 +534,7 @@ AuthenticationInformationAnswer DiameterS6aParser::parseAIA(const DiameterMessag
 }
 
 PurgeUERequest DiameterS6aParser::parsePUR(const DiameterMessage& msg) {
-    PurgeUERequest pur;
+    PurgeUERequest pur = {};
 
     auto user_name = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::USER_NAME));
     if (user_name.has_value()) {
@@ -540,7 +550,7 @@ PurgeUERequest DiameterS6aParser::parsePUR(const DiameterMessage& msg) {
 }
 
 PurgeUEAnswer DiameterS6aParser::parsePUA(const DiameterMessage& msg) {
-    PurgeUEAnswer pua;
+    PurgeUEAnswer pua = {};
 
     auto result_code = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::RESULT_CODE));
     if (result_code.has_value()) {
@@ -556,16 +566,18 @@ PurgeUEAnswer DiameterS6aParser::parsePUA(const DiameterMessage& msg) {
 }
 
 CancelLocationRequest DiameterS6aParser::parseCLR(const DiameterMessage& msg) {
-    CancelLocationRequest clr;
+    CancelLocationRequest clr = {};
 
     auto user_name = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::USER_NAME));
     if (user_name.has_value()) {
         clr.user_name = getAVPString(user_name.value()).value_or("");
     }
 
-    auto cancellation_type_avp = findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::CANCELLATION_TYPE));
+    auto cancellation_type_avp =
+        findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::CANCELLATION_TYPE));
     if (cancellation_type_avp.has_value()) {
-        clr.cancellation_type = static_cast<CancellationType>(getAVPUint32(cancellation_type_avp.value()).value_or(0));
+        clr.cancellation_type =
+            static_cast<CancellationType>(getAVPUint32(cancellation_type_avp.value()).value_or(0));
     }
 
     auto clr_flags_avp = findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::CLR_FLAGS));
@@ -577,7 +589,7 @@ CancelLocationRequest DiameterS6aParser::parseCLR(const DiameterMessage& msg) {
 }
 
 CancelLocationAnswer DiameterS6aParser::parseCLA(const DiameterMessage& msg) {
-    CancelLocationAnswer cla;
+    CancelLocationAnswer cla = {};
 
     auto result_code = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::RESULT_CODE));
     if (result_code.has_value()) {
@@ -588,14 +600,15 @@ CancelLocationAnswer DiameterS6aParser::parseCLA(const DiameterMessage& msg) {
 }
 
 InsertSubscriberDataRequest DiameterS6aParser::parseIDR(const DiameterMessage& msg) {
-    InsertSubscriberDataRequest idr;
+    InsertSubscriberDataRequest idr = {};
 
     auto user_name = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::USER_NAME));
     if (user_name.has_value()) {
         idr.user_name = getAVPString(user_name.value()).value_or("");
     }
 
-    auto subscription_data_avp = findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::SUBSCRIPTION_DATA));
+    auto subscription_data_avp =
+        findAVP(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::SUBSCRIPTION_DATA));
     if (subscription_data_avp.has_value()) {
         auto sub_data = parseSubscriptionData(subscription_data_avp.value());
         if (sub_data.has_value()) {
@@ -607,7 +620,7 @@ InsertSubscriberDataRequest DiameterS6aParser::parseIDR(const DiameterMessage& m
 }
 
 InsertSubscriberDataAnswer DiameterS6aParser::parseIDA(const DiameterMessage& msg) {
-    InsertSubscriberDataAnswer ida;
+    InsertSubscriberDataAnswer ida = {};
 
     auto result_code = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::RESULT_CODE));
     if (result_code.has_value()) {
@@ -623,14 +636,15 @@ InsertSubscriberDataAnswer DiameterS6aParser::parseIDA(const DiameterMessage& ms
 }
 
 DeleteSubscriberDataRequest DiameterS6aParser::parseDSR(const DiameterMessage& msg) {
-    DeleteSubscriberDataRequest dsr;
+    DeleteSubscriberDataRequest dsr = {};
 
     auto user_name = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::USER_NAME));
     if (user_name.has_value()) {
         dsr.user_name = getAVPString(user_name.value()).value_or("");
     }
 
-    auto context_id_avps = findAllAVPs(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::CONTEXT_IDENTIFIER));
+    auto context_id_avps =
+        findAllAVPs(msg.avps, static_cast<uint32_t>(DiameterS6aAvpCode::CONTEXT_IDENTIFIER));
     for (const auto& avp : context_id_avps) {
         auto ctx_id = getAVPUint32(avp);
         if (ctx_id.has_value()) {
@@ -642,7 +656,7 @@ DeleteSubscriberDataRequest DiameterS6aParser::parseDSR(const DiameterMessage& m
 }
 
 DeleteSubscriberDataAnswer DiameterS6aParser::parseDSA(const DiameterMessage& msg) {
-    DeleteSubscriberDataAnswer dsa;
+    DeleteSubscriberDataAnswer dsa = {};
 
     auto result_code = findAVP(msg.avps, static_cast<uint32_t>(DiameterAvpCode::RESULT_CODE));
     if (result_code.has_value()) {
@@ -667,16 +681,20 @@ std::optional<SubscriptionData> DiameterS6aParser::parseSubscriptionData(const D
             sub_data.subscriber_status = static_cast<SubscriberStatus>(val);
         } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::MSISDN)) {
             sub_data.msisdn = getAVPString(group_avp);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::NETWORK_ACCESS_MODE)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::NETWORK_ACCESS_MODE)) {
             auto val = getAVPUint32(group_avp).value_or(0);
             sub_data.network_access_mode = static_cast<NetworkAccessMode>(val);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::OPERATOR_DETERMINED_BARRING)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::OPERATOR_DETERMINED_BARRING)) {
             sub_data.operator_determined_barring = getAVPUint32(group_avp);
         } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::AMBR)) {
             sub_data.ambr = parseAMBR(group_avp);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::APN_CONFIGURATION_PROFILE)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::APN_CONFIGURATION_PROFILE)) {
             sub_data.apn_configuration_profile = parseAPNConfigurationProfile(group_avp);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::ACCESS_RESTRICTION_DATA)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::ACCESS_RESTRICTION_DATA)) {
             sub_data.access_restriction_data = getAVPUint32(group_avp);
         }
     }
@@ -684,7 +702,8 @@ std::optional<SubscriptionData> DiameterS6aParser::parseSubscriptionData(const D
     return sub_data;
 }
 
-std::optional<AuthenticationInfo> DiameterS6aParser::parseAuthenticationInfo(const DiameterAvp& avp) {
+std::optional<AuthenticationInfo> DiameterS6aParser::parseAuthenticationInfo(
+    const DiameterAvp& avp) {
     AuthenticationInfo auth_info;
 
     auto grouped_avps = parseGroupedAVP(avp);
@@ -770,7 +789,8 @@ std::optional<ULAFlags> DiameterS6aParser::parseULAFlags(const DiameterAvp& avp)
     return flags;
 }
 
-std::optional<EPSSubscribedQoSProfile> DiameterS6aParser::parseEPSSubscribedQoSProfile(const DiameterAvp& avp) {
+std::optional<EPSSubscribedQoSProfile> DiameterS6aParser::parseEPSSubscribedQoSProfile(
+    const DiameterAvp& avp) {
     EPSSubscribedQoSProfile qos;
     qos.qos_class_identifier = 0;
 
@@ -779,7 +799,8 @@ std::optional<EPSSubscribedQoSProfile> DiameterS6aParser::parseEPSSubscribedQoSP
     for (const auto& group_avp : grouped_avps) {
         if (group_avp.code == static_cast<uint32_t>(DiameterAvpCode::QOS_CLASS_IDENTIFIER)) {
             qos.qos_class_identifier = getAVPUint32(group_avp).value_or(0);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::ALLOCATION_RETENTION_PRIORITY)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::ALLOCATION_RETENTION_PRIORITY)) {
             auto arp = parseAllocationRetentionPriority(group_avp);
             if (arp.has_value()) {
                 qos.allocation_retention_priority = arp.value();
@@ -800,7 +821,8 @@ std::optional<AMBR> DiameterS6aParser::parseAMBR(const DiameterAvp& avp) {
     for (const auto& group_avp : grouped_avps) {
         if (group_avp.code == static_cast<uint32_t>(DiameterAvpCode::MAX_REQUESTED_BANDWIDTH_UL)) {
             ambr.max_requested_bandwidth_ul = getAVPUint32(group_avp).value_or(0);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterAvpCode::MAX_REQUESTED_BANDWIDTH_DL)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterAvpCode::MAX_REQUESTED_BANDWIDTH_DL)) {
             ambr.max_requested_bandwidth_dl = getAVPUint32(group_avp).value_or(0);
         }
     }
@@ -808,7 +830,8 @@ std::optional<AMBR> DiameterS6aParser::parseAMBR(const DiameterAvp& avp) {
     return ambr;
 }
 
-std::optional<AllocationRetentionPriority> DiameterS6aParser::parseAllocationRetentionPriority(const DiameterAvp& avp) {
+std::optional<AllocationRetentionPriority> DiameterS6aParser::parseAllocationRetentionPriority(
+    const DiameterAvp& avp) {
     AllocationRetentionPriority arp;
     arp.priority_level = 0;
     arp.pre_emption_capability = false;
@@ -819,10 +842,12 @@ std::optional<AllocationRetentionPriority> DiameterS6aParser::parseAllocationRet
     for (const auto& group_avp : grouped_avps) {
         if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::PRIORITY_LEVEL)) {
             arp.priority_level = getAVPUint32(group_avp).value_or(0);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::PRE_EMPTION_CAPABILITY)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::PRE_EMPTION_CAPABILITY)) {
             auto val = getAVPUint32(group_avp).value_or(0);
             arp.pre_emption_capability = (val == 0);  // 0 = PRE-EMPTION_CAPABILITY_ENABLED
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::PRE_EMPTION_VULNERABILITY)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::PRE_EMPTION_VULNERABILITY)) {
             auto val = getAVPUint32(group_avp).value_or(0);
             arp.pre_emption_vulnerability = (val == 0);  // 0 = PRE-EMPTION_VULNERABILITY_ENABLED
         }
@@ -847,14 +872,16 @@ std::optional<APNConfiguration> DiameterS6aParser::parseAPNConfiguration(const D
         } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::PDN_TYPE)) {
             auto pdn_val = getAVPUint32(group_avp).value_or(0);
             apn_config.pdn_type = static_cast<PDNType>(pdn_val);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::EPS_SUBSCRIBED_QOS_PROFILE)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::EPS_SUBSCRIBED_QOS_PROFILE)) {
             auto qos = parseEPSSubscribedQoSProfile(group_avp);
             if (qos.has_value()) {
                 apn_config.qos_profile = qos.value();
             }
         } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::AMBR)) {
             apn_config.ambr = parseAMBR(group_avp);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::VPLMN_DYNAMIC_ADDRESS_ALLOWED)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::VPLMN_DYNAMIC_ADDRESS_ALLOWED)) {
             auto val = getAVPUint32(group_avp).value_or(0);
             apn_config.vplmn_dynamic_address_allowed = (val == 0);  // 0 = NOTALLOWED, 1 = ALLOWED
         }
@@ -863,7 +890,8 @@ std::optional<APNConfiguration> DiameterS6aParser::parseAPNConfiguration(const D
     return apn_config;
 }
 
-std::optional<APNConfigurationProfile> DiameterS6aParser::parseAPNConfigurationProfile(const DiameterAvp& avp) {
+std::optional<APNConfigurationProfile> DiameterS6aParser::parseAPNConfigurationProfile(
+    const DiameterAvp& avp) {
     APNConfigurationProfile profile;
     profile.context_identifier = 0;
     profile.all_apn_config_inc_ind = false;
@@ -873,7 +901,8 @@ std::optional<APNConfigurationProfile> DiameterS6aParser::parseAPNConfigurationP
     for (const auto& group_avp : grouped_avps) {
         if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::CONTEXT_IDENTIFIER)) {
             profile.context_identifier = getAVPUint32(group_avp).value_or(0);
-        } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::ALL_APN_CONFIG_INC_IND)) {
+        } else if (group_avp.code ==
+                   static_cast<uint32_t>(DiameterS6aAvpCode::ALL_APN_CONFIG_INC_IND)) {
             auto val = getAVPUint32(group_avp).value_or(0);
             profile.all_apn_config_inc_ind = (val == 0);  // 0 = All_APN_CONFIGURATIONS_INCLUDED
         } else if (group_avp.code == static_cast<uint32_t>(DiameterS6aAvpCode::APN_CONFIGURATION)) {
@@ -891,7 +920,8 @@ std::optional<APNConfigurationProfile> DiameterS6aParser::parseAPNConfigurationP
 // Helper functions
 // ============================================================================
 
-std::optional<DiameterAvp> DiameterS6aParser::findAVP(const std::vector<DiameterAvp>& avps, uint32_t code) {
+std::optional<DiameterAvp> DiameterS6aParser::findAVP(const std::vector<DiameterAvp>& avps,
+                                                      uint32_t code) {
     for (const auto& avp : avps) {
         if (avp.code == code) {
             return avp;
@@ -900,7 +930,8 @@ std::optional<DiameterAvp> DiameterS6aParser::findAVP(const std::vector<Diameter
     return std::nullopt;
 }
 
-std::vector<DiameterAvp> DiameterS6aParser::findAllAVPs(const std::vector<DiameterAvp>& avps, uint32_t code) {
+std::vector<DiameterAvp> DiameterS6aParser::findAllAVPs(const std::vector<DiameterAvp>& avps,
+                                                        uint32_t code) {
     std::vector<DiameterAvp> result;
     for (const auto& avp : avps) {
         if (avp.code == code) {
@@ -953,9 +984,9 @@ std::vector<DiameterAvp> DiameterS6aParser::parseGroupedAVP(const DiameterAvp& a
 
         // Byte 4: Flags
         uint8_t flags = data[offset + 4];
-        nested_avp.vendor_flag = (flags & 0x80) != 0;      // V bit
-        nested_avp.mandatory_flag = (flags & 0x40) != 0;   // M bit
-        nested_avp.protected_flag = (flags & 0x20) != 0;   // P bit
+        nested_avp.vendor_flag = (flags & 0x80) != 0;     // V bit
+        nested_avp.mandatory_flag = (flags & 0x40) != 0;  // M bit
+        nested_avp.protected_flag = (flags & 0x20) != 0;  // P bit
 
         // Bytes 5-7: AVP Length (24 bits)
         nested_avp.length = (static_cast<uint32_t>(data[offset + 5]) << 16) |
@@ -985,7 +1016,8 @@ std::vector<DiameterAvp> DiameterS6aParser::parseGroupedAVP(const DiameterAvp& a
 
         // Calculate data length
         if (nested_avp.length < header_len) {
-            LOG_ERROR("Nested AVP length " << nested_avp.length << " is less than header length " << header_len);
+            LOG_ERROR("Nested AVP length " << nested_avp.length << " is less than header length "
+                                           << header_len);
             break;
         }
 

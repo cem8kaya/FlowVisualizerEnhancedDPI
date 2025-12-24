@@ -1,6 +1,11 @@
 #include "correlation/volte/volte_json.h"
-#include "common/utils.h"
+
 #include <algorithm>
+#include <chrono>
+#include <string>
+#include <vector>
+
+#include "common/utils.h"
 
 namespace callflow {
 namespace correlation {
@@ -51,10 +56,16 @@ nlohmann::json VolteJsonSerializer::callFlowToJson(const VolteCallFlow& flow) {
 
     j["parties"] = parties;
 
+    auto toTimePoint = [](double ts) {
+        return std::chrono::system_clock::time_point(
+            std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                std::chrono::duration<double>(ts)));
+    };
+
     // Time window
     nlohmann::json time_window;
-    time_window["start_time"] = utils::timestampToIso8601(flow.start_time);
-    time_window["end_time"] = utils::timestampToIso8601(flow.end_time);
+    time_window["start_time"] = utils::timestampToIso8601(toTimePoint(flow.start_time));
+    time_window["end_time"] = utils::timestampToIso8601(toTimePoint(flow.end_time));
     time_window["start_frame"] = flow.start_frame;
     time_window["end_frame"] = flow.end_frame;
     j["time_window"] = time_window;
@@ -94,11 +105,16 @@ nlohmann::json VolteJsonSerializer::callFlowToJson(const VolteCallFlow& flow) {
             }
         }
 
-        if (!gx_sessions.empty()) diameter["gx"] = gx_sessions;
-        if (!rx_sessions.empty()) diameter["rx"] = rx_sessions;
-        if (!cx_sessions.empty()) diameter["cx"] = cx_sessions;
-        if (!sh_sessions.empty()) diameter["sh"] = sh_sessions;
-        if (!other_sessions.empty()) diameter["other"] = other_sessions;
+        if (!gx_sessions.empty())
+            diameter["gx"] = gx_sessions;
+        if (!rx_sessions.empty())
+            diameter["rx"] = rx_sessions;
+        if (!cx_sessions.empty())
+            diameter["cx"] = cx_sessions;
+        if (!sh_sessions.empty())
+            diameter["sh"] = sh_sessions;
+        if (!other_sessions.empty())
+            diameter["other"] = other_sessions;
 
         protocol_sessions["diameter"] = diameter;
     }
@@ -175,20 +191,22 @@ nlohmann::json VolteJsonSerializer::callFlowToTimelineJson(const VolteCallFlow& 
     // which are stored in the individual correlators
     nlohmann::json events = nlohmann::json::array();
 
-    // Add time window markers
-    events.push_back({
-        {"timestamp", utils::timestampToIso8601(flow.start_time)},
-        {"frame", flow.start_frame},
-        {"event_type", "FLOW_START"},
-        {"description", "VoLTE call flow started"}
-    });
+    auto toTimePoint = [](double ts) {
+        return std::chrono::system_clock::time_point(
+            std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                std::chrono::duration<double>(ts)));
+    };
 
-    events.push_back({
-        {"timestamp", utils::timestampToIso8601(flow.end_time)},
-        {"frame", flow.end_frame},
-        {"event_type", "FLOW_END"},
-        {"description", "VoLTE call flow ended"}
-    });
+    // Add time window markers
+    events.push_back({{"timestamp", utils::timestampToIso8601(toTimePoint(flow.start_time))},
+                      {"frame", flow.start_frame},
+                      {"event_type", "FLOW_START"},
+                      {"description", "VoLTE call flow started"}});
+
+    events.push_back({{"timestamp", utils::timestampToIso8601(toTimePoint(flow.end_time))},
+                      {"frame", flow.end_frame},
+                      {"event_type", "FLOW_END"},
+                      {"description", "VoLTE call flow ended"}});
 
     timeline["events"] = events;
     timeline["total_events"] = events.size();
@@ -198,7 +216,6 @@ nlohmann::json VolteJsonSerializer::callFlowToTimelineJson(const VolteCallFlow& 
 
 nlohmann::json VolteJsonSerializer::callFlowsSummaryToJson(
     const std::vector<VolteCallFlow*>& flows) {
-
     nlohmann::json summary;
 
     // Overall counts
@@ -325,15 +342,19 @@ nlohmann::json VolteJsonSerializer::callFlowsSummaryToJson(
             latest = std::max(latest, flow->end_time);
         }
 
-        summary["time_range"] = {
-            {"start", utils::timestampToIso8601(earliest)},
-            {"end", utils::timestampToIso8601(latest)},
-            {"duration_seconds", latest - earliest}
+        auto toTimePoint = [](double ts) {
+            return std::chrono::system_clock::time_point(
+                std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                    std::chrono::duration<double>(ts)));
         };
+
+        summary["time_range"] = {{"start", utils::timestampToIso8601(toTimePoint(earliest))},
+                                 {"end", utils::timestampToIso8601(toTimePoint(latest))},
+                                 {"duration_seconds", latest - earliest}};
     }
 
     return summary;
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

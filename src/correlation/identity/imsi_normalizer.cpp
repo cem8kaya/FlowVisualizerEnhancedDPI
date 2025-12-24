@@ -1,4 +1,5 @@
 #include "correlation/identity/imsi_normalizer.h"
+
 #include <algorithm>
 #include <cctype>
 #include <sstream>
@@ -9,35 +10,35 @@ namespace correlation {
 // MCC to MNC length mapping (countries with 3-digit MNC)
 // Most countries use 2-digit MNC, so we only list exceptions
 const std::unordered_map<std::string, int> ImsiNormalizer::MCC_MNC_LENGTHS = {
-    {"302", 3}, // Canada
-    {"310", 3}, // USA (some operators use 3-digit)
-    {"311", 3}, // USA
-    {"312", 3}, // USA
-    {"313", 3}, // USA
-    {"316", 3}, // USA
-    {"334", 3}, // Mexico
-    {"338", 3}, // Jamaica
-    {"342", 3}, // Barbados
-    {"344", 3}, // Antigua and Barbuda
-    {"346", 3}, // Cayman Islands
-    {"348", 3}, // British Virgin Islands
-    {"350", 3}, // Bermuda
-    {"352", 3}, // Grenada
-    {"354", 3}, // Montserrat
-    {"356", 3}, // Saint Kitts and Nevis
-    {"358", 3}, // Saint Lucia
-    {"360", 3}, // Saint Vincent and the Grenadines
-    {"362", 3}, // Bonaire, Sint Eustatius and Saba
-    {"363", 3}, // Aruba
-    {"364", 3}, // Bahamas
-    {"365", 3}, // Anguilla
-    {"366", 3}, // Dominica
-    {"368", 3}, // Cuba
-    {"370", 3}, // Dominican Republic
-    {"372", 3}, // Haiti
-    {"374", 3}, // Trinidad and Tobago
-    {"376", 3}, // Turks and Caicos Islands
-    {"732", 3}, // Colombia
+    {"302", 3},  // Canada
+    {"310", 3},  // USA (some operators use 3-digit)
+    {"311", 3},  // USA
+    {"312", 3},  // USA
+    {"313", 3},  // USA
+    {"316", 3},  // USA
+    {"334", 3},  // Mexico
+    {"338", 3},  // Jamaica
+    {"342", 3},  // Barbados
+    {"344", 3},  // Antigua and Barbuda
+    {"346", 3},  // Cayman Islands
+    {"348", 3},  // British Virgin Islands
+    {"350", 3},  // Bermuda
+    {"352", 3},  // Grenada
+    {"354", 3},  // Montserrat
+    {"356", 3},  // Saint Kitts and Nevis
+    {"358", 3},  // Saint Lucia
+    {"360", 3},  // Saint Vincent and the Grenadines
+    {"362", 3},  // Bonaire, Sint Eustatius and Saba
+    {"363", 3},  // Aruba
+    {"364", 3},  // Bahamas
+    {"365", 3},  // Anguilla
+    {"366", 3},  // Dominica
+    {"368", 3},  // Cuba
+    {"370", 3},  // Dominican Republic
+    {"372", 3},  // Haiti
+    {"374", 3},  // Trinidad and Tobago
+    {"376", 3},  // Turks and Caicos Islands
+    {"732", 3},  // Colombia
 };
 
 std::optional<NormalizedImsi> ImsiNormalizer::normalize(const std::string& input) {
@@ -106,14 +107,18 @@ std::optional<NormalizedImsi> ImsiNormalizer::fromBcd(const uint8_t* data, size_
 
         // Lower nibble (first digit)
         uint8_t low = byte & 0x0F;
-        if (low == 0x0F) break;  // Filler, end of IMSI
-        if (low > 9) return std::nullopt;  // Invalid BCD
+        if (low == 0x0F)
+            break;  // Filler, end of IMSI
+        if (low > 9)
+            return std::nullopt;  // Invalid BCD
         digits += ('0' + low);
 
         // Upper nibble (second digit)
         uint8_t high = (byte >> 4) & 0x0F;
-        if (high == 0x0F) break;  // Filler, end of IMSI
-        if (high > 9) return std::nullopt;  // Invalid BCD
+        if (high == 0x0F)
+            break;  // Filler, end of IMSI
+        if (high > 9)
+            return std::nullopt;  // Invalid BCD
         digits += ('0' + high);
     }
 
@@ -221,7 +226,7 @@ std::string ImsiNormalizer::stripPrefix(const std::string& input) {
     return working;
 }
 
-int ImsiNormalizer::detectMncLength(const std::string& mcc, const std::string& first_digit) {
+int ImsiNormalizer::detectMncLength(const std::string& mcc, const std::string& /*first_digit*/) {
     // Check if MCC is in the list of countries with 3-digit MNC
     auto it = MCC_MNC_LENGTHS.find(mcc);
     if (it != MCC_MNC_LENGTHS.end()) {
@@ -234,5 +239,5 @@ int ImsiNormalizer::detectMncLength(const std::string& mcc, const std::string& f
     return 2;
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

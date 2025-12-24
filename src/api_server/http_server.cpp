@@ -10,7 +10,9 @@
 #include "common/utils.h"  // Needed for timestampToIso8601
 #include "config/config_manager.h"
 
+#ifndef CPPHTTPLIB_OPENSSL_SUPPORT
 #define CPPHTTPLIB_OPENSSL_SUPPORT
+#endif
 #include <httplib.h>
 
 namespace callflow {
@@ -907,7 +909,7 @@ void HttpServer::setupRoutes() {
 
     // GET /api/v1/jobs/{job_id}/volte/calls - Get all VoLTE call flows
     server->Get("/api/v1/jobs/:job_id/volte/calls", [this](const httplib::Request& req,
-                                                            httplib::Response& res) {
+                                                           httplib::Response& res) {
         try {
             std::string job_id = req.path_params.at("job_id");
             auto job_info = job_manager_->getJobInfo(job_id);
@@ -943,7 +945,8 @@ void HttpServer::setupRoutes() {
             }
 
             // Apply filters
-            std::string filter_msisdn = req.has_param("msisdn") ? req.get_param_value("msisdn") : "";
+            std::string filter_msisdn =
+                req.has_param("msisdn") ? req.get_param_value("msisdn") : "";
             std::string filter_imsi = req.has_param("imsi") ? req.get_param_value("imsi") : "";
             std::string filter_type = req.has_param("type") ? req.get_param_value("type") : "";
 
@@ -965,7 +968,8 @@ void HttpServer::setupRoutes() {
                             msisdn_match = true;
                         }
                     }
-                    if (!msisdn_match) match = false;
+                    if (!msisdn_match)
+                        match = false;
                 }
 
                 // Filter by IMSI
@@ -982,12 +986,14 @@ void HttpServer::setupRoutes() {
                             imsi_match = true;
                         }
                     }
-                    if (!imsi_match) match = false;
+                    if (!imsi_match)
+                        match = false;
                 }
 
                 // Filter by type
                 if (!filter_type.empty()) {
-                    if (call.value("type", "") != filter_type) match = false;
+                    if (call.value("type", "") != filter_type)
+                        match = false;
                 }
 
                 if (match) {
@@ -995,11 +1001,9 @@ void HttpServer::setupRoutes() {
                 }
             }
 
-            nlohmann::json response = {
-                {"job_id", job_id},
-                {"total_calls", filtered_calls.size()},
-                {"calls", filtered_calls}
-            };
+            nlohmann::json response = {{"job_id", job_id},
+                                       {"total_calls", filtered_calls.size()},
+                                       {"calls", filtered_calls}};
 
             res.set_content(response.dump(), "application/json");
 
@@ -1012,8 +1016,8 @@ void HttpServer::setupRoutes() {
     });
 
     // GET /api/v1/jobs/{job_id}/volte/calls/{flow_id} - Get specific call flow
-    server->Get("/api/v1/jobs/:job_id/volte/calls/:flow_id",
-                [this](const httplib::Request& req, httplib::Response& res) {
+    server->Get("/api/v1/jobs/:job_id/volte/calls/:flow_id", [this](const httplib::Request& req,
+                                                                    httplib::Response& res) {
         try {
             std::string job_id = req.path_params.at("job_id");
             std::string flow_id = req.path_params.at("flow_id");
@@ -1071,67 +1075,70 @@ void HttpServer::setupRoutes() {
     // GET /api/v1/jobs/{job_id}/volte/calls/{flow_id}/timeline - Get call flow timeline
     server->Get("/api/v1/jobs/:job_id/volte/calls/:flow_id/timeline",
                 [this](const httplib::Request& req, httplib::Response& res) {
-        try {
-            std::string job_id = req.path_params.at("job_id");
-            std::string flow_id = req.path_params.at("flow_id");
+                    try {
+                        std::string job_id = req.path_params.at("job_id");
+                        std::string flow_id = req.path_params.at("flow_id");
 
-            auto job_info = job_manager_->getJobInfo(job_id);
+                        auto job_info = job_manager_->getJobInfo(job_id);
 
-            if (!job_info) {
-                nlohmann::json error = {{"error", "Job not found"}, {"code", "JOB_NOT_FOUND"}};
-                res.status = 404;
-                res.set_content(error.dump(), "application/json");
-                return;
-            }
+                        if (!job_info) {
+                            nlohmann::json error = {{"error", "Job not found"},
+                                                    {"code", "JOB_NOT_FOUND"}};
+                            res.status = 404;
+                            res.set_content(error.dump(), "application/json");
+                            return;
+                        }
 
-            if (job_info->status != JobStatus::COMPLETED) {
-                nlohmann::json error = {{"error", "Job not completed yet"},
-                                        {"code", "JOB_NOT_COMPLETED"}};
-                res.status = 400;
-                res.set_content(error.dump(), "application/json");
-                return;
-            }
+                        if (job_info->status != JobStatus::COMPLETED) {
+                            nlohmann::json error = {{"error", "Job not completed yet"},
+                                                    {"code", "JOB_NOT_COMPLETED"}};
+                            res.status = 400;
+                            res.set_content(error.dump(), "application/json");
+                            return;
+                        }
 
-            // Load results from output file
-            std::ifstream infile(job_info->output_filename);
-            if (!infile) {
-                throw std::runtime_error("Failed to read results file");
-            }
+                        // Load results from output file
+                        std::ifstream infile(job_info->output_filename);
+                        if (!infile) {
+                            throw std::runtime_error("Failed to read results file");
+                        }
 
-            nlohmann::json full_results;
-            infile >> full_results;
+                        nlohmann::json full_results;
+                        infile >> full_results;
 
-            // Find the specific call flow and generate timeline
-            if (full_results.contains("volte_calls") && full_results["volte_calls"].is_array()) {
-                for (const auto& call : full_results["volte_calls"]) {
-                    if (call.value("flow_id", "") == flow_id) {
-                        // For now, return the call flow with a timeline marker
-                        // A full timeline would require reconstructing message sequence
-                        nlohmann::json timeline = call;
-                        timeline["view"] = "timeline";
-                        res.set_content(timeline.dump(), "application/json");
-                        return;
+                        // Find the specific call flow and generate timeline
+                        if (full_results.contains("volte_calls") &&
+                            full_results["volte_calls"].is_array()) {
+                            for (const auto& call : full_results["volte_calls"]) {
+                                if (call.value("flow_id", "") == flow_id) {
+                                    // For now, return the call flow with a timeline marker
+                                    // A full timeline would require reconstructing message sequence
+                                    nlohmann::json timeline = call;
+                                    timeline["view"] = "timeline";
+                                    res.set_content(timeline.dump(), "application/json");
+                                    return;
+                                }
+                            }
+                        }
+
+                        // Call flow not found
+                        nlohmann::json error = {{"error", "Call flow not found"},
+                                                {"code", "CALL_FLOW_NOT_FOUND"}};
+                        res.status = 404;
+                        res.set_content(error.dump(), "application/json");
+
+                    } catch (const std::exception& e) {
+                        LOG_ERROR("Get VoLTE timeline failed: " << e.what());
+                        nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
+                        res.status = 500;
+                        res.set_content(error.dump(), "application/json");
                     }
-                }
-            }
-
-            // Call flow not found
-            nlohmann::json error = {{"error", "Call flow not found"},
-                                    {"code", "CALL_FLOW_NOT_FOUND"}};
-            res.status = 404;
-            res.set_content(error.dump(), "application/json");
-
-        } catch (const std::exception& e) {
-            LOG_ERROR("Get VoLTE timeline failed: " << e.what());
-            nlohmann::json error = {{"error", e.what()}, {"code", "INTERNAL_ERROR"}};
-            res.status = 500;
-            res.set_content(error.dump(), "application/json");
-        }
-    });
+                });
 
     // GET /api/v1/jobs/{job_id}/volte/calls/{flow_id}/stats - Get call flow statistics
-    server->Get("/api/v1/jobs/:job_id/volte/calls/:flow_id/stats",
-                [this](const httplib::Request& req, httplib::Response& res) {
+    server->Get("/api/v1/jobs/:job_id/volte/calls/:flow_id/stats", [this](
+                                                                       const httplib::Request& req,
+                                                                       httplib::Response& res) {
         try {
             std::string job_id = req.path_params.at("job_id");
             std::string flow_id = req.path_params.at("flow_id");
@@ -1166,10 +1173,8 @@ void HttpServer::setupRoutes() {
             if (full_results.contains("volte_calls") && full_results["volte_calls"].is_array()) {
                 for (const auto& call : full_results["volte_calls"]) {
                     if (call.value("flow_id", "") == flow_id) {
-                        nlohmann::json stats_response = {
-                            {"flow_id", flow_id},
-                            {"type", call.value("type", "UNKNOWN")}
-                        };
+                        nlohmann::json stats_response = {{"flow_id", flow_id},
+                                                         {"type", call.value("type", "UNKNOWN")}};
 
                         if (call.contains("statistics")) {
                             stats_response["statistics"] = call["statistics"];
@@ -1200,8 +1205,8 @@ void HttpServer::setupRoutes() {
     });
 
     // GET /api/v1/jobs/{job_id}/volte/summary - Get VoLTE summary statistics
-    server->Get("/api/v1/jobs/:job_id/volte/summary",
-                [this](const httplib::Request& req, httplib::Response& res) {
+    server->Get("/api/v1/jobs/:job_id/volte/summary", [this](const httplib::Request& req,
+                                                             httplib::Response& res) {
         try {
             std::string job_id = req.path_params.at("job_id");
             auto job_info = job_manager_->getJobInfo(job_id);

@@ -260,9 +260,8 @@ bool GtpParser::isGtp(const uint8_t* data, size_t len) {
     msg_len = ntohs(msg_len);
 
     // Message length should be reasonable (not too large)
-    if (msg_len > 65535) {
-        return false;
-    }
+    // Note: msg_len is uint16_t, so it cannot exceed 65535.
+    // The check (msg_len > 65535) was redundant and caused a compiler warning.
 
     return true;
 }

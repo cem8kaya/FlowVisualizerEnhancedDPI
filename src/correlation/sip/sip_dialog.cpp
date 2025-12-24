@@ -1,16 +1,13 @@
 #include "correlation/sip/sip_dialog.h"
+
 #include <algorithm>
 
 namespace callflow {
 namespace correlation {
 
-SipDialog::SipDialog(const std::string& dialog_id,
-                     const std::string& from_tag,
+SipDialog::SipDialog(const std::string& dialog_id, const std::string& from_tag,
                      const std::string& to_tag)
-    : dialog_id_(dialog_id),
-      from_tag_(from_tag),
-      to_tag_(to_tag) {
-}
+    : dialog_id_(dialog_id), from_tag_(from_tag), to_tag_(to_tag) {}
 
 void SipDialog::addMessage(const SipMessage& msg) {
     messages_.push_back(msg);
@@ -55,7 +52,7 @@ void SipDialog::updateState(const SipMessage& msg) {
         }
     } else {
         // Response messages
-        int status_code = msg.getStatusCode();
+        // int status_code = msg.getStatusCode();
 
         if (msg.isProvisional()) {
             // 1xx response
@@ -88,7 +85,7 @@ void SipDialog::setToTag(const std::string& to_tag) {
 }
 
 SipTransaction* SipDialog::getOrCreateTransaction(const std::string& transaction_id,
-                                                   const SipMessage& request) {
+                                                  const SipMessage& request) {
     auto it = transaction_map_.find(transaction_id);
     if (it != transaction_map_.end()) {
         return it->second;
@@ -136,5 +133,5 @@ double SipDialog::getDuration() const {
     return end_time_ - start_time_;
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

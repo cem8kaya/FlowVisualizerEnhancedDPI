@@ -1,5 +1,7 @@
 #include <arpa/inet.h>
 
+#include <nlohmann/json.hpp>
+
 #include "common/logger.h"
 #include "protocol_parsers/diameter/diameter_avp_parser.h"
 #include "protocol_parsers/diameter/diameter_rx.h"
@@ -288,7 +290,7 @@ std::optional<DiameterRxMessage> DiameterRxParser::parse(const DiameterMessage& 
         return std::nullopt;
     }
 
-    DiameterRxMessage rx_msg;
+    DiameterRxMessage rx_msg = {};
     rx_msg.base = msg;
 
     // Extract common fields
@@ -348,7 +350,7 @@ std::optional<DiameterRxMessage> DiameterRxParser::parse(const DiameterMessage& 
 }
 
 RxAARequest DiameterRxParser::parseAAR(const DiameterMessage& msg) {
-    RxAARequest aar;
+    RxAARequest aar = {};
 
     // Framed IP addresses
     auto framed_ip_avp = msg.findAVP(static_cast<uint32_t>(RxAVPCode::FRAMED_IP_ADDRESS));
@@ -422,7 +424,7 @@ RxAARequest DiameterRxParser::parseAAR(const DiameterMessage& msg) {
 }
 
 RxAAAnswer DiameterRxParser::parseAAA(const DiameterMessage& msg) {
-    RxAAAnswer aaa;
+    RxAAAnswer aaa = {};
 
     // Result code
     if (msg.result_code.has_value()) {
@@ -456,7 +458,7 @@ RxAAAnswer DiameterRxParser::parseAAA(const DiameterMessage& msg) {
 }
 
 RxReAuthRequest DiameterRxParser::parseRAR(const DiameterMessage& msg) {
-    RxReAuthRequest rar;
+    RxReAuthRequest rar = {};
 
     // Re-Auth-Request-Type
     auto ra_type_avp = msg.findAVP(static_cast<uint32_t>(DiameterAVPCode::RE_AUTH_REQUEST_TYPE));
@@ -483,7 +485,7 @@ RxReAuthRequest DiameterRxParser::parseRAR(const DiameterMessage& msg) {
 }
 
 RxReAuthAnswer DiameterRxParser::parseRAA(const DiameterMessage& msg) {
-    RxReAuthAnswer raa;
+    RxReAuthAnswer raa = {};
 
     // Result code
     if (msg.result_code.has_value()) {
@@ -504,7 +506,7 @@ RxReAuthAnswer DiameterRxParser::parseRAA(const DiameterMessage& msg) {
 }
 
 RxSessionTerminationRequest DiameterRxParser::parseSTR(const DiameterMessage& msg) {
-    RxSessionTerminationRequest str;
+    RxSessionTerminationRequest str = {};
 
     auto term_cause_avp = msg.findAVP(static_cast<uint32_t>(DiameterAVPCode::TERMINATION_CAUSE));
     if (term_cause_avp) {
@@ -518,7 +520,7 @@ RxSessionTerminationRequest DiameterRxParser::parseSTR(const DiameterMessage& ms
 }
 
 RxSessionTerminationAnswer DiameterRxParser::parseSTA(const DiameterMessage& msg) {
-    RxSessionTerminationAnswer sta;
+    RxSessionTerminationAnswer sta = {};
 
     if (msg.result_code.has_value()) {
         sta.result_code = msg.result_code.value();
@@ -528,7 +530,7 @@ RxSessionTerminationAnswer DiameterRxParser::parseSTA(const DiameterMessage& msg
 }
 
 RxAbortSessionRequest DiameterRxParser::parseASR(const DiameterMessage& msg) {
-    RxAbortSessionRequest asr;
+    RxAbortSessionRequest asr = {};
 
     auto abort_cause_avp = msg.findAVP(static_cast<uint32_t>(RxAVPCode::ABORT_CAUSE));
     if (abort_cause_avp) {
@@ -542,7 +544,7 @@ RxAbortSessionRequest DiameterRxParser::parseASR(const DiameterMessage& msg) {
 }
 
 RxAbortSessionAnswer DiameterRxParser::parseASA(const DiameterMessage& msg) {
-    RxAbortSessionAnswer asa;
+    RxAbortSessionAnswer asa = {};
 
     if (msg.result_code.has_value()) {
         asa.result_code = msg.result_code.value();
