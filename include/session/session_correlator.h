@@ -7,6 +7,8 @@
 #include <vector>
 
 #include "common/types.h"
+#include "correlation/sip_dialog_tracker.h"
+#include "protocol_parsers/sip_parser.h"
 #include "session/session_types.h"
 
 namespace callflow {
@@ -189,6 +191,11 @@ public:
                        const nlohmann::json& parsed_data);
 
     /**
+     * Process a SIP message directly (bypassing JSON conversion for dialog tracking)
+     */
+    void processSipMessage(const SipMessage& msg, const PacketMetadata& packet);
+
+    /**
      * Finalize all sessions (timeout logic, etc.)
      */
     void finalizeSessions();
@@ -212,6 +219,9 @@ private:
     std::unordered_map<std::string, std::string>
         ip_to_imsi_map_;  // UE IP -> IMSI (populated by GTP)
     std::unordered_map<std::string, VolteMasterSession> master_sessions_;  // IMSI -> Master Session
+
+    // SIP Dialog Tracking
+    SipDialogTracker dialog_tracker_;
 
     // Thread safety
     mutable std::mutex mutex_;

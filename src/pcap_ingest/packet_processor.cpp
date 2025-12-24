@@ -412,11 +412,8 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
     // try content-based detection by inspecting the payload
     if (!detected_by_port && !payload.empty()) {
         auto content_detected = ProtocolDetector::detectFromPayload(
-            payload.data(),
-            payload.size(),
-            metadata.five_tuple.src_port,
-            metadata.five_tuple.dst_port,
-            metadata.five_tuple.protocol);
+            payload.data(), payload.size(), metadata.five_tuple.src_port,
+            metadata.five_tuple.dst_port, metadata.five_tuple.protocol);
 
         if (content_detected.has_value()) {
             detected_protocol = content_detected.value();
@@ -431,7 +428,7 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
                     SipParser parser;
                     auto msg = parser.parse(payload.data(), payload.size());
                     if (msg.has_value()) {
-                        correlator_.processPacket(metadata, ProtocolType::SIP, msg->toJson());
+                        correlator_.processSipMessage(msg.value(), metadata);
                         return;
                     }
                     break;
@@ -707,8 +704,7 @@ void PacketProcessor::processSctpMessage(const SctpReassembledMessage& message,
 // DynamicPortTracker Implementation
 // ============================================================================
 
-void DynamicPortTracker::registerRtpPorts(const std::string& call_id,
-                                          uint16_t local_port,
+void DynamicPortTracker::registerRtpPorts(const std::string& call_id, uint16_t local_port,
                                           uint16_t remote_port) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto now = std::chrono::system_clock::now();
@@ -746,13 +742,13 @@ size_t DynamicPortTracker::cleanupExpired(Timestamp current_time) {
 
     auto it = port_to_call_id_.begin();
     while (it != port_to_call_id_.end()) {
-        auto age = std::chrono::duration_cast<std::chrono::seconds>(
-            current_time - it->second.registered_at);
+        auto age = std::chrono::duration_cast<std::chrono::seconds>(current_time -
+                                                                    it->second.registered_at);
 
         if (age > PORT_TTL) {
             LOG_DEBUG("Expired RTP port mapping: port=" << it->first
-                      << " call_id=" << it->second.call_id
-                      << " age=" << age.count() << "s");
+                                                        << " call_id=" << it->second.call_id
+                                                        << " age=" << age.count() << "s");
             it = port_to_call_id_.erase(it);
             ++removed;
         } else {

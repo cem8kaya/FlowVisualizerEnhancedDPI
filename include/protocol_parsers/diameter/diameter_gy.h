@@ -1,11 +1,12 @@
 #pragma once
 
-#include "protocol_parsers/diameter/diameter_base.h"
-#include "protocol_parsers/diameter/diameter_policy_types.h"
-#include "common/types.h"
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <vector>
-#include <nlohmann/json.hpp>
+
+#include "common/types.h"
+#include "protocol_parsers/diameter/diameter_base.h"
+#include "protocol_parsers/diameter/diameter_policy_types.h"
 
 namespace callflow {
 namespace diameter {
@@ -344,9 +345,12 @@ private:
     GyCreditControlAnswer parseCCA(const DiameterMessage& msg);
 
     // AVP parsers
+public:
     std::optional<MultipleServicesCreditControl> parseMSCC(std::shared_ptr<DiameterAVP> avp);
     std::optional<SubscriptionId> parseSubscriptionId(std::shared_ptr<DiameterAVP> avp);
     std::optional<ServiceUnit> parseServiceUnit(std::shared_ptr<DiameterAVP> avp);
+
+private:
     std::optional<UsedServiceUnit> parseUsedServiceUnit(std::shared_ptr<DiameterAVP> avp);
     std::optional<FinalUnitIndication> parseFinalUnitIndication(std::shared_ptr<DiameterAVP> avp);
     std::optional<RedirectServer> parseRedirectServer(std::shared_ptr<DiameterAVP> avp);

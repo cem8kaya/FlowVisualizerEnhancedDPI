@@ -10,6 +10,38 @@
 
 namespace callflow {
 
+// Helper to extract parameters from headers
+static std::string extractParameter(const std::string& header, const std::string& param) {
+    size_t pos = header.find(param + "=");
+    if (pos == std::string::npos)
+        return "";
+
+    pos += param.length() + 1;
+    size_t end = header.find_first_of("; \r\n", pos);
+    if (end == std::string::npos)
+        end = header.length();
+
+    return header.substr(pos, end - pos);
+}
+
+std::string SipMessage::getDialogId() const {
+    if (call_id.empty() || from_tag.empty())
+        return "";
+    // RFC 3261: Dialog ID = Call-ID + From tag + To tag
+    if (to_tag.empty()) {
+        return call_id + ":" + from_tag;  // Early dialog / just Call-ID + From
+    }
+    return call_id + ":" + from_tag + ":" + to_tag;
+}
+
+bool SipMessage::isDialogCreating() const {
+    return is_request && (method == "INVITE" || method == "SUBSCRIBE" || method == "REFER");
+}
+
+bool SipMessage::isDialogTerminating() const {
+    return is_request && (method == "BYE" || method == "CANCEL");
+}
+
 nlohmann::json SipMessage::toJson() const {
     nlohmann::json j;
 
@@ -24,9 +56,18 @@ nlohmann::json SipMessage::toJson() const {
     }
 
     j["call_id"] = call_id;
+    j["call_id"] = call_id;
     j["from"] = from;
+    if (!from_tag.empty())
+        j["from_tag"] = from_tag;
     j["to"] = to;
+    if (!to_tag.empty())
+        j["to_tag"] = to_tag;
+
     j["via"] = via;
+    if (!via_branch.empty())
+        j["via_branch"] = via_branch;
+
     j["contact"] = contact;
     j["cseq"] = cseq;
 
@@ -605,10 +646,30 @@ void SipParser::parseHeaders(const std::vector<std::string>& lines, SipMessage& 
             msg.diversion.push_back(value);
         } else if (name == "History-Info") {
             msg.history_info.push_back(value);
+        } else if (name == "History-Info") {
+            msg.history_info.push_back(value);
+        } else if (name == "RSeq") {
+            try {
+                msg.rseq = std::stoul(value);
+            } catch (...) {
+            }
+        } else if (name == "RAck") {
+            msg.rack = value;
         }
 
         // Store all headers
         msg.headers[name] = value;
+    }
+
+    // Post-processing for tags and branch
+    if (!msg.from.empty()) {
+        msg.from_tag = extractParameter(msg.from, "tag");
+    }
+    if (!msg.to.empty()) {
+        msg.to_tag = extractParameter(msg.to, "tag");
+    }
+    if (!msg.via.empty()) {
+        msg.via_branch = extractParameter(msg.via, "branch");
     }
 }
 

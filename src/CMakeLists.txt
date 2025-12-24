@@ -34,12 +34,14 @@ target_link_libraries(config_manager PUBLIC
 add_library(session_correlation STATIC
     session/session_types.cpp
     session/session_correlator.cpp
+    correlation/sip_dialog_tracker.cpp
 )
 target_include_directories(session_correlation PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 target_link_libraries(session_correlation PUBLIC
     callflow_common
+    protocol_parsers
 )
 
 # Identity correlation library

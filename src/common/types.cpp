@@ -170,6 +170,8 @@ std::string messageTypeToString(MessageType type) {
             return "100 Trying";
         case MessageType::SIP_RINGING:
             return "180 Ringing";
+        case MessageType::SIP_SESSION_PROGRESS:
+            return "183 Session Progress";
         case MessageType::SIP_OK:
             return "200 OK";
         case MessageType::SIP_ACK:

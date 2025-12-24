@@ -35,6 +35,14 @@ struct SipMessage {
     std::string cseq;
     std::string content_type;
 
+    // NEW: Transaction identification
+    std::string via_branch;             // Top Via branch parameter
+    std::vector<std::string> via_list;  // All Via headers
+
+    // NEW: Dialog identification
+    std::string from_tag;
+    std::string to_tag;
+
     // Additional headers
     std::map<std::string, std::string> headers;
 
@@ -109,6 +117,10 @@ struct SipMessage {
     std::optional<std::string> geolocation_routing;
     std::optional<std::string> geolocation_error;
 
+    // NEW: Reliability
+    std::optional<uint32_t> rseq;     // For 1xx reliability (PRACK)
+    std::optional<std::string> rack;  // RAck in PRACK
+
     // NEW: Call transfer (REFER)
     std::optional<std::string> refer_to;
     std::optional<std::string> referred_by;
@@ -125,6 +137,11 @@ struct SipMessage {
 
     // Convert to JSON
     nlohmann::json toJson() const;
+
+    // Helper methods
+    std::string getDialogId() const;
+    bool isDialogCreating() const;     // INVITE, SUBSCRIBE, REFER
+    bool isDialogTerminating() const;  // BYE, CANCEL (for early)
 };
 
 /**

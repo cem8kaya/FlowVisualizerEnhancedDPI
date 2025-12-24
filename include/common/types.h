@@ -71,6 +71,7 @@ enum class MessageType {
     SIP_INVITE,
     SIP_TRYING,
     SIP_RINGING,
+    SIP_SESSION_PROGRESS,
     SIP_OK,
     SIP_ACK,
     SIP_BYE,

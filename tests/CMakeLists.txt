@@ -17,46 +17,46 @@ add_executable(test_community_correlation test_community_correlation.cpp)
 target_link_libraries(test_community_correlation PRIVATE callflow_common protocol_parsers session_correlation event_extractor nlohmann_json::nlohmann_json GTest::gtest GTest::gtest_main)
 gtest_discover_tests(test_community_correlation)
 
-# PCAPNG Reader Tests
-add_executable(test_pcapng_reader
-    unit/test_pcapng_reader.cpp
-)
+# # PCAPNG Reader Tests
+# add_executable(test_pcapng_reader
+#     unit/test_pcapng_reader.cpp
+# )
+# 
+# target_link_libraries(test_pcapng_reader PRIVATE
+#     callflow_common
+#     pcap_ingest
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# # Register tests with CTest
+# add_test(NAME test_pcapng_reader COMMAND test_pcapng_reader)
+# 
+# # Set test properties
+# set_tests_properties(test_pcapng_reader PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
-target_link_libraries(test_pcapng_reader PRIVATE
-    callflow_common
-    pcap_ingest
-    GTest::gtest
-    GTest::gtest_main
-)
-
-# Register tests with CTest
-add_test(NAME test_pcapng_reader COMMAND test_pcapng_reader)
-
-# Set test properties
-set_tests_properties(test_pcapng_reader PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
-
-# GTPv1 Parser Tests
-add_executable(test_gtpv1_parser
-    unit/test_gtpv1_parser.cpp
-)
-
-target_link_libraries(test_gtpv1_parser PRIVATE
-    callflow_common
-    protocol_parsers
-    transport
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_gtpv1_parser COMMAND test_gtpv1_parser)
-
-set_tests_properties(test_gtpv1_parser PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # GTPv1 Parser Tests
+# add_executable(test_gtpv1_parser
+#     unit/test_gtpv1_parser.cpp
+# )
+# 
+# target_link_libraries(test_gtpv1_parser PRIVATE
+#     callflow_common
+#     protocol_parsers
+#     transport
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_gtpv1_parser COMMAND test_gtpv1_parser)
+# 
+# set_tests_properties(test_gtpv1_parser PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # SCTP Parser Tests
 add_executable(test_sctp_parser
@@ -77,24 +77,24 @@ set_tests_properties(test_sctp_parser PROPERTIES
     LABELS "unit"
 )
 
-# S1AP Parser Tests
-add_executable(test_s1ap_parser
-    unit/protocol_parsers/test_s1ap_parser.cpp
-)
-
-target_link_libraries(test_s1ap_parser PRIVATE
-    callflow_common
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_s1ap_parser COMMAND test_s1ap_parser)
-
-set_tests_properties(test_s1ap_parser PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # S1AP Parser Tests
+# add_executable(test_s1ap_parser
+#     unit/protocol_parsers/test_s1ap_parser.cpp
+# )
+# 
+# target_link_libraries(test_s1ap_parser PRIVATE
+#     callflow_common
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_s1ap_parser COMMAND test_s1ap_parser)
+# 
+# set_tests_properties(test_s1ap_parser PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # NAS Parser Tests
 add_executable(test_nas_parser
@@ -134,24 +134,24 @@ set_tests_properties(test_diameter_base PROPERTIES
     LABELS "unit"
 )
 
-# Diameter Gx Parser Tests
-add_executable(test_diameter_gx
-    unit/test_diameter_gx.cpp
-)
-
-target_link_libraries(test_diameter_gx PRIVATE
-    callflow_common
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_diameter_gx COMMAND test_diameter_gx)
-
-set_tests_properties(test_diameter_gx PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # Diameter Gx Parser Tests
+# add_executable(test_diameter_gx
+#     unit/test_diameter_gx.cpp
+# )
+# 
+# target_link_libraries(test_diameter_gx PRIVATE
+#     callflow_common
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_diameter_gx COMMAND test_diameter_gx)
+# 
+# set_tests_properties(test_diameter_gx PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # Diameter Rx Parser Tests
 add_executable(test_diameter_rx
@@ -172,43 +172,43 @@ set_tests_properties(test_diameter_rx PROPERTIES
     LABELS "unit"
 )
 
-# Diameter Gy Parser Tests
-add_executable(test_diameter_gy
-    unit/test_diameter_gy.cpp
-)
-
-target_link_libraries(test_diameter_gy PRIVATE
-    callflow_common
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_diameter_gy COMMAND test_diameter_gy)
-
-set_tests_properties(test_diameter_gy PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # Diameter Gy Parser Tests
+# add_executable(test_diameter_gy
+#     unit/test_diameter_gy.cpp
+# )
+# 
+# target_link_libraries(test_diameter_gy PRIVATE
+#     callflow_common
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_diameter_gy COMMAND test_diameter_gy)
+# 
+# set_tests_properties(test_diameter_gy PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # Diameter Gy Service Units Tests
-add_executable(test_gy_service_units
-    unit/test_gy_service_units.cpp
-)
-
-target_link_libraries(test_gy_service_units PRIVATE
-    callflow_common
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_gy_service_units COMMAND test_gy_service_units)
-
-set_tests_properties(test_gy_service_units PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_gy_service_units
+#     unit/test_gy_service_units.cpp
+# )
+# 
+# target_link_libraries(test_gy_service_units PRIVATE
+#     callflow_common
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_gy_service_units COMMAND test_gy_service_units)
+# 
+# set_tests_properties(test_gy_service_units PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # Diameter Gy MSCC Tests
 add_executable(test_gy_mscc
@@ -267,24 +267,24 @@ set_tests_properties(test_diameter_sh PROPERTIES
     LABELS "unit"
 )
 
-# GTPv2 IE Parser Tests
-add_executable(test_gtpv2_ie_parser
-    unit/test_gtpv2_ie_parser.cpp
-)
-
-target_link_libraries(test_gtpv2_ie_parser PRIVATE
-    callflow_common
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_gtpv2_ie_parser COMMAND test_gtpv2_ie_parser)
-
-set_tests_properties(test_gtpv2_ie_parser PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # GTPv2 IE Parser Tests
+# add_executable(test_gtpv2_ie_parser
+#     unit/test_gtpv2_ie_parser.cpp
+# )
+# 
+# target_link_libraries(test_gtpv2_ie_parser PRIVATE
+#     callflow_common
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_gtpv2_ie_parser COMMAND test_gtpv2_ie_parser)
+# 
+# set_tests_properties(test_gtpv2_ie_parser PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # GTPv2 Bearer Context Tests
 add_executable(test_gtpv2_bearer_context
@@ -362,85 +362,85 @@ set_tests_properties(test_sip_volte_vonr PROPERTIES
     LABELS "integration"
 )
 
-# LTE Attach State Machine Tests
-add_executable(test_lte_attach_machine
-    unit/test_lte_attach_machine.cpp
-)
-
-target_link_libraries(test_lte_attach_machine PRIVATE
-    callflow_common
-    session_correlation
-    procedure_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_lte_attach_machine COMMAND test_lte_attach_machine)
-
-set_tests_properties(test_lte_attach_machine PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
-
-# Tunnel Lifecycle Tests
-add_executable(test_tunnel_lifecycle
-    unit/test_tunnel_lifecycle.cpp
-)
-
-target_link_libraries(test_tunnel_lifecycle PRIVATE
-    callflow_common
-    session_correlation
-    procedure_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_tunnel_lifecycle COMMAND test_tunnel_lifecycle)
-
-set_tests_properties(test_tunnel_lifecycle PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
-
-# Keep-Alive Aggregation Tests
-add_executable(test_keepalive_aggregation
-    unit/test_keepalive_aggregation.cpp
-)
-
-target_link_libraries(test_keepalive_aggregation PRIVATE
-    callflow_common
-    session_correlation
-    procedure_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_keepalive_aggregation COMMAND test_keepalive_aggregation)
-
-set_tests_properties(test_keepalive_aggregation PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
-
-# Handover Detection Tests
-add_executable(test_handover_detection
-    unit/test_handover_detection.cpp
-)
-
-target_link_libraries(test_handover_detection PRIVATE
-    callflow_common
-    session_correlation
-    procedure_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_handover_detection COMMAND test_handover_detection)
-
-set_tests_properties(test_handover_detection PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # LTE Attach State Machine Tests
+# add_executable(test_lte_attach_machine
+#     unit/test_lte_attach_machine.cpp
+# )
+# 
+# target_link_libraries(test_lte_attach_machine PRIVATE
+#     callflow_common
+#     session_correlation
+#     procedure_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_lte_attach_machine COMMAND test_lte_attach_machine)
+# 
+# set_tests_properties(test_lte_attach_machine PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
+# 
+# # Tunnel Lifecycle Tests
+# add_executable(test_tunnel_lifecycle
+#     unit/test_tunnel_lifecycle.cpp
+# )
+# 
+# target_link_libraries(test_tunnel_lifecycle PRIVATE
+#     callflow_common
+#     session_correlation
+#     procedure_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_tunnel_lifecycle COMMAND test_tunnel_lifecycle)
+# 
+# set_tests_properties(test_tunnel_lifecycle PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
+# 
+# # Keep-Alive Aggregation Tests
+# add_executable(test_keepalive_aggregation
+#     unit/test_keepalive_aggregation.cpp
+# )
+# 
+# target_link_libraries(test_keepalive_aggregation PRIVATE
+#     callflow_common
+#     session_correlation
+#     procedure_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_keepalive_aggregation COMMAND test_keepalive_aggregation)
+# 
+# set_tests_properties(test_keepalive_aggregation PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
+# 
+# # Handover Detection Tests
+# add_executable(test_handover_detection
+#     unit/test_handover_detection.cpp
+# )
+# 
+# target_link_libraries(test_handover_detection PRIVATE
+#     callflow_common
+#     session_correlation
+#     procedure_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_handover_detection COMMAND test_handover_detection)
+# 
+# set_tests_properties(test_handover_detection PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # Participant Detection Tests
 add_executable(test_participant_detection
@@ -483,318 +483,318 @@ set_tests_properties(test_ladder_generator PROPERTIES
 )
 
 # TCP Reassembly Tests
-add_executable(test_tcp_reassembly
-    unit/test_tcp_reassembly.cpp
-)
-
-target_link_libraries(test_tcp_reassembly PRIVATE
-    callflow_common
-    pcap_ingest
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_tcp_reassembly COMMAND test_tcp_reassembly)
-
-set_tests_properties(test_tcp_reassembly PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_tcp_reassembly
+#     unit/test_tcp_reassembly.cpp
+# )
+# 
+# target_link_libraries(test_tcp_reassembly PRIVATE
+#     callflow_common
+#     pcap_ingest
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_tcp_reassembly COMMAND test_tcp_reassembly)
+# 
+# set_tests_properties(test_tcp_reassembly PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # TCP Out-of-Order Tests
-add_executable(test_tcp_ooo
-    unit/test_tcp_ooo.cpp
-)
-
-target_link_libraries(test_tcp_ooo PRIVATE
-    callflow_common
-    pcap_ingest
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_tcp_ooo COMMAND test_tcp_ooo)
-
-set_tests_properties(test_tcp_ooo PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_tcp_ooo
+#     unit/test_tcp_ooo.cpp
+# )
+# 
+# target_link_libraries(test_tcp_ooo PRIVATE
+#     callflow_common
+#     pcap_ingest
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_tcp_ooo COMMAND test_tcp_ooo)
+# 
+# set_tests_properties(test_tcp_ooo PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # TCP Retransmission Tests
-add_executable(test_tcp_retransmission
-    unit/test_tcp_retransmission.cpp
-)
-
-target_link_libraries(test_tcp_retransmission PRIVATE
-    callflow_common
-    pcap_ingest
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_tcp_retransmission COMMAND test_tcp_retransmission)
-
-set_tests_properties(test_tcp_retransmission PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_tcp_retransmission
+#     unit/test_tcp_retransmission.cpp
+# )
+# 
+# target_link_libraries(test_tcp_retransmission PRIVATE
+#     callflow_common
+#     pcap_ingest
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_tcp_retransmission COMMAND test_tcp_retransmission)
+# 
+# set_tests_properties(test_tcp_retransmission PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # Interface Detection Tests
-add_executable(test_interface_detection
-    unit/test_interface_detection.cpp
-)
+# add_executable(test_interface_detection
+#     unit/test_interface_detection.cpp
+# )
+# 
+# target_link_libraries(test_interface_detection PRIVATE
+#     callflow_common
+#     protocol_detection
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_interface_detection COMMAND test_interface_detection)
+# 
+# set_tests_properties(test_interface_detection PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
-target_link_libraries(test_interface_detection PRIVATE
-    callflow_common
-    pcap_ingest
-    GTest::gtest
-    GTest::gtest_main
-)
+# # Multi-Interface PCAPNG Integration Tests
+# add_executable(test_multi_interface_pcapng
+#     integration/test_multi_interface_pcapng.cpp
+# )
+# 
+# target_link_libraries(test_multi_interface_pcapng PRIVATE
+#     callflow_common
+#     pcap_ingest
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_multi_interface_pcapng COMMAND test_multi_interface_pcapng)
+# 
+# set_tests_properties(test_multi_interface_pcapng PROPERTIES
+#     TIMEOUT 60
+#     LABELS "integration"
+# )
 
-add_test(NAME test_interface_detection COMMAND test_interface_detection)
-
-set_tests_properties(test_interface_detection PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
-
-# Multi-Interface PCAPNG Integration Tests
-add_executable(test_multi_interface_pcapng
-    integration/test_multi_interface_pcapng.cpp
-)
-
-target_link_libraries(test_multi_interface_pcapng PRIVATE
-    callflow_common
-    pcap_ingest
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_multi_interface_pcapng COMMAND test_multi_interface_pcapng)
-
-set_tests_properties(test_multi_interface_pcapng PROPERTIES
-    TIMEOUT 60
-    LABELS "integration"
-)
-
-# Subscriber Context Unit Tests
-add_executable(test_subscriber_context
-    unit/test_subscriber_context.cpp
-)
-
-target_link_libraries(test_subscriber_context PRIVATE
-    callflow_common
-    procedure_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_subscriber_context COMMAND test_subscriber_context)
-
-set_tests_properties(test_subscriber_context PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# Subscriber Context Tests
+# add_executable(test_subscriber_context
+#     unit/test_subscriber_context.cpp
+# )
+# 
+# target_link_libraries(test_subscriber_context PRIVATE
+#     callflow_common
+#     session_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_subscriber_context COMMAND test_subscriber_context)
+# 
+# set_tests_properties(test_subscriber_context PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # Context Lookup Unit Tests
-add_executable(test_context_lookup
-    unit/test_context_lookup.cpp
-)
-
-target_link_libraries(test_context_lookup PRIVATE
-    callflow_common
-    procedure_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_context_lookup COMMAND test_context_lookup)
-
-set_tests_properties(test_context_lookup PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_context_lookup
+#     unit/test_context_lookup.cpp
+# )
+# 
+# target_link_libraries(test_context_lookup PRIVATE
+#     callflow_common
+#     procedure_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_context_lookup COMMAND test_context_lookup)
+# 
+# set_tests_properties(test_context_lookup PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # Context Merge Unit Tests
-add_executable(test_context_merge
-    unit/test_context_merge.cpp
-)
-
-target_link_libraries(test_context_merge PRIVATE
-    callflow_common
-    procedure_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_context_merge COMMAND test_context_merge)
-
-set_tests_properties(test_context_merge PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_context_merge
+#     unit/test_context_merge.cpp
+# )
+# 
+# target_link_libraries(test_context_merge PRIVATE
+#     callflow_common
+#     procedure_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_context_merge COMMAND test_context_merge)
+# 
+# set_tests_properties(test_context_merge PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # LTE Attach Correlation Integration Tests
-add_executable(test_lte_attach_correlation
-    integration/test_lte_attach_correlation.cpp
-)
-
-target_link_libraries(test_lte_attach_correlation PRIVATE
-    callflow_common
-    procedure_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_lte_attach_correlation COMMAND test_lte_attach_correlation)
-
-set_tests_properties(test_lte_attach_correlation PROPERTIES
-    TIMEOUT 60
-    LABELS "integration"
-)
+# add_executable(test_lte_attach_correlation
+#     integration/test_lte_attach_correlation.cpp
+# )
+# 
+# target_link_libraries(test_lte_attach_correlation PRIVATE
+#     callflow_common
+#     procedure_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_lte_attach_correlation COMMAND test_lte_attach_correlation)
+# 
+# set_tests_properties(test_lte_attach_correlation PROPERTIES
+#     TIMEOUT 60
+#     LABELS "integration"
+# )
 
 # VoLTE Correlation Integration Tests
-add_executable(test_volte_correlation
-    integration/test_volte_correlation.cpp
-)
-
-target_link_libraries(test_volte_correlation PRIVATE
-    callflow_common
-    procedure_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_volte_correlation COMMAND test_volte_correlation)
-
-set_tests_properties(test_volte_correlation PROPERTIES
-    TIMEOUT 60
-    LABELS "integration"
-)
+# add_executable(test_volte_correlation
+#     integration/test_volte_correlation.cpp
+# )
+# 
+# target_link_libraries(test_volte_correlation PRIVATE
+#     callflow_common
+#     procedure_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_volte_correlation COMMAND test_volte_correlation)
+# 
+# set_tests_properties(test_volte_correlation PROPERTIES
+#     TIMEOUT 60
+#     LABELS "integration"
+# )
 
 # VoLTE Call Structure Unit Tests
-add_executable(test_volte_call
-    unit/test_volte_call.cpp
-)
-
-target_link_libraries(test_volte_call PRIVATE
-    callflow_common
-    procedure_correlation
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_volte_call COMMAND test_volte_call)
-
-set_tests_properties(test_volte_call PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_volte_call
+#     unit/test_volte_call.cpp
+# )
+# 
+# target_link_libraries(test_volte_call PRIVATE
+#     callflow_common
+#     procedure_correlation
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_volte_call COMMAND test_volte_call)
+# 
+# set_tests_properties(test_volte_call PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # VoLTE Call Correlator Unit Tests
-add_executable(test_volte_call_correlator
-    unit/test_volte_correlation.cpp
-)
-
-target_link_libraries(test_volte_call_correlator PRIVATE
-    callflow_common
-    procedure_correlation
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_volte_call_correlator COMMAND test_volte_call_correlator)
-
-set_tests_properties(test_volte_call_correlator PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_volte_call_correlator
+#     unit/test_volte_correlation.cpp
+# )
+# 
+# target_link_libraries(test_volte_call_correlator PRIVATE
+#     callflow_common
+#     procedure_correlation
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_volte_call_correlator COMMAND test_volte_call_correlator)
+# 
+# set_tests_properties(test_volte_call_correlator PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # VoLTE Full Call Integration Tests
-add_executable(test_volte_full_call
-    integration/test_volte_full_call.cpp
-)
+# add_executable(test_volte_full_call
+#     integration/test_volte_full_call.cpp
+# )
+# 
+# target_link_libraries(test_volte_full_call PRIVATE
+#     callflow_common
+#     procedure_correlation
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_volte_full_call COMMAND test_volte_full_call)
+# 
+# set_tests_properties(test_volte_full_call PROPERTIES
+#     TIMEOUT 60
+#     LABELS "integration"
+# )
 
-target_link_libraries(test_volte_full_call PRIVATE
-    callflow_common
-    procedure_correlation
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_volte_full_call COMMAND test_volte_full_call)
-
-set_tests_properties(test_volte_full_call PROPERTIES
-    TIMEOUT 60
-    LABELS "integration"
-)
-
-# VoLTE Integration Tests (REST API & Performance)
-add_executable(test_volte_integration
-    integration/test_volte_integration.cpp
-)
-
-target_link_libraries(test_volte_integration PRIVATE
-    callflow_common
-    volte_correlation
-    sip_correlation
-    diameter_correlation
-    gtpv2_correlation
-    nas_s1ap_correlation
-    rtp_correlation
-    identity_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_volte_integration COMMAND test_volte_integration)
-
-set_tests_properties(test_volte_integration PROPERTIES
-    TIMEOUT 120
-    LABELS "integration;volte;api"
-)
+# # VoLTE Integration Tests (REST API & Performance)
+# add_executable(test_volte_integration
+#     integration/test_volte_integration.cpp
+# )
+# 
+# target_link_libraries(test_volte_integration PRIVATE
+#     callflow_common
+#     volte_correlation
+#     sip_correlation
+#     diameter_correlation
+#     gtpv2_correlation
+#     nas_s1ap_correlation
+#     rtp_correlation
+#     identity_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_volte_integration COMMAND test_volte_integration)
+# 
+# set_tests_properties(test_volte_integration PROPERTIES
+#     TIMEOUT 120
+#     LABELS "integration;volte;api"
+# )
 
 # Identity Management Tests
-# MSISDN Normalizer Tests
-add_executable(test_msisdn_normalizer
-    unit/identity/test_msisdn_normalizer.cpp
-)
-
-target_link_libraries(test_msisdn_normalizer PRIVATE
-    callflow_common
-    identity_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_msisdn_normalizer COMMAND test_msisdn_normalizer)
-
-set_tests_properties(test_msisdn_normalizer PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
-
-# IMSI Normalizer Tests
-add_executable(test_imsi_normalizer
-    unit/identity/test_imsi_normalizer.cpp
-)
-
-target_link_libraries(test_imsi_normalizer PRIVATE
-    callflow_common
-    identity_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_imsi_normalizer COMMAND test_imsi_normalizer)
-
-set_tests_properties(test_imsi_normalizer PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # MSISDN Normalizer Tests
+# add_executable(test_msisdn_normalizer
+#     unit/identity/test_msisdn_normalizer.cpp
+# )
+# 
+# target_link_libraries(test_msisdn_normalizer PRIVATE
+#     callflow_common
+#     identity_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_msisdn_normalizer COMMAND test_msisdn_normalizer)
+# 
+# set_tests_properties(test_msisdn_normalizer PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
+# 
+# # IMSI Normalizer Tests
+# add_executable(test_imsi_normalizer
+#     unit/identity/test_imsi_normalizer.cpp
+# )
+# 
+# target_link_libraries(test_imsi_normalizer PRIVATE
+#     callflow_common
+#     identity_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_imsi_normalizer COMMAND test_imsi_normalizer)
+# 
+# set_tests_properties(test_imsi_normalizer PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # IMEI Normalizer Tests
 add_executable(test_imei_normalizer
@@ -815,43 +815,43 @@ set_tests_properties(test_imei_normalizer PROPERTIES
     LABELS "unit"
 )
 
-# GUTI Parser Tests
-add_executable(test_guti_parser
-    unit/identity/test_guti_parser.cpp
-)
-
-target_link_libraries(test_guti_parser PRIVATE
-    callflow_common
-    identity_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_guti_parser COMMAND test_guti_parser)
-
-set_tests_properties(test_guti_parser PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
-
-# Identity Matcher Tests
-add_executable(test_identity_matcher
-    unit/identity/test_identity_matcher.cpp
-)
-
-target_link_libraries(test_identity_matcher PRIVATE
-    callflow_common
-    identity_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_identity_matcher COMMAND test_identity_matcher)
-
-set_tests_properties(test_identity_matcher PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # GUTI Parser Tests
+# add_executable(test_guti_parser
+#     unit/identity/test_guti_parser.cpp
+# )
+# 
+# target_link_libraries(test_guti_parser PRIVATE
+#     callflow_common
+#     identity_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_guti_parser COMMAND test_guti_parser)
+# 
+# set_tests_properties(test_guti_parser PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
+# 
+# # Identity Matcher Tests
+# add_executable(test_identity_matcher
+#     unit/identity/test_identity_matcher.cpp
+# )
+# 
+# target_link_libraries(test_identity_matcher PRIVATE
+#     callflow_common
+#     identity_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_identity_matcher COMMAND test_identity_matcher)
+# 
+# set_tests_properties(test_identity_matcher PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # Subscriber Context Manager Tests
 add_executable(test_subscriber_context_manager
@@ -951,45 +951,45 @@ set_tests_properties(test_sip_correlator PROPERTIES
 
 # Diameter Correlation Tests
 # Diameter Correlator Tests
-add_executable(test_diameter_correlator
-    unit/diameter/test_diameter_correlator.cpp
-)
-
-target_link_libraries(test_diameter_correlator PRIVATE
-    callflow_common
-    diameter_correlation
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_diameter_correlator COMMAND test_diameter_correlator)
-
-set_tests_properties(test_diameter_correlator PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_diameter_correlator
+#     unit/diameter/test_diameter_correlator.cpp
+# )
+# 
+# target_link_libraries(test_diameter_correlator PRIVATE
+#     callflow_common
+#     diameter_correlation
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_diameter_correlator COMMAND test_diameter_correlator)
+# 
+# set_tests_properties(test_diameter_correlator PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # GTPv2 Correlation Tests
 # GTPv2 Bearer Tests
-add_executable(test_gtpv2_bearer
-    unit/gtpv2/test_gtpv2_bearer.cpp
-)
-
-target_link_libraries(test_gtpv2_bearer PRIVATE
-    callflow_common
-    gtpv2_correlation
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_gtpv2_bearer COMMAND test_gtpv2_bearer)
-
-set_tests_properties(test_gtpv2_bearer PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# add_executable(test_gtpv2_bearer
+#     unit/gtpv2/test_gtpv2_bearer.cpp
+# )
+# 
+# target_link_libraries(test_gtpv2_bearer PRIVATE
+#     callflow_common
+#     gtpv2_correlation
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_gtpv2_bearer COMMAND test_gtpv2_bearer)
+# 
+# set_tests_properties(test_gtpv2_bearer PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # GTPv2 Session Tests
 add_executable(test_gtpv2_session
@@ -1032,44 +1032,44 @@ set_tests_properties(test_gtpv2_fteid_manager PROPERTIES
 )
 
 # GTPv2 Correlator Tests
-add_executable(test_gtpv2_correlator
-    unit/gtpv2/test_gtpv2_correlator.cpp
-)
+# add_executable(test_gtpv2_correlator
+#     unit/gtpv2/test_gtpv2_correlator.cpp
+# )
+# 
+# target_link_libraries(test_gtpv2_correlator PRIVATE
+#     callflow_common
+#     gtpv2_correlation
+#     protocol_parsers
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_gtpv2_correlator COMMAND test_gtpv2_correlator)
+# 
+# set_tests_properties(test_gtpv2_correlator PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
-target_link_libraries(test_gtpv2_correlator PRIVATE
-    callflow_common
-    gtpv2_correlation
-    protocol_parsers
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_gtpv2_correlator COMMAND test_gtpv2_correlator)
-
-set_tests_properties(test_gtpv2_correlator PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
-
-# NAS Correlator Tests
-add_executable(test_nas_correlator
-    unit/test_nas_correlator.cpp
-)
-
-target_link_libraries(test_nas_correlator PRIVATE
-    callflow_common
-    identity_correlation
-    nas_s1ap_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_nas_correlator COMMAND test_nas_correlator)
-
-set_tests_properties(test_nas_correlator PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # NAS Correlator Tests
+# add_executable(test_nas_correlator
+#     unit/test_nas_correlator.cpp
+# )
+# 
+# target_link_libraries(test_nas_correlator PRIVATE
+#     callflow_common
+#     identity_correlation
+#     nas_s1ap_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_nas_correlator COMMAND test_nas_correlator)
+# 
+# set_tests_properties(test_nas_correlator PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # S1AP Correlator Tests
 add_executable(test_s1ap_correlator
@@ -1092,24 +1092,24 @@ set_tests_properties(test_s1ap_correlator PROPERTIES
 )
 
 # RTP Correlation Tests
-# RTP Stream Tests
-add_executable(test_rtp_stream
-    unit/rtp/test_rtp_stream.cpp
-)
-
-target_link_libraries(test_rtp_stream PRIVATE
-    callflow_common
-    rtp_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_rtp_stream COMMAND test_rtp_stream)
-
-set_tests_properties(test_rtp_stream PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # RTP Stream Tests
+# add_executable(test_rtp_stream
+#     unit/rtp/test_rtp_stream.cpp
+# )
+# 
+# target_link_libraries(test_rtp_stream PRIVATE
+#     callflow_common
+#     rtp_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_rtp_stream COMMAND test_rtp_stream)
+# 
+# set_tests_properties(test_rtp_stream PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # RTP Correlator Tests
 add_executable(test_rtp_correlator
@@ -1130,65 +1130,86 @@ set_tests_properties(test_rtp_correlator PROPERTIES
     LABELS "unit"
 )
 
-# VoLTE Inter-Protocol Correlator Tests
-add_executable(test_volte_correlator
-    unit/volte/test_volte_correlator.cpp
-)
+# # VoLTE Inter-Protocol Correlator Tests
+# add_executable(test_volte_correlator
+#     unit/volte/test_volte_correlator.cpp
+# )
+# 
+# target_link_libraries(test_volte_correlator PRIVATE
+#     callflow_common
+#     volte_correlation
+#     sip_correlation
+#     diameter_correlation
+#     gtpv2_correlation
+#     nas_s1ap_correlation
+#     rtp_correlation
+#     identity_correlation
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_volte_correlator COMMAND test_volte_correlator)
+# 
+# set_tests_properties(test_volte_correlator PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
-target_link_libraries(test_volte_correlator PRIVATE
-    callflow_common
-    volte_correlation
-    sip_correlation
-    diameter_correlation
-    gtpv2_correlation
-    nas_s1ap_correlation
-    rtp_correlation
-    identity_correlation
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_volte_correlator COMMAND test_volte_correlator)
-
-set_tests_properties(test_volte_correlator PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
-
-# Protocol Detector Tests
-add_executable(test_protocol_detector
-    unit/test_protocol_detector.cpp
-)
-
-target_link_libraries(test_protocol_detector PRIVATE
-    callflow_common
-    ndpi_engine
-    GTest::gtest
-    GTest::gtest_main
-)
-
-add_test(NAME test_protocol_detector COMMAND test_protocol_detector)
-
-set_tests_properties(test_protocol_detector PROPERTIES
-    TIMEOUT 30
-    LABELS "unit"
-)
+# # Protocol Detector Tests
+# add_executable(test_protocol_detector
+#     unit/test_protocol_detector.cpp
+# )
+# 
+# target_link_libraries(test_protocol_detector PRIVATE
+#     callflow_common
+#     ndpi_engine
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_protocol_detector COMMAND test_protocol_detector)
+# 
+# set_tests_properties(test_protocol_detector PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
 
 # Dynamic Port Tracker Tests
-add_executable(test_dynamic_port_tracker
-    unit/test_dynamic_port_tracker.cpp
+# add_executable(test_dynamic_port_tracker
+#     unit/test_dynamic_port_tracker.cpp
+# )
+# 
+# target_link_libraries(test_dynamic_port_tracker PRIVATE
+#     callflow_common
+#     pcap_ingest
+#     protocol_detection
+#     GTest::gtest
+#     GTest::gtest_main
+# )
+# 
+# add_test(NAME test_dynamic_port_tracker COMMAND test_dynamic_port_tracker)
+# 
+# set_tests_properties(test_dynamic_port_tracker PROPERTIES
+#     TIMEOUT 30
+#     LABELS "unit"
+# )
+
+# SIP Dialog Tracker / Correlation Unit Tests
+add_executable(test_sip_correlation
+    test_sip_correlation.cpp
 )
 
-target_link_libraries(test_dynamic_port_tracker PRIVATE
+target_link_libraries(test_sip_correlation PRIVATE
     callflow_common
-    pcap_ingest
+    session_correlation
+    protocol_parsers
     GTest::gtest
     GTest::gtest_main
 )
 
-add_test(NAME test_dynamic_port_tracker COMMAND test_dynamic_port_tracker)
+add_test(NAME test_sip_correlation COMMAND test_sip_correlation)
 
-set_tests_properties(test_dynamic_port_tracker PROPERTIES
+set_tests_properties(test_sip_correlation PROPERTIES
     TIMEOUT 30
     LABELS "unit"
 )

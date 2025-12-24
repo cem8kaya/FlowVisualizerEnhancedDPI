@@ -31,39 +31,39 @@ enum class DiameterCommandCode : uint32_t {
     UNKNOWN = 0,
 
     // Base Protocol (RFC 6733)
-    CAPABILITIES_EXCHANGE = 257,   // CER/CEA
-    RE_AUTH = 258,                 // RAR/RAA
-    AA_REQUEST = 265,              // AAR/AAA
-    ACCOUNTING = 271,              // ACR/ACA
-    CREDIT_CONTROL = 272,          // CCR/CCA (RFC 4006)
-    ABORT_SESSION = 274,           // ASR/ASA
-    SESSION_TERMINATION = 275,     // STR/STA
-    DEVICE_WATCHDOG = 280,         // DWR/DWA
-    DISCONNECT_PEER = 282,         // DPR/DPA
+    CAPABILITIES_EXCHANGE = 257,  // CER/CEA
+    RE_AUTH = 258,                // RAR/RAA
+    AA_REQUEST = 265,             // AAR/AAA
+    ACCOUNTING = 271,             // ACR/ACA
+    CREDIT_CONTROL = 272,         // CCR/CCA (RFC 4006)
+    ABORT_SESSION = 274,          // ASR/ASA
+    SESSION_TERMINATION = 275,    // STR/STA
+    DEVICE_WATCHDOG = 280,        // DWR/DWA
+    DISCONNECT_PEER = 282,        // DPR/DPA
 
     // 3GPP Cx/Dx Interface (TS 29.228, TS 29.229)
-    USER_AUTHORIZATION = 300,      // UAR/UAA
-    SERVER_ASSIGNMENT = 301,       // SAR/SAA
-    LOCATION_INFO = 302,           // LIR/LIA
-    MULTIMEDIA_AUTH = 303,         // MAR/MAA
-    REGISTRATION_TERMINATION = 304,// RTR/RTA
-    PUSH_PROFILE = 305,            // PPR/PPA
+    USER_AUTHORIZATION = 300,        // UAR/UAA
+    SERVER_ASSIGNMENT = 301,         // SAR/SAA
+    LOCATION_INFO = 302,             // LIR/LIA
+    MULTIMEDIA_AUTH = 303,           // MAR/MAA
+    REGISTRATION_TERMINATION = 304,  // RTR/RTA
+    PUSH_PROFILE = 305,              // PPR/PPA
 
     // 3GPP Sh Interface (TS 29.328, TS 29.329)
-    USER_DATA = 306,               // UDR/UDA
-    PROFILE_UPDATE = 307,          // PUR/PUA
-    SUBSCRIBE_NOTIFICATIONS = 308, // SNR/SNA
-    PUSH_NOTIFICATION = 309,       // PNR/PNA
+    USER_DATA = 306,                // UDR/UDA
+    PROFILE_UPDATE = 307,           // PUR/PUA
+    SUBSCRIBE_NOTIFICATIONS = 308,  // SNR/SNA
+    PUSH_NOTIFICATION = 309,        // PNR/PNA
 
     // 3GPP S6a/S6d Interface (TS 29.272)
-    UPDATE_LOCATION = 316,         // ULR/ULA
-    CANCEL_LOCATION = 317,         // CLR/CLA
-    AUTHENTICATION_INFORMATION = 318, // AIR/AIA
-    INSERT_SUBSCRIBER_DATA = 319,  // IDR/IDA
-    DELETE_SUBSCRIBER_DATA = 320,  // DSR/DSA
-    PURGE_UE = 321,                // PUR/PUA
-    RESET = 322,                   // RSR/RSA
-    NOTIFY = 323                   // NOR/NOA
+    UPDATE_LOCATION = 316,             // ULR/ULA
+    CANCEL_LOCATION = 317,             // CLR/CLA
+    AUTHENTICATION_INFORMATION = 318,  // AIR/AIA
+    INSERT_SUBSCRIBER_DATA = 319,      // IDR/IDA
+    DELETE_SUBSCRIBER_DATA = 320,      // DSR/DSA
+    PURGE_UE = 321,                    // PUR/PUA
+    RESET = 322,                       // RSR/RSA
+    NOTIFY = 323                       // NOR/NOA
 };
 
 // ============================================================================
@@ -119,6 +119,9 @@ enum class DiameterAVPCode : uint32_t {
     // Credit Control (RFC 4006)
     CC_REQUEST_TYPE = 416,
     CC_REQUEST_NUMBER = 415,
+    SUBSCRIPTION_ID = 443,
+    SUBSCRIPTION_ID_DATA = 444,
+    SUBSCRIPTION_ID_TYPE = 450,
     CC_SESSION_FAILOVER = 418,
     CC_SUB_SESSION_ID = 419,
     CC_CORRELATION_ID = 411,
@@ -191,14 +194,14 @@ enum class DiameterResultCode : uint32_t {
 // ============================================================================
 
 enum class DiameterAVPDataType {
-    OCTET_STRING,       // Arbitrary data
-    INTEGER32,          // Signed 32-bit integer
-    INTEGER64,          // Signed 64-bit integer
-    UNSIGNED32,         // Unsigned 32-bit integer
-    UNSIGNED64,         // Unsigned 64-bit integer
-    FLOAT32,            // 32-bit floating point
-    FLOAT64,            // 64-bit floating point
-    GROUPED,            // Grouped AVP (contains other AVPs)
+    OCTET_STRING,  // Arbitrary data
+    INTEGER32,     // Signed 32-bit integer
+    INTEGER64,     // Signed 64-bit integer
+    UNSIGNED32,    // Unsigned 32-bit integer
+    UNSIGNED64,    // Unsigned 64-bit integer
+    FLOAT32,       // 32-bit floating point
+    FLOAT64,       // 64-bit floating point
+    GROUPED,       // Grouped AVP (contains other AVPs)
 
     // Derived types (OctetString)
     UTF8STRING,         // UTF-8 encoded string
@@ -215,24 +218,24 @@ enum class DiameterAVPDataType {
 
 enum class DiameterApplicationID : uint32_t {
     DIAMETER_COMMON_MESSAGES = 0,
-    NASREQ = 1,                    // RFC 7155
-    MOBILE_IP = 2,                 // RFC 4004
-    BASE_ACCOUNTING = 3,           // RFC 6733
-    CREDIT_CONTROL = 4,            // RFC 4006
-    EAP = 5,                       // RFC 4072
-    SIP_APPLICATION = 6,           // RFC 4740
+    NASREQ = 1,           // RFC 7155
+    MOBILE_IP = 2,        // RFC 4004
+    BASE_ACCOUNTING = 3,  // RFC 6733
+    CREDIT_CONTROL = 4,   // RFC 4006
+    EAP = 5,              // RFC 4072
+    SIP_APPLICATION = 6,  // RFC 4740
 
     // 3GPP Applications
-    TGPP_CX = 16777216,            // 3GPP TS 29.228/29.229
-    TGPP_SH = 16777217,            // 3GPP TS 29.328/29.329
-    TGPP_GX = 16777238,            // 3GPP TS 29.212
-    TGPP_S6A_S6D = 16777251,       // 3GPP TS 29.272
-    TGPP_S13_S13 = 16777252,       // 3GPP TS 29.272
-    TGPP_SLG = 16777255,           // 3GPP TS 29.172
-    TGPP_SWX = 16777265,           // 3GPP TS 29.273
-    TGPP_S6B = 16777272,           // 3GPP TS 29.273
-    TGPP_RX = 16777236,            // 3GPP TS 29.214
-    TGPP_GY_RO = 16777238          // 3GPP TS 32.299 (uses same as Gx)
+    TGPP_CX = 16777216,       // 3GPP TS 29.228/29.229
+    TGPP_SH = 16777217,       // 3GPP TS 29.328/29.329
+    TGPP_GX = 16777238,       // 3GPP TS 29.212
+    TGPP_S6A_S6D = 16777251,  // 3GPP TS 29.272
+    TGPP_S13_S13 = 16777252,  // 3GPP TS 29.272
+    TGPP_SLG = 16777255,      // 3GPP TS 29.172
+    TGPP_SWX = 16777265,      // 3GPP TS 29.273
+    TGPP_S6B = 16777272,      // 3GPP TS 29.273
+    TGPP_RX = 16777236,       // 3GPP TS 29.214
+    TGPP_GY_RO = 16777238     // 3GPP TS 32.299 (uses same as Gx)
 };
 
 // ============================================================================
@@ -241,18 +244,18 @@ enum class DiameterApplicationID : uint32_t {
 
 enum class DiameterInterface {
     UNKNOWN,
-    BASE,       // Base protocol
-    CX,         // Cx/Dx (IMS)
-    SH,         // Sh (IMS)
-    S6A,        // S6a/S6d (LTE)
-    S13,        // S13 (LTE)
-    GX,         // Gx (Policy)
-    RX,         // Rx (Policy)
-    GY,         // Gy (Charging)
-    RO,         // Ro (Charging)
-    SWX,        // SWx (Non-3GPP)
-    S6B,        // S6b (Non-3GPP)
-    SLG         // SLg (Location)
+    BASE,  // Base protocol
+    CX,    // Cx/Dx (IMS)
+    SH,    // Sh (IMS)
+    S6A,   // S6a/S6d (LTE)
+    S13,   // S13 (LTE)
+    GX,    // Gx (Policy)
+    RX,    // Rx (Policy)
+    GY,    // Gy (Charging)
+    RO,    // Ro (Charging)
+    SWX,   // SWx (Non-3GPP)
+    S6B,   // S6b (Non-3GPP)
+    SLG    // SLg (Location)
 };
 
 // ============================================================================

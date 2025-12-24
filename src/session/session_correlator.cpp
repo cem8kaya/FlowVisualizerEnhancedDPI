@@ -1218,4 +1218,128 @@ callflow::EnhancedSessionCorrelator::getAllSessions() const {
     return result;
 }
 
+void callflow::EnhancedSessionCorrelator::processSipMessage(const SipMessage& msg,
+                                                            const PacketMetadata& packet) {
+    // 1. Update Dialog Tracker
+    dialog_tracker_.processMessage(msg, packet.five_tuple.src_ip, packet.five_tuple.dst_ip,
+                                   packet.timestamp);
+
+    // 2. Extract Correlation Key directly from SipMessage
+    SessionCorrelationKey key;
+    key.sip_call_id = msg.call_id;
+
+    // ICID (P-Charging-Vector)
+    if (msg.p_charging_vector.has_value()) {
+        key.icid = msg.p_charging_vector->icid_value;
+    }
+
+    // IMSI/MSISDN logic (similar to extractCorrelationKey but using struct)
+    // 1. P-Asserted-Identity
+    if (msg.p_asserted_identity.has_value()) {
+        for (const auto& id : msg.p_asserted_identity.value()) {
+            std::string username;
+
+            size_t sip_pos = id.uri.find("sip:");
+            if (sip_pos != std::string::npos) {
+                size_t at_pos = id.uri.find('@', sip_pos);
+                if (at_pos != std::string::npos) {
+                    username = id.uri.substr(sip_pos + 4, at_pos - (sip_pos + 4));
+                } else {
+                    username = id.uri.substr(sip_pos + 4);
+                }
+            } else if (id.uri.find("tel:") != std::string::npos) {
+                username = id.uri.substr(4);
+            }
+
+            if (!username.empty()) {
+                if (username.length() >= 14 && username.length() <= 15 &&
+                    std::all_of(username.begin(), username.end(), ::isdigit)) {
+                    key.imsi = username;
+                } else if (username.find('+') == 0) {
+                    key.msisdn = username.substr(1);
+                } else {
+                    key.msisdn = username;
+                }
+            }
+        }
+    }
+
+    // 2. Authorization Header
+    if (msg.authorization.has_value()) {
+        // Digest username
+        std::string auth = msg.authorization.value();
+        size_t user_pos = auth.find("username=\"");
+        if (user_pos != std::string::npos) {
+            size_t end_pos = auth.find("\"", user_pos + 10);
+            if (end_pos != std::string::npos) {
+                std::string username = auth.substr(user_pos + 10, end_pos - (user_pos + 10));
+                if (username.length() >= 14 && username.length() <= 15 &&
+                    std::all_of(username.begin(), username.end(), ::isdigit)) {
+                    key.imsi = username;
+                }
+            }
+        }
+    }
+
+    // 3. UE IP from SDP
+    if (msg.sdp.has_value()) {
+        if (msg.sdp->connection_address.find(':') != std::string::npos) {
+            key.ue_ipv6 = msg.sdp->connection_address;
+        } else {
+            key.ue_ipv4 = msg.sdp->connection_address;
+        }
+    }
+
+    // 3. Create SessionMessageRef
+    SessionMessageRef s_msg;
+    s_msg.message_id = utils::generateUuid();
+    s_msg.packet_id = packet.packet_id;
+    s_msg.timestamp = packet.timestamp;
+
+    // Detect interface type
+    InterfaceType interface = detectInterfaceType(ProtocolType::SIP, packet.five_tuple.src_port,
+                                                  packet.five_tuple.dst_port);
+    s_msg.interface = interface;
+
+    s_msg.protocol = ProtocolType::SIP;
+
+    // Map MessageType
+    if (msg.is_request) {
+        if (msg.method == "INVITE")
+            s_msg.message_type = MessageType::SIP_INVITE;
+        else if (msg.method == "ACK")
+            s_msg.message_type = MessageType::SIP_ACK;
+        else if (msg.method == "BYE")
+            s_msg.message_type = MessageType::SIP_BYE;
+        else if (msg.method == "REGISTER")
+            s_msg.message_type = MessageType::SIP_REGISTER;
+        else if (msg.method == "OPTIONS")
+            s_msg.message_type = MessageType::SIP_OPTIONS;
+        else if (msg.method == "PRACK")
+            s_msg.message_type = MessageType::SIP_PRACK;
+        else if (msg.method == "UPDATE")
+            s_msg.message_type = MessageType::SIP_UPDATE;
+        else if (msg.method == "CANCEL")
+            s_msg.message_type = MessageType::SIP_CANCEL;
+    } else {
+        if (msg.status_code == 100)
+            s_msg.message_type = MessageType::SIP_TRYING;
+        else if (msg.status_code == 180)
+            s_msg.message_type = MessageType::SIP_RINGING;
+        else if (msg.status_code == 183)
+            s_msg.message_type = MessageType::SIP_SESSION_PROGRESS;
+        else if (msg.status_code == 200)
+            s_msg.message_type = MessageType::SIP_OK;
+    }
+
+    s_msg.correlation_key = key;
+    s_msg.src_ip = packet.five_tuple.src_ip;
+    s_msg.dst_ip = packet.five_tuple.dst_ip;
+    s_msg.src_port = packet.five_tuple.src_port;
+    s_msg.dst_port = packet.five_tuple.dst_port;
+    s_msg.payload_length = packet.packet_length;
+
+    addMessage(s_msg);
+}
+
 }  // namespace callflow

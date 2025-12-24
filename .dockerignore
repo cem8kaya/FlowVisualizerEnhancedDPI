@@ -29,7 +29,7 @@ docs/
 LICENSE
 
 # Test files and data
-tests/
+
 bench/
 samples/
 

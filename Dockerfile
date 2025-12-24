@@ -25,15 +25,17 @@ COPY src/ ./src/
 COPY include/ ./include/
 COPY thirdparty/ ./thirdparty/
 COPY ui/ ./ui/
+COPY tests/ ./tests/
 
 # Build
 RUN mkdir build && cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_TESTS=OFF \
+    -DBUILD_TESTS=ON \
     -DBUILD_API_SERVER=ON \
     -DCMAKE_CXX_FLAGS="-O3 -march=native" \
     .. && \
     make -j2 && \
+    ctest --output-on-failure && \
     strip src/callflowd
 
 # Runtime stage
