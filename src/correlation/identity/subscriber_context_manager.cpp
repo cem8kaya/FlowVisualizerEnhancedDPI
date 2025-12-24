@@ -1,9 +1,12 @@
 #include "correlation/identity/subscriber_context_manager.h"
-#include "correlation/identity/msisdn_normalizer.h"
-#include "correlation/identity/imsi_normalizer.h"
-#include "correlation/identity/imei_normalizer.h"
+
 #include <algorithm>
+#include <mutex>
 #include <sstream>
+
+#include "correlation/identity/imei_normalizer.h"
+#include "correlation/identity/imsi_normalizer.h"
+#include "correlation/identity/msisdn_normalizer.h"
 
 namespace callflow {
 namespace correlation {
@@ -12,8 +15,7 @@ namespace correlation {
 // SubscriberContextManager - Core Methods
 // ============================================================================
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::createContext() {
+SubscriberContextManager::ContextPtr SubscriberContextManager::createContext() {
     auto context = std::make_shared<SubscriberIdentity>();
     context->first_seen = std::chrono::steady_clock::now();
     context->last_seen = context->first_seen;
@@ -118,8 +120,8 @@ void SubscriberContextManager::removeFromIndices(ContextPtr context) {
 // SubscriberContextManager - Get or Create Methods
 // ============================================================================
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::getOrCreateByImsi(const std::string& imsi) {
+SubscriberContextManager::ContextPtr SubscriberContextManager::getOrCreateByImsi(
+    const std::string& imsi) {
     std::unique_lock lock(mutex_);
 
     std::string normalized = normalizeImsiForIndex(imsi);
@@ -141,8 +143,8 @@ SubscriberContextManager::getOrCreateByImsi(const std::string& imsi) {
     return context;
 }
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::getOrCreateByMsisdn(const std::string& msisdn) {
+SubscriberContextManager::ContextPtr SubscriberContextManager::getOrCreateByMsisdn(
+    const std::string& msisdn) {
     std::unique_lock lock(mutex_);
 
     std::string normalized = normalizeForIndex(msisdn);
@@ -158,8 +160,8 @@ SubscriberContextManager::getOrCreateByMsisdn(const std::string& msisdn) {
     return context;
 }
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::getOrCreateByImei(const std::string& imei) {
+SubscriberContextManager::ContextPtr SubscriberContextManager::getOrCreateByImei(
+    const std::string& imei) {
     std::unique_lock lock(mutex_);
 
     std::string normalized = normalizeImeiForIndex(imei);
@@ -181,8 +183,8 @@ SubscriberContextManager::getOrCreateByImei(const std::string& imei) {
     return context;
 }
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::getOrCreateByUeIp(const std::string& ip) {
+SubscriberContextManager::ContextPtr SubscriberContextManager::getOrCreateByUeIp(
+    const std::string& ip) {
     std::unique_lock lock(mutex_);
 
     auto it = ip_index_.find(ip);
@@ -207,8 +209,8 @@ SubscriberContextManager::getOrCreateByUeIp(const std::string& ip) {
 // SubscriberContextManager - Find Methods
 // ============================================================================
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::findByImsi(const std::string& imsi) const {
+SubscriberContextManager::ContextPtr SubscriberContextManager::findByImsi(
+    const std::string& imsi) const {
     std::shared_lock lock(mutex_);
 
     std::string normalized = normalizeImsiForIndex(imsi);
@@ -216,8 +218,8 @@ SubscriberContextManager::findByImsi(const std::string& imsi) const {
     return (it != imsi_index_.end()) ? it->second : nullptr;
 }
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::findByMsisdn(const std::string& msisdn) const {
+SubscriberContextManager::ContextPtr SubscriberContextManager::findByMsisdn(
+    const std::string& msisdn) const {
     std::shared_lock lock(mutex_);
 
     std::string normalized = normalizeForIndex(msisdn);
@@ -225,8 +227,8 @@ SubscriberContextManager::findByMsisdn(const std::string& msisdn) const {
     return (it != msisdn_index_.end()) ? it->second : nullptr;
 }
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::findByImei(const std::string& imei) const {
+SubscriberContextManager::ContextPtr SubscriberContextManager::findByImei(
+    const std::string& imei) const {
     std::shared_lock lock(mutex_);
 
     std::string normalized = normalizeImeiForIndex(imei);
@@ -234,24 +236,23 @@ SubscriberContextManager::findByImei(const std::string& imei) const {
     return (it != imei_index_.end()) ? it->second : nullptr;
 }
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::findByUeIp(const std::string& ip) const {
+SubscriberContextManager::ContextPtr SubscriberContextManager::findByUeIp(
+    const std::string& ip) const {
     std::shared_lock lock(mutex_);
 
     auto it = ip_index_.find(ip);
     return (it != ip_index_.end()) ? it->second : nullptr;
 }
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::findByGuti(const Guti4G& guti) const {
+SubscriberContextManager::ContextPtr SubscriberContextManager::findByGuti(
+    const Guti4G& guti) const {
     std::shared_lock lock(mutex_);
 
     auto it = guti_index_.find(guti.toString());
     return (it != guti_index_.end()) ? it->second : nullptr;
 }
 
-SubscriberContextManager::ContextPtr
-SubscriberContextManager::findByTmsi(uint32_t tmsi) const {
+SubscriberContextManager::ContextPtr SubscriberContextManager::findByTmsi(uint32_t tmsi) const {
     std::shared_lock lock(mutex_);
 
     auto it = tmsi_index_.find(tmsi);
@@ -335,15 +336,12 @@ void SubscriberContextManager::mergeContexts(ContextPtr primary, ContextPtr seco
     updateIndices(primary);
 
     // Remove secondary from contexts list
-    contexts_.erase(
-        std::remove(contexts_.begin(), contexts_.end(), secondary),
-        contexts_.end());
+    contexts_.erase(std::remove(contexts_.begin(), contexts_.end(), secondary), contexts_.end());
 
     stats_.merge_operations++;
 }
 
-void SubscriberContextManager::linkImsiMsisdn(const std::string& imsi,
-                                               const std::string& msisdn) {
+void SubscriberContextManager::linkImsiMsisdn(const std::string& imsi, const std::string& msisdn) {
     std::unique_lock lock(mutex_);
 
     std::string norm_imsi = normalizeImsiForIndex(imsi);
@@ -390,8 +388,7 @@ void SubscriberContextManager::linkImsiMsisdn(const std::string& imsi,
     }
 }
 
-void SubscriberContextManager::linkImsiImei(const std::string& imsi,
-                                             const std::string& imei) {
+void SubscriberContextManager::linkImsiImei(const std::string& imsi, const std::string& imei) {
     std::unique_lock lock(mutex_);
 
     std::string norm_imsi = normalizeImsiForIndex(imsi);
@@ -443,8 +440,7 @@ void SubscriberContextManager::linkImsiImei(const std::string& imsi,
     }
 }
 
-void SubscriberContextManager::linkMsisdnUeIp(const std::string& msisdn,
-                                               const std::string& ip) {
+void SubscriberContextManager::linkMsisdnUeIp(const std::string& msisdn, const std::string& ip) {
     std::unique_lock lock(mutex_);
 
     std::string norm_msisdn = normalizeForIndex(msisdn);
@@ -486,8 +482,7 @@ void SubscriberContextManager::linkMsisdnUeIp(const std::string& msisdn,
     }
 }
 
-void SubscriberContextManager::linkImsiUeIp(const std::string& imsi,
-                                             const std::string& ip) {
+void SubscriberContextManager::linkImsiUeIp(const std::string& imsi, const std::string& ip) {
     std::unique_lock lock(mutex_);
 
     std::string norm_imsi = normalizeImsiForIndex(imsi);
@@ -539,8 +534,7 @@ void SubscriberContextManager::linkImsiUeIp(const std::string& imsi,
     }
 }
 
-void SubscriberContextManager::linkImsiGuti(const std::string& imsi,
-                                             const Guti4G& guti) {
+void SubscriberContextManager::linkImsiGuti(const std::string& imsi, const Guti4G& guti) {
     std::unique_lock lock(mutex_);
 
     std::string norm_imsi = normalizeImsiForIndex(imsi);
@@ -581,8 +575,7 @@ void SubscriberContextManager::linkImsiGuti(const std::string& imsi,
     }
 }
 
-void SubscriberContextManager::linkImsiTmsi(const std::string& imsi,
-                                             uint32_t tmsi) {
+void SubscriberContextManager::linkImsiTmsi(const std::string& imsi, uint32_t tmsi) {
     std::unique_lock lock(mutex_);
 
     std::string norm_imsi = normalizeImsiForIndex(imsi);
@@ -623,8 +616,7 @@ void SubscriberContextManager::linkImsiTmsi(const std::string& imsi,
 }
 
 void SubscriberContextManager::addGtpuTunnel(const std::string& imsi_or_msisdn,
-                                              const std::string& peer_ip,
-                                              uint32_t teid) {
+                                             const std::string& peer_ip, uint32_t teid) {
     std::unique_lock lock(mutex_);
 
     // Try to find context by IMSI first
@@ -730,10 +722,14 @@ void SubscriberContextManager::propagateIdentities() {
 
         // Calculate confidence scores based on completeness
         float completeness = 0.0f;
-        if (ctx->imsi) completeness += 0.3f;
-        if (ctx->msisdn) completeness += 0.3f;
-        if (ctx->imei) completeness += 0.2f;
-        if (!ctx->endpoints.empty()) completeness += 0.2f;
+        if (ctx->imsi)
+            completeness += 0.3f;
+        if (ctx->msisdn)
+            completeness += 0.3f;
+        if (ctx->imei)
+            completeness += 0.2f;
+        if (!ctx->endpoints.empty())
+            completeness += 0.2f;
 
         ctx->confidence["identity_completeness"] = completeness;
     }
@@ -743,14 +739,12 @@ void SubscriberContextManager::propagateIdentities() {
 // SubscriberContextManager - Query Methods
 // ============================================================================
 
-std::vector<SubscriberContextManager::ContextPtr>
-SubscriberContextManager::getAllContexts() const {
+std::vector<SubscriberContextManager::ContextPtr> SubscriberContextManager::getAllContexts() const {
     std::shared_lock lock(mutex_);
     return contexts_;
 }
 
-SubscriberContextManager::Stats
-SubscriberContextManager::getStats() const {
+SubscriberContextManager::Stats SubscriberContextManager::getStats() const {
     std::shared_lock lock(mutex_);
     return stats_;
 }
@@ -800,8 +794,8 @@ SubscriberContextBuilder& SubscriberContextBuilder::fromSipPai(const std::string
     return *this;
 }
 
-SubscriberContextBuilder& SubscriberContextBuilder::fromSipContact(
-    const std::string& contact, const std::string& ip) {
+SubscriberContextBuilder& SubscriberContextBuilder::fromSipContact(const std::string& contact,
+                                                                   const std::string& ip) {
     auto msisdn = MsisdnNormalizer::fromSipUri(contact);
     if (msisdn) {
         msisdn_ = msisdn->national;
@@ -856,8 +850,8 @@ SubscriberContextBuilder& SubscriberContextBuilder::fromGtpPdnAddress(const std:
     return *this;
 }
 
-SubscriberContextBuilder& SubscriberContextBuilder::fromGtpFteid(
-    const std::string& ip, uint32_t teid) {
+SubscriberContextBuilder& SubscriberContextBuilder::fromGtpFteid(const std::string& ip,
+                                                                 uint32_t teid) {
     gtp_tunnels_.push_back({ip, teid});
     return *this;
 }
@@ -889,7 +883,7 @@ SubscriberContextBuilder& SubscriberContextBuilder::fromNasTmsi(uint32_t tmsi) {
 
 SubscriberContextManager::ContextPtr SubscriberContextBuilder::build() {
     // Determine primary identifier for lookup
-    ContextPtr context = nullptr;
+    SubscriberContextManager::ContextPtr context = nullptr;
 
     if (imsi_) {
         context = manager_.getOrCreateByImsi(*imsi_);
@@ -943,5 +937,5 @@ SubscriberContextManager::ContextPtr SubscriberContextBuilder::build() {
     return context;
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow
