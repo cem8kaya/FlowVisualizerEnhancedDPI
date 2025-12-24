@@ -149,7 +149,7 @@ void AuthMiddleware::setRequestUser(httplib::Request& req, const User& user) {
 }
 
 httplib::Server::Handler AuthMiddleware::createPreRoutingHandler() {
-    return [this](const httplib::Request& req, httplib::Response& res) {
+    return [this](const httplib::Request& req, httplib::Response& /*res*/) {
         // This is a pre-routing handler that runs before route matching
         // For authentication, we typically want to handle it per-route
         // So we return true (continue processing)

@@ -34,22 +34,23 @@ AuthManager::~AuthManager() = default;
 // if persistence is enabled. For now, providing minimal implementations to satisfy linking if
 // enabled.
 
-std::optional<User> AuthManager::createUser(const std::string& username,
-                                            const std::string& password, const std::string& email,
-                                            const std::vector<std::string>& roles) {
+std::optional<User> AuthManager::createUser(const std::string& /*username*/,
+                                            const std::string& /*password*/,
+                                            const std::string& /*email*/,
+                                            const std::vector<std::string>& /*roles*/) {
     // Missing implementation
     LOG_ERROR("createUser not implemented in this build");
     return std::nullopt;
 }
 
-std::optional<User> AuthManager::getUser(const std::string& user_id) {
+std::optional<User> AuthManager::getUser(const std::string& /*user_id*/) {
     // Missing implementation
     return std::nullopt;
 }
 // Add other missing stubs as needed for valid compilation if enabled...
 // Assuming for now that we only need to fix the structure for the DISABLED case.
 
-std::string AuthManager::createPasswordResetToken(const std::string& email) {
+std::string AuthManager::createPasswordResetToken(const std::string& /*email*/) {
     // Reconstructed/Placeholder
     return "";
 }
@@ -260,7 +261,7 @@ bool AuthManager::verifyPassword(const std::string& password, const std::string&
 
 std::string AuthManager::generateJwt(const User& user, int expiry_hours) {
     auto now = std::chrono::system_clock::now();
-    auto expiry = now + std::chrono::hours(expiry_hours);
+    // auto expiry = now + std::chrono::hours(expiry_hours);
 
     // Convert roles to JSON array
     nlohmann::json roles_json = user.roles;

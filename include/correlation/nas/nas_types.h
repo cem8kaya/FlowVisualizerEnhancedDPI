@@ -60,8 +60,8 @@ enum class NasEmmMessageType : uint8_t {
     // Authentication
     AUTH_REQUEST = 0x52,
     AUTH_RESPONSE = 0x53,
-    AUTH_FAILURE = 0x54,
-    AUTH_REJECT = 0x55,
+    AUTH_REJECT = 0x54,
+    AUTH_FAILURE = 0x5C,
 
     // Identity
     IDENTITY_REQUEST = 0x55,
@@ -260,13 +260,7 @@ enum class EpsUpdateType : uint8_t {
 /**
  * @brief PDN Type (TS 24.301 section 9.9.4.10)
  */
-enum class NasPdnType : uint8_t {
-    IPV4 = 1,
-    IPV6 = 2,
-    IPV4V6 = 3,
-    UNUSED = 4,
-    NON_IP = 5
-};
+enum class NasPdnType : uint8_t { IPV4 = 1, IPV6 = 2, IPV4V6 = 3, UNUSED = 4, NON_IP = 5 };
 
 /**
  * @brief Request Type (TS 24.301 section 9.9.4.14)
@@ -416,5 +410,5 @@ bool isEsmRequest(NasEsmMessageType type);
  */
 bool isEsmSuccess(EsmCause cause);
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

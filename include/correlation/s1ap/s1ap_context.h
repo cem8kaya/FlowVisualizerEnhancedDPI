@@ -1,10 +1,12 @@
 #pragma once
 
-#include "correlation/s1ap/s1ap_message.h"
-#include "correlation/nas/nas_message.h"
-#include <vector>
+#include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
+
+#include "correlation/nas/nas_message.h"
+#include "correlation/s1ap/s1ap_message.h"
 
 namespace callflow {
 namespace correlation {
@@ -132,5 +134,5 @@ private:
     void extractIdentifiers(const S1apMessage& msg);
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

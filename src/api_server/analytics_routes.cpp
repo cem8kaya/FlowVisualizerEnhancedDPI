@@ -268,7 +268,7 @@ void setupAnalyticsRoutes(httplib::Server& server, AnalyticsManager* analytics_m
     // GET /metrics - Prometheus metrics endpoint (public, no auth)
     // ========================================================================
     server.Get("/metrics",
-               [analytics_manager](const httplib::Request& req, httplib::Response& res) {
+               [analytics_manager](const httplib::Request& /*req*/, httplib::Response& res) {
                    try {
                        // Export Prometheus metrics
                        std::string metrics = analytics_manager->exportPrometheusMetrics();

@@ -1,10 +1,11 @@
 #pragma once
 
-#include "correlation/nas/nas_session.h"
-#include "correlation/identity/subscriber_context_manager.h"
-#include <unordered_map>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
+
+#include "correlation/identity/subscriber_context_manager.h"
+#include "correlation/nas/nas_session.h"
 
 namespace callflow {
 namespace correlation {
@@ -29,8 +30,7 @@ public:
      * @param mme_ue_id MME-UE-S1AP-ID from S1AP (optional)
      * @param enb_ue_id eNB-UE-S1AP-ID from S1AP (optional)
      */
-    void addMessage(const NasMessage& msg,
-                    std::optional<uint32_t> mme_ue_id = std::nullopt,
+    void addMessage(const NasMessage& msg, std::optional<uint32_t> mme_ue_id = std::nullopt,
                     std::optional<uint32_t> enb_ue_id = std::nullopt);
 
     /**
@@ -89,7 +89,7 @@ public:
     Stats getStats() const;
 
 private:
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::vector<std::unique_ptr<NasSession>> sessions_;
 
     // Index by IMSI
@@ -103,12 +103,11 @@ private:
 
     Stats stats_;
 
-    NasSession* findOrCreateSession(const NasMessage& msg,
-                                    std::optional<uint32_t> mme_ue_id,
+    NasSession* findOrCreateSession(const NasMessage& msg, std::optional<uint32_t> mme_ue_id,
                                     std::optional<uint32_t> enb_ue_id);
     std::string makeS1apContextKey(uint32_t mme_ue_id, uint32_t enb_ue_id);
     void updateSubscriberContext(const NasSession& session);
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

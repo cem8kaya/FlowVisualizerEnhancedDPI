@@ -393,7 +393,8 @@ void JobManager::processJob(const JobTask& task) {
         // just hypothetical). So I will use `reader.processPackets`.
 
         auto callback = [&](uint32_t interface_id, uint64_t timestamp_ns, const uint8_t* data,
-                            uint32_t cap_len, uint32_t orig_len, const PcapngPacketMetadata& meta) {
+                            uint32_t cap_len, uint32_t /*orig_len*/,
+                            const PcapngPacketMetadata& meta) {
             auto ts = std::chrono::system_clock::time_point(
                 std::chrono::duration_cast<std::chrono::system_clock::duration>(
                     std::chrono::nanoseconds(timestamp_ns)));
@@ -456,7 +457,7 @@ void JobManager::processJob(const JobTask& task) {
 
         int dlt = reader.getDatalinkType();
 
-        auto callback = [&](const uint8_t* data, const struct pcap_pkthdr* header, void* user) {
+        auto callback = [&](const uint8_t* data, const struct pcap_pkthdr* header, void* /*user*/) {
             auto ts = std::chrono::system_clock::from_time_t(header->ts.tv_sec) +
                       std::chrono::microseconds(header->ts.tv_usec);
 

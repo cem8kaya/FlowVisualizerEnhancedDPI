@@ -1,4 +1,5 @@
 #include "correlation/s1ap/s1ap_correlator.h"
+
 #include <sstream>
 
 namespace callflow {
@@ -9,8 +10,7 @@ S1apCorrelator::S1apCorrelator() {
     owns_nas_correlator_ = true;
 }
 
-S1apCorrelator::S1apCorrelator(SubscriberContextManager* ctx_manager,
-                               NasCorrelator* nas_correlator)
+S1apCorrelator::S1apCorrelator(SubscriberContextManager* ctx_manager, NasCorrelator* nas_correlator)
     : ctx_manager_(ctx_manager), nas_correlator_(nas_correlator) {
     if (!nas_correlator_) {
         nas_correlator_ = new NasCorrelator(ctx_manager);
@@ -214,7 +214,7 @@ void S1apCorrelator::updateSubscriberContext(const S1apContext& context) {
     }
 }
 
-void S1apCorrelator::handleNasPdu(const S1apMessage& msg, S1apContext* context) {
+void S1apCorrelator::handleNasPdu(const S1apMessage& msg, S1apContext* /*context*/) {
     if (!nas_correlator_ || !msg.hasNasPdu()) {
         return;
     }
@@ -228,5 +228,5 @@ void S1apCorrelator::handleNasPdu(const S1apMessage& msg, S1apContext* context) 
     }
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

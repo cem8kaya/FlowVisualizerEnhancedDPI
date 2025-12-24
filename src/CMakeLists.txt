@@ -186,6 +186,11 @@ target_link_libraries(procedure_correlation PUBLIC
     session_correlation
     protocol_parsers
     identity_correlation
+    gtpv2_correlation
+    diameter_correlation
+    sip_correlation
+    nas_s1ap_correlation
+    rtp_correlation
 )
 
 

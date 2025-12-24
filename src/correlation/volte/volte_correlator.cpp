@@ -1,19 +1,20 @@
 #include "correlation/volte/volte_correlator.h"
-#include "correlation/identity/msisdn_normalizer.h"
-#include "correlation/sip/sip_types.h"
+
+#include <algorithm>
+#include <iomanip>
+#include <sstream>
+
 #include "correlation/diameter/diameter_session.h"
 #include "correlation/gtpv2/gtpv2_session.h"
+#include "correlation/identity/msisdn_normalizer.h"
 #include "correlation/nas/nas_session.h"
 #include "correlation/rtp/rtp_stream.h"
-#include <sstream>
-#include <iomanip>
-#include <algorithm>
+#include "correlation/sip/sip_types.h"
 
 namespace callflow {
 namespace correlation {
 
-VolteCorrelator::VolteCorrelator() {
-}
+VolteCorrelator::VolteCorrelator() {}
 
 // ============================================================================
 // Correlator Setup
@@ -116,8 +117,7 @@ void VolteCorrelator::phase2_DetectSipCalls() {
         auto flow = std::make_unique<VolteCallFlow>();
 
         // Generate flow ID from SIP Call-ID
-        flow->flow_id = generateFlowId(sip_session->getCallId(),
-                                        sip_session->getStartTime());
+        flow->flow_id = generateFlowId(sip_session->getCallId(), sip_session->getStartTime());
 
         // Determine flow type
         bool has_video = sip_session->hasVideo();
@@ -160,7 +160,7 @@ void VolteCorrelator::phase2_DetectSipCalls() {
 
         // Collect frame numbers from SIP messages
         for (const auto& msg : sip_session->getMessages()) {
-            flow->frame_numbers.push_back(msg.frame_number);
+            flow->frame_numbers.push_back(msg.getFrameNumber());
         }
         flow->stats.sip_messages = sip_session->getMessageCount();
 
@@ -216,7 +216,8 @@ void VolteCorrelator::phase3_CorrelateWithinCallWindow() {
 }
 
 void VolteCorrelator::correlateDiameterGx(VolteCallFlow& flow) {
-    if (!diameter_correlator_) return;
+    if (!diameter_correlator_)
+        return;
 
     auto gx_sessions = diameter_correlator_->getGxSessions();
 
@@ -233,25 +234,26 @@ void VolteCorrelator::correlateDiameterGx(VolteCallFlow& flow) {
 
         // Match by UE IP address
         auto framed_ip = gx->getFramedIpAddress();
-        if (!framed_ip) continue;
+        if (!framed_ip)
+            continue;
 
         if (matchesUeIp(*framed_ip, flow.caller.ip_v4) ||
             matchesUeIp(*framed_ip, flow.callee.ip_v4)) {
-
             flow.diameter_sessions.push_back(gx->getSessionId());
             flow.stats.diameter_messages += gx->getMessageCount();
             correlated_diameter_sessions_.insert(gx->getSessionId());
 
             // Collect frame numbers
             for (const auto& msg : gx->getMessages()) {
-                flow.frame_numbers.push_back(msg.frame_number);
+                flow.frame_numbers.push_back(msg.getFrameNumber());
             }
         }
     }
 }
 
 void VolteCorrelator::correlateDiameterRx(VolteCallFlow& flow) {
-    if (!diameter_correlator_) return;
+    if (!diameter_correlator_)
+        return;
 
     auto rx_sessions = diameter_correlator_->getRxSessions();
 
@@ -268,25 +270,26 @@ void VolteCorrelator::correlateDiameterRx(VolteCallFlow& flow) {
 
         // Match by UE IP address
         auto framed_ip = rx->getFramedIpAddress();
-        if (!framed_ip) continue;
+        if (!framed_ip)
+            continue;
 
         if (matchesUeIp(*framed_ip, flow.caller.ip_v4) ||
             matchesUeIp(*framed_ip, flow.callee.ip_v4)) {
-
             flow.diameter_sessions.push_back(rx->getSessionId());
             flow.stats.diameter_messages += rx->getMessageCount();
             correlated_diameter_sessions_.insert(rx->getSessionId());
 
             // Collect frame numbers
             for (const auto& msg : rx->getMessages()) {
-                flow.frame_numbers.push_back(msg.frame_number);
+                flow.frame_numbers.push_back(msg.getFrameNumber());
             }
         }
     }
 }
 
 void VolteCorrelator::correlateDiameterCxSh(VolteCallFlow& flow) {
-    if (!diameter_correlator_) return;
+    if (!diameter_correlator_)
+        return;
 
     // Correlate Cx sessions (IMS registration)
     auto cx_sessions = diameter_correlator_->getCxSessions();
@@ -303,16 +306,14 @@ void VolteCorrelator::correlateDiameterCxSh(VolteCallFlow& flow) {
 
         // Match by MSISDN or public identity
         auto msisdn = cx->getMsisdn();
-        if (msisdn &&
-            (matchesMsisdn(*msisdn, flow.caller.msisdn) ||
-             matchesMsisdn(*msisdn, flow.callee.msisdn))) {
-
+        if (msisdn && (matchesMsisdn(*msisdn, flow.caller.msisdn) ||
+                       matchesMsisdn(*msisdn, flow.callee.msisdn))) {
             flow.diameter_sessions.push_back(cx->getSessionId());
             flow.stats.diameter_messages += cx->getMessageCount();
             correlated_diameter_sessions_.insert(cx->getSessionId());
 
             for (const auto& msg : cx->getMessages()) {
-                flow.frame_numbers.push_back(msg.frame_number);
+                flow.frame_numbers.push_back(msg.getFrameNumber());
             }
         }
     }
@@ -329,23 +330,22 @@ void VolteCorrelator::correlateDiameterCxSh(VolteCallFlow& flow) {
         }
 
         auto msisdn = sh->getMsisdn();
-        if (msisdn &&
-            (matchesMsisdn(*msisdn, flow.caller.msisdn) ||
-             matchesMsisdn(*msisdn, flow.callee.msisdn))) {
-
+        if (msisdn && (matchesMsisdn(*msisdn, flow.caller.msisdn) ||
+                       matchesMsisdn(*msisdn, flow.callee.msisdn))) {
             flow.diameter_sessions.push_back(sh->getSessionId());
             flow.stats.diameter_messages += sh->getMessageCount();
             correlated_diameter_sessions_.insert(sh->getSessionId());
 
             for (const auto& msg : sh->getMessages()) {
-                flow.frame_numbers.push_back(msg.frame_number);
+                flow.frame_numbers.push_back(msg.getFrameNumber());
             }
         }
     }
 }
 
 void VolteCorrelator::correlateGtpv2ImsBearer(VolteCallFlow& flow) {
-    if (!gtpv2_correlator_) return;
+    if (!gtpv2_correlator_)
+        return;
 
     auto ims_sessions = gtpv2_correlator_->getSessionsWithDedicatedBearers();
 
@@ -363,17 +363,15 @@ void VolteCorrelator::correlateGtpv2ImsBearer(VolteCallFlow& flow) {
 
         // Match by MSISDN
         auto msisdn = gtp->getMsisdn();
-        if (msisdn &&
-            (matchesMsisdn(*msisdn, flow.caller.msisdn) ||
-             matchesMsisdn(*msisdn, flow.callee.msisdn))) {
-
+        if (msisdn && (matchesMsisdn(*msisdn, flow.caller.msisdn) ||
+                       matchesMsisdn(*msisdn, flow.callee.msisdn))) {
             flow.gtpv2_sessions.push_back(intra_id);
             flow.stats.gtp_messages += gtp->getMessageCount();
             correlated_gtp_sessions_.insert(intra_id);
 
             // Collect frame numbers
             for (const auto& msg : gtp->getMessages()) {
-                flow.frame_numbers.push_back(msg.frame_number);
+                flow.frame_numbers.push_back(msg.getFrameNumber());
             }
 
             // Copy IMSI if not already set
@@ -391,7 +389,8 @@ void VolteCorrelator::correlateGtpv2ImsBearer(VolteCallFlow& flow) {
 }
 
 void VolteCorrelator::correlateNasEsm(VolteCallFlow& flow) {
-    if (!nas_correlator_) return;
+    if (!nas_correlator_)
+        return;
 
     auto esm_sessions = nas_correlator_->getImsEsmSessions();
 
@@ -426,7 +425,7 @@ void VolteCorrelator::correlateNasEsm(VolteCallFlow& flow) {
 
                 // Collect frame numbers
                 for (const auto& msg : nas->getMessages()) {
-                    flow.frame_numbers.push_back(msg.frame_number);
+                    flow.frame_numbers.push_back(msg.getFrameNum());
                 }
             }
         }
@@ -434,7 +433,8 @@ void VolteCorrelator::correlateNasEsm(VolteCallFlow& flow) {
 }
 
 void VolteCorrelator::correlateRtp(VolteCallFlow& flow) {
-    if (!rtp_correlator_) return;
+    if (!rtp_correlator_)
+        return;
 
     // Get RTP streams within time window
     auto streams = rtp_correlator_->findByTimeWindow(flow.start_time, flow.end_time);
@@ -448,15 +448,13 @@ void VolteCorrelator::correlateRtp(VolteCallFlow& flow) {
         // Match by UE IP address
         bool matched = false;
 
-        if (!flow.caller.ip_v4.empty() &&
-            (matchesUeIp(stream->getSrcIp(), flow.caller.ip_v4) ||
-             matchesUeIp(stream->getDstIp(), flow.caller.ip_v4))) {
+        if (!flow.caller.ip_v4.empty() && (matchesUeIp(stream->getSrcIp(), flow.caller.ip_v4) ||
+                                           matchesUeIp(stream->getDstIp(), flow.caller.ip_v4))) {
             matched = true;
         }
 
-        if (!flow.callee.ip_v4.empty() &&
-            (matchesUeIp(stream->getSrcIp(), flow.callee.ip_v4) ||
-             matchesUeIp(stream->getDstIp(), flow.callee.ip_v4))) {
+        if (!flow.callee.ip_v4.empty() && (matchesUeIp(stream->getSrcIp(), flow.callee.ip_v4) ||
+                                           matchesUeIp(stream->getDstIp(), flow.callee.ip_v4))) {
             matched = true;
         }
 
@@ -515,15 +513,14 @@ void VolteCorrelator::phase4_LinkResidualSessions() {
         }
 
         auto flow = std::make_unique<VolteCallFlow>();
-        flow->flow_id = generateFlowIdForResidual("SIP", sip->getCallId(),
-                                                    sip->getStartTime());
+        flow->flow_id = generateFlowIdForResidual("SIP", sip->getCallId(), sip->getStartTime());
 
         // Determine type
         auto sip_type = sip->getType();
         if (sip_type == SipSessionType::REGISTRATION) {
             flow->type = VolteFlowType::IMS_REGISTRATION;
             stats_.registrations++;
-        } else if (sip_type == SipSessionType::SMS) {
+        } else if (sip_type == SipSessionType::SMS_MESSAGE) {
             flow->type = VolteFlowType::MO_SMS;
             stats_.sms_sessions++;
         } else {
@@ -538,7 +535,7 @@ void VolteCorrelator::phase4_LinkResidualSessions() {
         flow->stats.sip_messages = sip->getMessageCount();
 
         for (const auto& msg : sip->getMessages()) {
-            flow->frame_numbers.push_back(msg.frame_number);
+            flow->frame_numbers.push_back(msg.getFrameNumber());
         }
 
         auto* flow_ptr = flow.get();
@@ -580,7 +577,6 @@ void VolteCorrelator::phase5_ResolveNetworkElements() {
     for (auto& flow : call_flows_) {
         if (flow->type == VolteFlowType::MO_VOICE_CALL ||
             flow->type == VolteFlowType::MO_VIDEO_CALL) {
-
             // Check SIP messages to determine direction
             if (!flow->sip_sessions.empty()) {
                 auto* sip = sip_correlator_->findByCallId(
@@ -615,10 +611,12 @@ void VolteCorrelator::phase6_CalculateStatistics() {
         auto* sip = sip_correlator_->findByCallId(
             flow->sip_sessions[0].substr(0, flow->sip_sessions[0].find('_')));
 
-        if (!sip) continue;
+        if (!sip)
+            continue;
 
         const auto& messages = sip->getMessages();
-        if (messages.empty()) continue;
+        if (messages.empty())
+            continue;
 
         // Find key timestamps
         double invite_time = 0.0;
@@ -627,14 +625,14 @@ void VolteCorrelator::phase6_CalculateStatistics() {
         double bye_time = 0.0;
 
         for (const auto& msg : messages) {
-            if (msg.method == "INVITE" && msg.is_request && invite_time == 0.0) {
-                invite_time = msg.timestamp;
-            } else if (msg.status_code == 180 && ringing_time == 0.0) {
-                ringing_time = msg.timestamp;
-            } else if (msg.status_code == 200 && ok_time == 0.0) {
-                ok_time = msg.timestamp;
-            } else if (msg.method == "BYE" && msg.is_request && bye_time == 0.0) {
-                bye_time = msg.timestamp;
+            if (msg.getMethod() == "INVITE" && msg.isRequest() && invite_time == 0.0) {
+                invite_time = msg.getTimestamp();
+            } else if (msg.getStatusCode() == 180 && ringing_time == 0.0) {
+                ringing_time = msg.getTimestamp();
+            } else if (msg.getStatusCode() == 200 && ok_time == 0.0) {
+                ok_time = msg.getTimestamp();
+            } else if (msg.getMethod() == "BYE" && msg.isRequest() && bye_time == 0.0) {
+                bye_time = msg.getTimestamp();
             }
         }
 
@@ -729,7 +727,7 @@ std::vector<VolteCallFlow*> VolteCorrelator::findByMsisdn(const std::string& msi
     std::vector<VolteCallFlow*> result;
 
     auto normalized = MsisdnNormalizer::normalize(msisdn);
-    auto range = msisdn_index_.equal_range(normalized.digits);
+    auto range = msisdn_index_.equal_range(normalized.digits_only);
 
     for (auto it = range.first; it != range.second; ++it) {
         result.push_back(it->second);
@@ -788,7 +786,8 @@ void VolteCorrelator::clear() {
 // ============================================================================
 
 bool VolteCorrelator::matchesMsisdn(const std::string& m1, const std::string& m2) {
-    if (m1.empty() || m2.empty()) return false;
+    if (m1.empty() || m2.empty())
+        return false;
 
     auto n1 = MsisdnNormalizer::normalize(m1);
     auto n2 = MsisdnNormalizer::normalize(m2);
@@ -797,14 +796,15 @@ bool VolteCorrelator::matchesMsisdn(const std::string& m1, const std::string& m2
 }
 
 bool VolteCorrelator::matchesUeIp(const std::string& ip1, const std::string& ip2) {
-    if (ip1.empty() || ip2.empty()) return false;
+    if (ip1.empty() || ip2.empty())
+        return false;
 
     // Exact match for IPv4
-    if (ip1 == ip2) return true;
+    if (ip1 == ip2)
+        return true;
 
     // IPv6 prefix match (first 64 bits)
-    if (ip1.find(':') != std::string::npos &&
-        ip2.find(':') != std::string::npos) {
+    if (ip1.find(':') != std::string::npos && ip2.find(':') != std::string::npos) {
         // Simplified: compare first 4 groups (64 bits)
         auto prefix1 = ip1.substr(0, ip1.find(':', ip1.find(':') + 1));
         auto prefix2 = ip2.substr(0, ip2.find(':', ip2.find(':') + 1));
@@ -814,8 +814,7 @@ bool VolteCorrelator::matchesUeIp(const std::string& ip1, const std::string& ip2
     return false;
 }
 
-bool VolteCorrelator::isWithinTimeWindow(double ts, double start, double end,
-                                          double tolerance_ms) {
+bool VolteCorrelator::isWithinTimeWindow(double ts, double start, double end, double tolerance_ms) {
     double tolerance_sec = tolerance_ms / 1000.0;
     return ts >= (start - tolerance_sec) && ts <= (end + tolerance_sec);
 }
@@ -847,18 +846,19 @@ void VolteCorrelator::updateIndices(VolteCallFlow* flow) {
 }
 
 void VolteCorrelator::addToMsisdnIndex(const std::string& msisdn, VolteCallFlow* flow) {
-    if (msisdn.empty()) return;
+    if (msisdn.empty())
+        return;
     auto normalized = MsisdnNormalizer::normalize(msisdn);
-    msisdn_index_.insert({normalized.digits, flow});
+    msisdn_index_.insert({normalized.digits_only, flow});
 }
 
 void VolteCorrelator::addToImsiIndex(const std::string& imsi, VolteCallFlow* flow) {
-    if (imsi.empty()) return;
+    if (imsi.empty())
+        return;
     imsi_index_.insert({imsi, flow});
 }
 
-void VolteCorrelator::addToFrameIndex(const std::vector<uint32_t>& frames,
-                                       VolteCallFlow* flow) {
+void VolteCorrelator::addToFrameIndex(const std::vector<uint32_t>& frames, VolteCallFlow* flow) {
     for (uint32_t frame : frames) {
         frame_index_[frame] = flow;
     }
@@ -868,8 +868,7 @@ void VolteCorrelator::addToFrameIndex(const std::vector<uint32_t>& frames,
 // Flow ID Generation
 // ============================================================================
 
-std::string VolteCorrelator::generateFlowId(const std::string& sip_call_id,
-                                              double timestamp) {
+std::string VolteCorrelator::generateFlowId(const std::string& sip_call_id, double timestamp) {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(6) << timestamp;
     oss << "_V_" << std::hash<std::string>{}(sip_call_id);
@@ -877,13 +876,13 @@ std::string VolteCorrelator::generateFlowId(const std::string& sip_call_id,
 }
 
 std::string VolteCorrelator::generateFlowIdForResidual(const std::string& protocol,
-                                                         const std::string& session_id,
-                                                         double timestamp) {
+                                                       const std::string& session_id,
+                                                       double timestamp) {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(6) << timestamp;
     oss << "_V_" << protocol << "_" << std::hash<std::string>{}(session_id);
     return oss.str();
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

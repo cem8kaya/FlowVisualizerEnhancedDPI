@@ -1,4 +1,6 @@
 #include "correlation/s1ap/s1ap_context.h"
+
+#include <algorithm>
 #include <sstream>
 
 namespace callflow {
@@ -40,8 +42,9 @@ void S1apContext::updateErabState(const S1apMessage& msg) {
 
     for (const auto& erab_info : erab_list) {
         // Find or create E-RAB state
-        auto it = std::find_if(erabs_.begin(), erabs_.end(),
-            [&](const ErabState& state) { return state.erab_id == erab_info.erab_id; });
+        auto it = std::find_if(erabs_.begin(), erabs_.end(), [&](const ErabState& state) {
+            return state.erab_id == erab_info.erab_id;
+        });
 
         if (it == erabs_.end()) {
             // New E-RAB
@@ -67,8 +70,9 @@ void S1apContext::updateErabState(const S1apMessage& msg) {
         case S1apMessageType::E_RAB_RELEASE_RESPONSE:
         case S1apMessageType::E_RAB_RELEASE_INDICATION:
             for (const auto& erab_info : erab_list) {
-                auto it = std::find_if(erabs_.begin(), erabs_.end(),
-                    [&](const ErabState& state) { return state.erab_id == erab_info.erab_id; });
+                auto it = std::find_if(erabs_.begin(), erabs_.end(), [&](const ErabState& state) {
+                    return state.erab_id == erab_info.erab_id;
+                });
                 if (it != erabs_.end()) {
                     it->active = false;
                     it->release_time = msg.getTimestamp();
@@ -156,20 +160,29 @@ void S1apContext::extractIdentifiers(const S1apMessage& msg) {
 std::string S1apContext::toString() const {
     std::ostringstream oss;
 
-    oss << "S1AP Context [MME-UE-ID=" << mme_ue_s1ap_id_
-        << ", eNB-UE-ID=" << enb_ue_s1ap_id_
-        << ", Messages=" << messages_.size()
-        << ", E-RABs=" << erabs_.size();
+    oss << "S1AP Context [MME-UE-ID=" << mme_ue_s1ap_id_ << ", eNB-UE-ID=" << enb_ue_s1ap_id_
+        << ", Messages=" << messages_.size() << ", E-RABs=" << erabs_.size();
 
-    if (imsi_) oss << ", IMSI=" << *imsi_;
+    if (imsi_)
+        oss << ", IMSI=" << *imsi_;
 
     oss << ", State=";
     switch (state_) {
-        case State::INITIAL: oss << "Initial"; break;
-        case State::CONTEXT_SETUP: oss << "Context Setup"; break;
-        case State::ACTIVE: oss << "Active"; break;
-        case State::RELEASE_PENDING: oss << "Release Pending"; break;
-        case State::RELEASED: oss << "Released"; break;
+        case State::INITIAL:
+            oss << "Initial";
+            break;
+        case State::CONTEXT_SETUP:
+            oss << "Context Setup";
+            break;
+        case State::ACTIVE:
+            oss << "Active";
+            break;
+        case State::RELEASE_PENDING:
+            oss << "Release Pending";
+            break;
+        case State::RELEASED:
+            oss << "Released";
+            break;
     }
 
     oss << "]";
@@ -177,5 +190,5 @@ std::string S1apContext::toString() const {
     return oss.str();
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

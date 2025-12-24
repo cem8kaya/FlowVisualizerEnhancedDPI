@@ -1,16 +1,18 @@
 #pragma once
 
-#include "correlation/volte/volte_types.h"
-#include "correlation/sip/sip_correlator.h"
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
 #include "correlation/diameter/diameter_correlator.h"
 #include "correlation/gtpv2/gtpv2_correlator.h"
+#include "correlation/identity/subscriber_context_manager.h"
 #include "correlation/nas/nas_correlator.h"
 #include "correlation/rtp/rtp_correlator.h"
-#include "correlation/identity/subscriber_context_manager.h"
-#include <memory>
-#include <vector>
-#include <unordered_map>
-#include <mutex>
+#include "correlation/sip/sip_correlator.h"
+#include "correlation/volte/volte_types.h"
 
 namespace callflow {
 namespace correlation {
@@ -256,8 +258,7 @@ private:
     /**
      * @brief Check if timestamp is within time window (with tolerance)
      */
-    bool isWithinTimeWindow(double ts, double start, double end,
-                            double tolerance_ms = 1000.0);
+    bool isWithinTimeWindow(double ts, double start, double end, double tolerance_ms = 1000.0);
 
     // ========================================================================
     // Indexing Helpers
@@ -281,9 +282,8 @@ private:
      * @brief Generate flow ID for non-SIP flows
      */
     std::string generateFlowIdForResidual(const std::string& protocol,
-                                           const std::string& session_id,
-                                           double timestamp);
+                                          const std::string& session_id, double timestamp);
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

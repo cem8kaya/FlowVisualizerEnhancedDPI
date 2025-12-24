@@ -1,14 +1,15 @@
 #pragma once
 
-#include "correlation/gtpv2/gtpv2_session.h"
-#include "correlation/gtpv2/gtpv2_message.h"
-#include "correlation/gtpv2/gtpv2_fteid_manager.h"
-#include "correlation/identity/subscriber_context_manager.h"
-#include <unordered_map>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+#include "correlation/gtpv2/gtpv2_fteid_manager.h"
+#include "correlation/gtpv2/gtpv2_message.h"
+#include "correlation/gtpv2/gtpv2_session.h"
+#include "correlation/identity/subscriber_context_manager.h"
 
 namespace callflow {
 namespace correlation {
@@ -114,9 +115,8 @@ public:
     /**
      * @brief Find session by GTP-U packet
      */
-    Gtpv2Session* findByGtpuPacket(const std::string& src_ip,
-                                    const std::string& dst_ip,
-                                    uint32_t teid);
+    Gtpv2Session* findByGtpuPacket(const std::string& src_ip, const std::string& dst_ip,
+                                   uint32_t teid);
 
     // ========================================================================
     // F-TEID Manager Access
@@ -163,7 +163,7 @@ public:
     size_t getSessionCount() const;
 
 private:
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::unordered_map<std::string, std::unique_ptr<Gtpv2Session>> sessions_;
     // Key: Session key from Control TEID + Sequence
 
@@ -188,5 +188,5 @@ private:
     Gtpv2Session* findOrCreateSession(const Gtpv2Message& msg);
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

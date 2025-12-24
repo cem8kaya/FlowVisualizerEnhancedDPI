@@ -1,11 +1,12 @@
 #pragma once
 
-#include "correlation/s1ap/s1ap_context.h"
-#include "correlation/nas/nas_correlator.h"
-#include "correlation/identity/subscriber_context_manager.h"
-#include <unordered_map>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
+
+#include "correlation/identity/subscriber_context_manager.h"
+#include "correlation/nas/nas_correlator.h"
+#include "correlation/s1ap/s1ap_context.h"
 
 namespace callflow {
 namespace correlation {
@@ -94,7 +95,7 @@ public:
     NasCorrelator* getNasCorrelator() { return nas_correlator_; }
 
 private:
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::vector<std::unique_ptr<S1apContext>> contexts_;
 
     // Index by (MME-UE-S1AP-ID, eNB-UE-S1AP-ID) pair
@@ -118,5 +119,5 @@ private:
     void handleNasPdu(const S1apMessage& msg, S1apContext* context);
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

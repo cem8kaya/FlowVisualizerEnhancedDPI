@@ -1,29 +1,26 @@
 #include "correlation/gtpv2/gtpv2_correlator.h"
-#include <sstream>
-#include <iomanip>
+
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 namespace callflow {
 namespace correlation {
 
-Gtpv2Correlator::Gtpv2Correlator() : ctx_manager_(nullptr) {
-}
+Gtpv2Correlator::Gtpv2Correlator() : ctx_manager_(nullptr) {}
 
 Gtpv2Correlator::Gtpv2Correlator(SubscriberContextManager* ctx_manager)
-    : ctx_manager_(ctx_manager) {
-}
+    : ctx_manager_(ctx_manager) {}
 
 std::string Gtpv2Correlator::generateSessionKey(uint32_t teid, uint32_t sequence) {
     std::stringstream ss;
-    ss << std::hex << std::setfill('0') << std::setw(8) << teid
-       << "_" << std::setw(8) << sequence;
+    ss << std::hex << std::setfill('0') << std::setw(8) << teid << "_" << std::setw(8) << sequence;
     return ss.str();
 }
 
 std::string Gtpv2Correlator::generateIntraCorrelator(double timestamp, int seq) {
     std::stringstream ss;
-    ss << "gtpv2_" << std::fixed << std::setprecision(6) << timestamp
-       << "_" << seq;
+    ss << "gtpv2_" << std::fixed << std::setprecision(6) << timestamp << "_" << seq;
     return ss.str();
 }
 
@@ -42,7 +39,8 @@ Gtpv2Session* Gtpv2Correlator::findOrCreateSession(const Gtpv2Message& msg) {
 
         // Create new session
         auto session = std::make_unique<Gtpv2Session>(teid, sequence);
-        session->setIntraCorrelator(generateIntraCorrelator(msg.getTimestamp(), session_sequence_++));
+        session->setIntraCorrelator(
+            generateIntraCorrelator(msg.getTimestamp(), session_sequence_++));
 
         Gtpv2Session* session_ptr = session.get();
         sessions_[key] = std::move(session);
@@ -63,7 +61,8 @@ Gtpv2Session* Gtpv2Correlator::findOrCreateSession(const Gtpv2Message& msg) {
         std::string key = generateSessionKey(teid, sequence);
 
         auto session_obj = std::make_unique<Gtpv2Session>(teid, sequence);
-        session_obj->setIntraCorrelator(generateIntraCorrelator(msg.getTimestamp(), session_sequence_++));
+        session_obj->setIntraCorrelator(
+            generateIntraCorrelator(msg.getTimestamp(), session_sequence_++));
 
         session = session_obj.get();
         sessions_[key] = std::move(session_obj);
@@ -255,8 +254,7 @@ Gtpv2Session* Gtpv2Correlator::findByFteid(const std::string& ip, uint32_t teid)
 }
 
 Gtpv2Session* Gtpv2Correlator::findByGtpuPacket(const std::string& src_ip,
-                                                  const std::string& dst_ip,
-                                                  uint32_t teid) {
+                                                const std::string& dst_ip, uint32_t teid) {
     return fteid_manager_.findSessionByGtpuPacket(src_ip, dst_ip, teid);
 }
 
@@ -287,34 +285,45 @@ void Gtpv2Correlator::updateSubscriberContext(const Gtpv2Session& session) {
         return;
     }
 
-    // Only update if we have IMSI
+    SubscriberContextBuilder builder(*ctx_manager_);
+
+    // Add IMSI
     auto imsi = session.getImsi();
-    if (!imsi.has_value()) {
-        return;
+    if (imsi.has_value()) {
+        builder.fromGtpImsi(imsi.value());
     }
 
     // Add MSISDN if available
     auto msisdn = session.getMsisdn();
     if (msisdn.has_value()) {
-        ctx_manager_->addIdentityMapping(imsi.value(), msisdn.value());
+        builder.fromGtpMsisdn(msisdn.value());
     }
 
     // Add MEI if available
     auto mei = session.getMei();
     if (mei.has_value()) {
-        ctx_manager_->addIdentityMapping(imsi.value(), mei.value());
+        builder.fromGtpMei(mei.value());
     }
 
     // Add PDN addresses if available
     auto pdn_v4 = session.getPdnAddressV4();
     if (pdn_v4.has_value()) {
-        ctx_manager_->addIdentityMapping(imsi.value(), pdn_v4.value());
+        builder.fromGtpPdnAddress(pdn_v4.value());
     }
 
     auto pdn_v6 = session.getPdnAddressV6();
     if (pdn_v6.has_value()) {
-        ctx_manager_->addIdentityMapping(imsi.value(), pdn_v6.value());
+        builder.fromGtpPdnAddress(pdn_v6.value());
     }
+
+    // Add Access Point Name
+    auto apn = session.getApn();
+    if (!apn.empty()) {
+        builder.fromGtpApn(apn);
+    }
+
+    // Build context
+    builder.build();
 }
 
 void Gtpv2Correlator::updateLookupIndices(Gtpv2Session* session) {
@@ -404,5 +413,5 @@ void Gtpv2Correlator::registerSessionFteids(Gtpv2Session* session) {
     }
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow
