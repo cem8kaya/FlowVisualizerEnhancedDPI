@@ -924,4 +924,25 @@ set_tests_properties(test_sip_correlator PROPERTIES
     LABELS "unit"
 )
 
+# Diameter Correlation Tests
+# Diameter Correlator Tests
+add_executable(test_diameter_correlator
+    unit/diameter/test_diameter_correlator.cpp
+)
+
+target_link_libraries(test_diameter_correlator PRIVATE
+    callflow_common
+    diameter_correlation
+    protocol_parsers
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_diameter_correlator COMMAND test_diameter_correlator)
+
+set_tests_properties(test_diameter_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
