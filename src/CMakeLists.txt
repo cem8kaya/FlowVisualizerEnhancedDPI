@@ -111,6 +111,27 @@ target_link_libraries(gtpv2_correlation PUBLIC
     protocol_parsers
 )
 
+# NAS/S1AP correlation library
+add_library(nas_s1ap_correlation STATIC
+    correlation/nas/nas_types.cpp
+    correlation/nas/nas_message.cpp
+    correlation/nas/nas_ie_parser.cpp
+    correlation/nas/nas_session.cpp
+    correlation/nas/nas_correlator.cpp
+    correlation/s1ap/s1ap_types.cpp
+    correlation/s1ap/s1ap_message.cpp
+    correlation/s1ap/s1ap_context.cpp
+    correlation/s1ap/s1ap_correlator.cpp
+)
+target_include_directories(nas_s1ap_correlation PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(nas_s1ap_correlation PUBLIC
+    callflow_common
+    identity_correlation
+    gtpv2_correlation
+)
+
 # Procedure state machines library
 add_library(procedure_correlation STATIC
     correlation/procedure_state_machine.cpp
