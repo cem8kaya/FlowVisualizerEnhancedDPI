@@ -1,8 +1,11 @@
 #include "transport/sctp_parser.h"
-#include "common/logger.h"
-#include <cstring>
+
 #include <arpa/inet.h>
+
+#include <cstring>
 #include <sstream>
+
+#include "common/logger.h"
 
 namespace callflow {
 
@@ -12,36 +15,66 @@ namespace callflow {
 
 std::string getSctpPpidName(uint32_t ppid) {
     switch (static_cast<SctpPayloadProtocolId>(ppid)) {
-        case SctpPayloadProtocolId::RESERVED: return "RESERVED";
-        case SctpPayloadProtocolId::IUA: return "IUA";
-        case SctpPayloadProtocolId::M2UA: return "M2UA";
-        case SctpPayloadProtocolId::M3UA: return "M3UA";
-        case SctpPayloadProtocolId::SUA: return "SUA";
-        case SctpPayloadProtocolId::M2PA: return "M2PA";
-        case SctpPayloadProtocolId::V5UA: return "V5UA";
-        case SctpPayloadProtocolId::H248: return "H248";
-        case SctpPayloadProtocolId::BICC: return "BICC";
-        case SctpPayloadProtocolId::TALI: return "TALI";
-        case SctpPayloadProtocolId::DUA: return "DUA";
-        case SctpPayloadProtocolId::ASAP: return "ASAP";
-        case SctpPayloadProtocolId::ENRP: return "ENRP";
-        case SctpPayloadProtocolId::H323: return "H323";
-        case SctpPayloadProtocolId::QIPC: return "QIPC";
-        case SctpPayloadProtocolId::SIMCO: return "SIMCO";
-        case SctpPayloadProtocolId::DDP_SEG: return "DDP_SEG";
-        case SctpPayloadProtocolId::DDP_STREAM: return "DDP_STREAM";
-        case SctpPayloadProtocolId::S1AP: return "S1AP";
-        case SctpPayloadProtocolId::RUA: return "RUA";
-        case SctpPayloadProtocolId::HNBAP: return "HNBAP";
-        case SctpPayloadProtocolId::FORCES_HP: return "FORCES_HP";
-        case SctpPayloadProtocolId::FORCES_MP: return "FORCES_MP";
-        case SctpPayloadProtocolId::FORCES_LP: return "FORCES_LP";
-        case SctpPayloadProtocolId::SBC_AP: return "SBC_AP";
-        case SctpPayloadProtocolId::X2AP: return "X2AP";
-        case SctpPayloadProtocolId::SABP: return "SABP";
-        case SctpPayloadProtocolId::DIAMETER: return "DIAMETER";
-        case SctpPayloadProtocolId::NGAP: return "NGAP";
-        case SctpPayloadProtocolId::XWAP: return "XWAP";
+        case SctpPayloadProtocolId::RESERVED:
+            return "RESERVED";
+        case SctpPayloadProtocolId::IUA:
+            return "IUA";
+        case SctpPayloadProtocolId::M2UA:
+            return "M2UA";
+        case SctpPayloadProtocolId::M3UA:
+            return "M3UA";
+        case SctpPayloadProtocolId::SUA:
+            return "SUA";
+        case SctpPayloadProtocolId::M2PA:
+            return "M2PA";
+        case SctpPayloadProtocolId::V5UA:
+            return "V5UA";
+        case SctpPayloadProtocolId::H248:
+            return "H248";
+        case SctpPayloadProtocolId::BICC:
+            return "BICC";
+        case SctpPayloadProtocolId::TALI:
+            return "TALI";
+        case SctpPayloadProtocolId::DUA:
+            return "DUA";
+        case SctpPayloadProtocolId::ASAP:
+            return "ASAP";
+        case SctpPayloadProtocolId::ENRP:
+            return "ENRP";
+        case SctpPayloadProtocolId::H323:
+            return "H323";
+        case SctpPayloadProtocolId::QIPC:
+            return "QIPC";
+        case SctpPayloadProtocolId::SIMCO:
+            return "SIMCO";
+        case SctpPayloadProtocolId::DDP_SEG:
+            return "DDP_SEG";
+        case SctpPayloadProtocolId::DDP_STREAM:
+            return "DDP_STREAM";
+        case SctpPayloadProtocolId::S1AP:
+            return "S1AP";
+        case SctpPayloadProtocolId::RUA:
+            return "RUA";
+        case SctpPayloadProtocolId::HNBAP:
+            return "HNBAP";
+        case SctpPayloadProtocolId::FORCES_HP:
+            return "FORCES_HP";
+        case SctpPayloadProtocolId::FORCES_MP:
+            return "FORCES_MP";
+        case SctpPayloadProtocolId::FORCES_LP:
+            return "FORCES_LP";
+        case SctpPayloadProtocolId::SBC_AP:
+            return "SBC_AP";
+        case SctpPayloadProtocolId::X2AP:
+            return "X2AP";
+        case SctpPayloadProtocolId::SABP:
+            return "SABP";
+        case SctpPayloadProtocolId::DIAMETER:
+            return "DIAMETER";
+        case SctpPayloadProtocolId::NGAP:
+            return "NGAP";
+        case SctpPayloadProtocolId::XWAP:
+            return "XWAP";
         default:
             if (ppid >= 0x80) {
                 return "VENDOR_SPECIFIC";
@@ -86,8 +119,7 @@ static const uint32_t crc32c_table[256] = {
     0xE330A81A, 0x115B2B19, 0x020BD8ED, 0xF0605BEE, 0x24AA3F05, 0xD6C1BC06, 0xC5914FF2, 0x37FACCF1,
     0x69E9F0D5, 0x9B8273D6, 0x88D28022, 0x7AB90321, 0xAE7367CA, 0x5C18E4C9, 0x4F48173D, 0xBD23943E,
     0xF36E6F75, 0x0105EC76, 0x12551F82, 0xE03E9C81, 0x34F4F86A, 0xC69F7B69, 0xD5CF889D, 0x27A40B9E,
-    0x79B737BA, 0x8BDCB4B9, 0x988C474D, 0x6AE7C44E, 0xBE2DA0A5, 0x4C4623A6, 0x5F16D052, 0xAD7D5351
-};
+    0x79B737BA, 0x8BDCB4B9, 0x988C474D, 0x6AE7C44E, 0xBE2DA0A5, 0x4C4623A6, 0x5F16D052, 0xAD7D5351};
 
 static uint32_t crc32c(const uint8_t* data, size_t len) {
     uint32_t crc = 0xFFFFFFFF;
@@ -173,21 +205,36 @@ nlohmann::json SctpChunk::toJson() const {
 
 std::string SctpChunk::getTypeName() const {
     switch (static_cast<SctpChunkType>(type)) {
-        case SctpChunkType::DATA: return "DATA";
-        case SctpChunkType::INIT: return "INIT";
-        case SctpChunkType::INIT_ACK: return "INIT-ACK";
-        case SctpChunkType::SACK: return "SACK";
-        case SctpChunkType::HEARTBEAT: return "HEARTBEAT";
-        case SctpChunkType::HEARTBEAT_ACK: return "HEARTBEAT-ACK";
-        case SctpChunkType::ABORT: return "ABORT";
-        case SctpChunkType::SHUTDOWN: return "SHUTDOWN";
-        case SctpChunkType::SHUTDOWN_ACK: return "SHUTDOWN-ACK";
-        case SctpChunkType::ERROR: return "ERROR";
-        case SctpChunkType::COOKIE_ECHO: return "COOKIE-ECHO";
-        case SctpChunkType::COOKIE_ACK: return "COOKIE-ACK";
-        case SctpChunkType::SHUTDOWN_COMPLETE: return "SHUTDOWN-COMPLETE";
-        case SctpChunkType::FORWARD_TSN: return "FORWARD-TSN";
-        default: return "Unknown-" + std::to_string(type);
+        case SctpChunkType::DATA:
+            return "DATA";
+        case SctpChunkType::INIT:
+            return "INIT";
+        case SctpChunkType::INIT_ACK:
+            return "INIT-ACK";
+        case SctpChunkType::SACK:
+            return "SACK";
+        case SctpChunkType::HEARTBEAT:
+            return "HEARTBEAT";
+        case SctpChunkType::HEARTBEAT_ACK:
+            return "HEARTBEAT-ACK";
+        case SctpChunkType::ABORT:
+            return "ABORT";
+        case SctpChunkType::SHUTDOWN:
+            return "SHUTDOWN";
+        case SctpChunkType::SHUTDOWN_ACK:
+            return "SHUTDOWN-ACK";
+        case SctpChunkType::ERROR:
+            return "ERROR";
+        case SctpChunkType::COOKIE_ECHO:
+            return "COOKIE-ECHO";
+        case SctpChunkType::COOKIE_ACK:
+            return "COOKIE-ACK";
+        case SctpChunkType::SHUTDOWN_COMPLETE:
+            return "SHUTDOWN-COMPLETE";
+        case SctpChunkType::FORWARD_TSN:
+            return "FORWARD-TSN";
+        default:
+            return "Unknown-" + std::to_string(type);
     }
 }
 
@@ -244,11 +291,7 @@ nlohmann::json SctpPacket::toJson() const {
 // ============================================================================
 
 SctpParser::SctpParser()
-    : total_packets_parsed_(0),
-      total_bytes_parsed_(0),
-      total_associations_(0),
-      parse_errors_(0) {
-}
+    : total_packets_parsed_(0), total_bytes_parsed_(0), total_associations_(0), parse_errors_(0) {}
 
 bool SctpParser::isSctp(const uint8_t* data, size_t len) {
     if (!data || len < 12) {
@@ -272,7 +315,7 @@ bool SctpParser::isSctp(const uint8_t* data, size_t len) {
 }
 
 std::optional<SctpPacket> SctpParser::parse(const uint8_t* data, size_t len,
-                                             const FiveTuple& five_tuple) {
+                                            const FiveTuple& five_tuple) {
     if (!isSctp(data, len)) {
         LOG_DEBUG("Not a valid SCTP packet");
         parse_errors_++;
@@ -340,13 +383,16 @@ std::optional<SctpPacket> SctpParser::parse(const uint8_t* data, size_t len,
                 updateAssociationState(assoc, SctpChunkType::SHUTDOWN_COMPLETE);
                 break;
             case SctpChunkType::HEARTBEAT:
-                LOG_DEBUG("SCTP Association " << assoc.association_id << " | HEARTBEAT chunk received");
+                LOG_DEBUG("SCTP Association " << assoc.association_id
+                                              << " | HEARTBEAT chunk received");
                 break;
             case SctpChunkType::HEARTBEAT_ACK:
-                LOG_DEBUG("SCTP Association " << assoc.association_id << " | HEARTBEAT_ACK chunk received");
+                LOG_DEBUG("SCTP Association " << assoc.association_id
+                                              << " | HEARTBEAT_ACK chunk received");
                 break;
             case SctpChunkType::ABORT:
-                LOG_WARN("SCTP Association " << assoc.association_id << " | ABORT chunk received - connection aborted");
+                LOG_WARN("SCTP Association " << assoc.association_id
+                                             << " | ABORT chunk received - connection aborted");
                 assoc.state = SctpAssociationState::CLOSED;
                 break;
             default:
@@ -451,8 +497,7 @@ std::optional<SctpCommonHeader> SctpParser::parseCommonHeader(const uint8_t* dat
     return header;
 }
 
-bool SctpParser::parseChunks(const uint8_t* data, size_t len, size_t offset,
-                             SctpPacket& packet) {
+bool SctpParser::parseChunks(const uint8_t* data, size_t len, size_t offset, SctpPacket& packet) {
     while (offset < len) {
         // Need at least 4 bytes for chunk header
         if (offset + 4 > len) {
@@ -660,48 +705,55 @@ void SctpParser::updateAssociationState(SctpAssociation& assoc, SctpChunkType ch
     switch (chunk_type) {
         case SctpChunkType::INIT:
             assoc.state = SctpAssociationState::COOKIE_WAIT;
-            LOG_INFO("SCTP Association " << assoc.association_id
+            LOG_INFO("SCTP Association "
+                     << assoc.association_id
                      << " state transition: CLOSED -> COOKIE_WAIT (INIT received)"
-                     << " | vtag=0x" << std::hex << assoc.peer_verification_tag
-                     << " streams=" << std::dec << assoc.num_outbound_streams
-                     << "/" << assoc.num_inbound_streams);
+                     << " | vtag=0x" << std::hex << assoc.peer_verification_tag << " streams="
+                     << std::dec << assoc.num_outbound_streams << "/" << assoc.num_inbound_streams);
             break;
         case SctpChunkType::INIT_ACK:
             assoc.state = SctpAssociationState::COOKIE_ECHOED;
-            LOG_INFO("SCTP Association " << assoc.association_id
+            LOG_INFO("SCTP Association "
+                     << assoc.association_id
                      << " state transition: COOKIE_WAIT -> COOKIE_ECHOED (INIT_ACK received)");
             break;
         case SctpChunkType::COOKIE_ECHO:
             if (old_state == SctpAssociationState::CLOSED) {
                 assoc.state = SctpAssociationState::ESTABLISHED;
                 LOG_INFO("SCTP Association " << assoc.association_id
-                         << " state transition: CLOSED -> ESTABLISHED (COOKIE_ECHO received, server side)");
+                                             << " state transition: CLOSED -> ESTABLISHED "
+                                                "(COOKIE_ECHO received, server side)");
             }
             break;
         case SctpChunkType::COOKIE_ACK:
             assoc.state = SctpAssociationState::ESTABLISHED;
-            LOG_INFO("SCTP Association " << assoc.association_id
+            LOG_INFO("SCTP Association "
+                     << assoc.association_id
                      << " state transition: COOKIE_ECHOED -> ESTABLISHED (COOKIE_ACK received)"
-                     << " | Ready for data transfer on " << assoc.num_outbound_streams << " streams");
+                     << " | Ready for data transfer on " << assoc.num_outbound_streams
+                     << " streams");
             break;
         case SctpChunkType::SHUTDOWN:
             assoc.state = SctpAssociationState::SHUTDOWN_RECEIVED;
-            LOG_INFO("SCTP Association " << assoc.association_id
+            LOG_INFO("SCTP Association "
+                     << assoc.association_id
                      << " state transition: ESTABLISHED -> SHUTDOWN_RECEIVED (SHUTDOWN received)"
                      << " | Total data chunks: " << assoc.data_chunks_received);
             break;
         case SctpChunkType::SHUTDOWN_ACK:
             assoc.state = SctpAssociationState::SHUTDOWN_ACK_SENT;
-            LOG_INFO("SCTP Association " << assoc.association_id
+            LOG_INFO("SCTP Association "
+                     << assoc.association_id
                      << " state transition -> SHUTDOWN_ACK_SENT (SHUTDOWN_ACK received)");
             break;
         case SctpChunkType::SHUTDOWN_COMPLETE:
             assoc.state = SctpAssociationState::CLOSED;
-            LOG_INFO("SCTP Association " << assoc.association_id
+            LOG_INFO("SCTP Association "
+                     << assoc.association_id
                      << " state transition -> CLOSED (SHUTDOWN_COMPLETE received)"
                      << " | Lifetime stats: " << assoc.packets_received << " packets, "
-                     << assoc.bytes_received << " bytes, "
-                     << assoc.data_chunks_received << " data chunks");
+                     << assoc.bytes_received << " bytes, " << assoc.data_chunks_received
+                     << " data chunks");
             break;
         default:
             // For DATA, SACK, HEARTBEAT, etc. - no state change
@@ -722,30 +774,26 @@ void SctpParser::processDataChunks(SctpAssociation& assoc,
         auto fragment = data_chunk.toFragment();
 
         // Log fragment details
-        LOG_DEBUG("SCTP Association " << assoc.association_id
-                  << " | Stream " << fragment.stream_id
-                  << " | TSN=" << fragment.tsn
-                  << " SSN=" << fragment.stream_sequence
-                  << " PPID=" << fragment.payload_protocol
-                  << " (" << getSctpPpidName(fragment.payload_protocol) << ")"
+        LOG_DEBUG("SCTP Association "
+                  << assoc.association_id << " | Stream " << fragment.stream_id
+                  << " | TSN=" << fragment.tsn << " SSN=" << fragment.stream_sequence
+                  << " PPID=" << fragment.payload_protocol << " ("
+                  << getSctpPpidName(fragment.payload_protocol) << ")"
                   << " | Flags: " << (fragment.beginning ? "B" : "-")
-                  << (fragment.ending ? "E" : "-")
-                  << (fragment.unordered ? "U" : "-")
+                  << (fragment.ending ? "E" : "-") << (fragment.unordered ? "U" : "-")
                   << " | Data: " << fragment.data.size() << " bytes");
 
         auto msg_opt = reassembler.addFragment(fragment);
 
         if (msg_opt.has_value() && message_callback_) {
             const auto& msg = msg_opt.value();
-            LOG_INFO("SCTP Association " << assoc.association_id
-                     << " | Stream " << msg.stream_id
-                     << " | SSN=" << msg.stream_sequence
-                     << " | Reassembled complete message"
-                     << " | PPID=" << msg.payload_protocol
-                     << " (" << getSctpPpidName(msg.payload_protocol) << ")"
-                     << " | TSN range: " << msg.start_tsn << "-" << msg.end_tsn
-                     << " | Fragments: " << msg.fragment_count
-                     << " | Total size: " << msg.data.size() << " bytes");
+            LOG_INFO("SCTP Association "
+                     << assoc.association_id << " | Stream " << msg.stream_id
+                     << " | SSN=" << msg.stream_sequence << " | Reassembled complete message"
+                     << " | PPID=" << msg.payload_protocol << " ("
+                     << getSctpPpidName(msg.payload_protocol) << ")"
+                     << " | TSN range: " << msg.start_tsn << "-" << msg.end_tsn << " | Fragments: "
+                     << msg.fragment_count << " | Total size: " << msg.data.size() << " bytes");
             message_callback_(msg);
         }
     }
@@ -755,10 +803,9 @@ void SctpParser::processDataChunks(SctpAssociation& assoc,
         auto msg_opt = reassembler.getCompleteMessage();
         if (msg_opt.has_value() && message_callback_) {
             const auto& msg = msg_opt.value();
-            LOG_INFO("SCTP Association " << assoc.association_id
-                     << " | Retrieved buffered complete message"
-                     << " | Stream " << msg.stream_id
-                     << " | SSN=" << msg.stream_sequence);
+            LOG_INFO("SCTP Association "
+                     << assoc.association_id << " | Retrieved buffered complete message"
+                     << " | Stream " << msg.stream_id << " | SSN=" << msg.stream_sequence);
             message_callback_(msg);
         }
     }
@@ -807,7 +854,11 @@ bool SctpParser::verifyChecksum(const uint8_t* data, size_t len) {
 
     // Create a copy with checksum field set to 0
     std::vector<uint8_t> data_copy(data, data + len);
-    std::memset(data_copy.data() + 8, 0, 4);
+    // Zero out the checksum field (bytes 8-11)
+    data_copy[8] = 0;
+    data_copy[9] = 0;
+    data_copy[10] = 0;
+    data_copy[11] = 0;
 
     // Calculate CRC32C
     uint32_t calculated_checksum = crc32c(data_copy.data(), len);
