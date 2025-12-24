@@ -1155,4 +1155,42 @@ set_tests_properties(test_volte_correlator PROPERTIES
     LABELS "unit"
 )
 
+# Protocol Detector Tests
+add_executable(test_protocol_detector
+    unit/test_protocol_detector.cpp
+)
+
+target_link_libraries(test_protocol_detector PRIVATE
+    callflow_common
+    ndpi_engine
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_protocol_detector COMMAND test_protocol_detector)
+
+set_tests_properties(test_protocol_detector PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# Dynamic Port Tracker Tests
+add_executable(test_dynamic_port_tracker
+    unit/test_dynamic_port_tracker.cpp
+)
+
+target_link_libraries(test_dynamic_port_tracker PRIVATE
+    callflow_common
+    pcap_ingest
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_dynamic_port_tracker COMMAND test_dynamic_port_tracker)
+
+set_tests_properties(test_dynamic_port_tracker PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")

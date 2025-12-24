@@ -8,6 +8,7 @@
 
 #include "common/logger.h"
 #include "common/utils.h"
+#include "ndpi_engine/protocol_detector.h"
 #include "protocol_parsers/diameter_parser.h"
 #include "protocol_parsers/gtp_parser.h"
 #include "protocol_parsers/gtpv1_parser.h"
@@ -223,11 +224,18 @@ void PacketProcessor::processIpPacket(const std::vector<uint8_t>& ip_packet, Tim
 void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
                                                  const std::vector<uint8_t>& payload,
                                                  int recursion_depth) {
-    // Protocol Detection and Parsing logic from JobManager/main.cpp
+    // Protocol Detection Strategy:
+    // 1. Try port-based detection first (fast path for standard ports)
+    // 2. If port-based fails, try content-based detection (fallback)
+    // 3. For protocols like RTP, use dynamic port tracking from SDP
+
+    bool detected_by_port = false;
+    ProtocolType detected_protocol = ProtocolType::UNKNOWN;
 
     // PFCP (UDP 8805)
     if (metadata.five_tuple.protocol == IPPROTO_UDP &&
         (metadata.five_tuple.src_port == 8805 || metadata.five_tuple.dst_port == 8805)) {
+        detected_by_port = true;
         PfcpParser parser;
         auto msg = parser.parse(payload.data(), payload.size());
         if (msg.has_value()) {
@@ -368,15 +376,119 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
         return;
     }
 
-    // RTP
-    if (metadata.five_tuple.protocol == IPPROTO_UDP &&
-        ((metadata.five_tuple.src_port >= 10000 && metadata.five_tuple.src_port % 2 == 0) ||
-         (metadata.five_tuple.dst_port >= 10000 && metadata.five_tuple.dst_port % 2 == 0))) {
-        RtpParser parser;
-        auto header = parser.parseRtp(payload.data(), payload.size());
-        if (header.has_value()) {
-            correlator_.processPacket(metadata, ProtocolType::RTP, header->toJson());
-            return;
+    // RTP - Check both port-based heuristics and dynamic port tracker
+    if (metadata.five_tuple.protocol == IPPROTO_UDP) {
+        bool is_rtp_candidate = false;
+
+        // Check traditional port-based heuristic
+        if ((metadata.five_tuple.src_port >= 10000 && metadata.five_tuple.src_port % 2 == 0) ||
+            (metadata.five_tuple.dst_port >= 10000 && metadata.five_tuple.dst_port % 2 == 0)) {
+            is_rtp_candidate = true;
+        }
+
+        // Check dynamic port tracker (ports learned from SDP)
+        if (!is_rtp_candidate &&
+            (dynamic_port_tracker_.isKnownRtpPort(metadata.five_tuple.src_port) ||
+             dynamic_port_tracker_.isKnownRtpPort(metadata.five_tuple.dst_port))) {
+            is_rtp_candidate = true;
+            LOG_DEBUG("RTP port matched via dynamic port tracker: src="
+                      << metadata.five_tuple.src_port << " dst=" << metadata.five_tuple.dst_port);
+        }
+
+        if (is_rtp_candidate) {
+            RtpParser parser;
+            auto header = parser.parseRtp(payload.data(), payload.size());
+            if (header.has_value()) {
+                correlator_.processPacket(metadata, ProtocolType::RTP, header->toJson());
+                return;
+            }
+        }
+    }
+
+    // ============================================================================
+    // Content-Based Detection Fallback
+    // ============================================================================
+    // If we haven't detected a protocol yet using port-based heuristics,
+    // try content-based detection by inspecting the payload
+    if (!detected_by_port && !payload.empty()) {
+        auto content_detected = ProtocolDetector::detectFromPayload(
+            payload.data(),
+            payload.size(),
+            metadata.five_tuple.src_port,
+            metadata.five_tuple.dst_port,
+            metadata.five_tuple.protocol);
+
+        if (content_detected.has_value()) {
+            detected_protocol = content_detected.value();
+            LOG_INFO("Content-based protocol detection succeeded: "
+                     << protocolTypeToString(detected_protocol)
+                     << " (src_port=" << metadata.five_tuple.src_port
+                     << " dst_port=" << metadata.five_tuple.dst_port << ")");
+
+            // Route to appropriate parser based on detected protocol
+            switch (detected_protocol) {
+                case ProtocolType::SIP: {
+                    SipParser parser;
+                    auto msg = parser.parse(payload.data(), payload.size());
+                    if (msg.has_value()) {
+                        correlator_.processPacket(metadata, ProtocolType::SIP, msg->toJson());
+                        return;
+                    }
+                    break;
+                }
+
+                case ProtocolType::DIAMETER: {
+                    DiameterParser parser;
+                    auto msg = parser.parse(payload.data(), payload.size());
+                    if (msg.has_value()) {
+                        correlator_.processPacket(metadata, ProtocolType::DIAMETER, msg->toJson());
+                        return;
+                    }
+                    break;
+                }
+
+                case ProtocolType::GTP_C: {
+                    GtpParser parser;
+                    auto msg = parser.parse(payload.data(), payload.size());
+                    if (msg.has_value()) {
+                        correlator_.processPacket(metadata, ProtocolType::GTP_C, msg->toJson());
+                        return;
+                    }
+                    break;
+                }
+
+                case ProtocolType::GTP_U: {
+                    GtpV1Parser parser;
+                    auto msg = parser.parse(payload.data(), payload.size());
+                    if (msg.has_value()) {
+                        correlator_.processPacket(metadata, ProtocolType::GTP_U, msg->toJson());
+
+                        // Recursive processing for inner payload
+                        if (!msg->user_data.empty()) {
+                            processIpPacket(msg->user_data, metadata.timestamp,
+                                            metadata.frame_number, recursion_depth + 1);
+                        }
+                        return;
+                    }
+                    break;
+                }
+
+                case ProtocolType::RTP: {
+                    RtpParser parser;
+                    auto header = parser.parseRtp(payload.data(), payload.size());
+                    if (header.has_value()) {
+                        correlator_.processPacket(metadata, ProtocolType::RTP, header->toJson());
+                        return;
+                    }
+                    break;
+                }
+
+                default:
+                    LOG_DEBUG("Content-based detection returned "
+                              << protocolTypeToString(detected_protocol)
+                              << " but no parser available");
+                    break;
+            }
         }
     }
 
@@ -589,6 +701,66 @@ void PacketProcessor::processSctpMessage(const SctpReassembledMessage& message,
                                             << getSctpPpidName(message.payload_protocol) << ")");
             break;
     }
+}
+
+// ============================================================================
+// DynamicPortTracker Implementation
+// ============================================================================
+
+void DynamicPortTracker::registerRtpPorts(const std::string& call_id,
+                                          uint16_t local_port,
+                                          uint16_t remote_port) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto now = std::chrono::system_clock::now();
+
+    // Register local port
+    if (local_port > 0) {
+        port_to_call_id_[local_port] = PortEntry{call_id, now};
+        LOG_DEBUG("Registered RTP port " << local_port << " for call_id=" << call_id);
+    }
+
+    // Register remote port
+    if (remote_port > 0 && remote_port != local_port) {
+        port_to_call_id_[remote_port] = PortEntry{call_id, now};
+        LOG_DEBUG("Registered RTP port " << remote_port << " for call_id=" << call_id);
+    }
+}
+
+bool DynamicPortTracker::isKnownRtpPort(uint16_t port) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return port_to_call_id_.find(port) != port_to_call_id_.end();
+}
+
+std::optional<std::string> DynamicPortTracker::getCallIdByPort(uint16_t port) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = port_to_call_id_.find(port);
+    if (it != port_to_call_id_.end()) {
+        return it->second.call_id;
+    }
+    return std::nullopt;
+}
+
+size_t DynamicPortTracker::cleanupExpired(Timestamp current_time) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    size_t removed = 0;
+
+    auto it = port_to_call_id_.begin();
+    while (it != port_to_call_id_.end()) {
+        auto age = std::chrono::duration_cast<std::chrono::seconds>(
+            current_time - it->second.registered_at);
+
+        if (age > PORT_TTL) {
+            LOG_DEBUG("Expired RTP port mapping: port=" << it->first
+                      << " call_id=" << it->second.call_id
+                      << " age=" << age.count() << "s");
+            it = port_to_call_id_.erase(it);
+            ++removed;
+        } else {
+            ++it;
+        }
+    }
+
+    return removed;
 }
 
 }  // namespace callflow

@@ -201,6 +201,7 @@ if(NOT NEED_NDPI_BUILD)
         ndpi_engine/ndpi_wrapper.cpp
         ndpi_engine/ndpi_flow_cache.cpp
         ndpi_engine/flow_classifier.cpp
+        ndpi_engine/protocol_detector.cpp
     )
     target_include_directories(ndpi_engine PUBLIC
         ${PROJECT_SOURCE_DIR}/include
