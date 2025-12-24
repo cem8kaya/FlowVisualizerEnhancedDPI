@@ -144,6 +144,23 @@ target_link_libraries(nas_s1ap_correlation PUBLIC
     gtpv2_correlation
 )
 
+# VoLTE inter-protocol correlation library
+add_library(volte_correlation STATIC
+    correlation/volte/volte_correlator.cpp
+)
+target_include_directories(volte_correlation PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(volte_correlation PUBLIC
+    callflow_common
+    identity_correlation
+    sip_correlation
+    diameter_correlation
+    gtpv2_correlation
+    nas_s1ap_correlation
+    rtp_correlation
+)
+
 # Procedure state machines library
 add_library(procedure_correlation STATIC
     correlation/procedure_state_machine.cpp
