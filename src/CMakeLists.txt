@@ -93,6 +93,24 @@ target_link_libraries(diameter_correlation PUBLIC
     protocol_parsers
 )
 
+# GTPv2 correlation library
+add_library(gtpv2_correlation STATIC
+    correlation/gtpv2/gtpv2_types.cpp
+    correlation/gtpv2/gtpv2_message.cpp
+    correlation/gtpv2/gtpv2_bearer.cpp
+    correlation/gtpv2/gtpv2_session.cpp
+    correlation/gtpv2/gtpv2_fteid_manager.cpp
+    correlation/gtpv2/gtpv2_correlator.cpp
+)
+target_include_directories(gtpv2_correlation PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(gtpv2_correlation PUBLIC
+    callflow_common
+    identity_correlation
+    protocol_parsers
+)
+
 # Procedure state machines library
 add_library(procedure_correlation STATIC
     correlation/procedure_state_machine.cpp
