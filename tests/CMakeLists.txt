@@ -847,4 +847,81 @@ set_tests_properties(test_subscriber_context_manager PROPERTIES
     LABELS "unit"
 )
 
+# SIP Correlation Tests
+# SIP Call Detector Tests
+add_executable(test_sip_call_detector
+    unit/sip/test_sip_call_detector.cpp
+)
+
+target_link_libraries(test_sip_call_detector PRIVATE
+    callflow_common
+    sip_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_sip_call_detector COMMAND test_sip_call_detector)
+
+set_tests_properties(test_sip_call_detector PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# SIP Dialog Tests
+add_executable(test_sip_dialog
+    unit/sip/test_sip_dialog.cpp
+)
+
+target_link_libraries(test_sip_dialog PRIVATE
+    callflow_common
+    sip_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_sip_dialog COMMAND test_sip_dialog)
+
+set_tests_properties(test_sip_dialog PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# SIP Transaction Tests
+add_executable(test_sip_transaction
+    unit/sip/test_sip_transaction.cpp
+)
+
+target_link_libraries(test_sip_transaction PRIVATE
+    callflow_common
+    sip_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_sip_transaction COMMAND test_sip_transaction)
+
+set_tests_properties(test_sip_transaction PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
+# SIP Correlator Tests
+add_executable(test_sip_correlator
+    unit/sip/test_sip_correlator.cpp
+)
+
+target_link_libraries(test_sip_correlator PRIVATE
+    callflow_common
+    sip_correlation
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_sip_correlator COMMAND test_sip_correlator)
+
+set_tests_properties(test_sip_correlator PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
