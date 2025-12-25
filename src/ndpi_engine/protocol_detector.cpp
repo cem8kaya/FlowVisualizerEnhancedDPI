@@ -72,32 +72,66 @@ std::optional<ProtocolType> ProtocolDetector::detectFromPayload(
 }
 
 bool ProtocolDetector::isSipPayload(const uint8_t* data, size_t len) {
-    if (len < 8) {
+    if (!data || len < 8) {
         return false;
     }
 
-    // Check for SIP response "SIP/2.0 " (8 bytes)
-    if (std::memcmp(data, SIP_RESPONSE_PREFIX, 8) == 0) {
-        return true;
+    // Convert to string for analysis (check up to 4KB for large messages)
+    size_t check_len = std::min(len, size_t(4096));
+    std::string text(reinterpret_cast<const char*>(data), check_len);
+
+    // Method 1: Check for SIP/2.0 version identifier (MUST be present in all SIP messages)
+    bool has_sip_version = (text.find("SIP/2.0") != std::string::npos);
+    if (!has_sip_version) {
+        return false;
     }
 
-    // Check for SIP request methods
-    // Convert first 20 bytes to string_view for efficient comparison
-    size_t check_len = std::min(len, size_t(20));
-    std::string_view payload(reinterpret_cast<const char*>(data), check_len);
+    // Method 2: Check for SIP methods (request line)
+    static const std::vector<std::string> sip_methods = {
+        "INVITE ", "ACK ", "BYE ", "CANCEL ", "OPTIONS ",
+        "REGISTER ", "UPDATE ", "PRACK ", "SUBSCRIBE ",
+        "NOTIFY ", "PUBLISH ", "MESSAGE ", "INFO ", "REFER "
+    };
 
-    for (const char* method : SIP_METHODS) {
-        size_t method_len = std::strlen(method);
-        if (payload.size() >= method_len + 1) {
-            // Check if payload starts with method followed by space or tab
-            if (payload.substr(0, method_len) == method &&
-                (payload[method_len] == ' ' || payload[method_len] == '\t')) {
+    for (const auto& method : sip_methods) {
+        if (text.find(method) == 0) { // Must be at start
+            return true;
+        }
+    }
+
+    // Method 3: Check for SIP status line (response)
+    // Format: "SIP/2.0 <status-code> <reason>"
+    if (text.find("SIP/2.0 ") == 0) {
+        // Check if followed by 3-digit status code
+        if (text.length() >= 12) {
+            std::string status = text.substr(8, 3);
+            if (std::isdigit(status[0]) && std::isdigit(status[1]) &&
+                std::isdigit(status[2])) {
                 return true;
             }
         }
     }
 
-    return false;
+    // Method 4: Check for mandatory SIP headers (more reliable for fragments)
+    // According to RFC 3261, these headers are mandatory in all SIP requests/responses
+    static const std::vector<std::string> mandatory_headers = {
+        "Call-ID:", "i:", // Call-ID (or compact form)
+        "From:", "f:",    // From
+        "To:", "t:",      // To
+        "CSeq:",          // CSeq
+        "Via:", "v:"      // Via
+    };
+
+    int header_count = 0;
+    for (const auto& header : mandatory_headers) {
+        if (text.find(header) != std::string::npos) {
+            header_count++;
+        }
+    }
+
+    // If we have SIP/2.0 + at least 2 mandatory headers, likely SIP
+    // This catches fragmented messages where the request/status line might be in a different segment
+    return has_sip_version && header_count >= 2;
 }
 
 bool ProtocolDetector::isDiameterPayload(const uint8_t* data, size_t len) {

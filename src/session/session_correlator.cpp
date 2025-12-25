@@ -11,6 +11,15 @@
 namespace callflow {
 
 // ============================================================================
+// EnhancedSessionCorrelator Constructor
+// ============================================================================
+
+EnhancedSessionCorrelator::EnhancedSessionCorrelator() {
+    // Initialize SIP-only session manager
+    sip_only_manager_ = std::make_unique<correlation::SipSessionManager>();
+}
+
+// ============================================================================
 // EnhancedSessionCorrelator Public Methods
 // ============================================================================
 
@@ -1218,6 +1227,31 @@ callflow::EnhancedSessionCorrelator::getAllSessions() const {
     return result;
 }
 
+nlohmann::json EnhancedSessionCorrelator::exportAllSessions() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    nlohmann::json all_sessions;
+
+    // Export correlated sessions
+    all_sessions["correlated"] = exportToJson();
+
+    // Export SIP-only sessions
+    all_sessions["sip_only"] = sip_only_manager_->exportSessions();
+
+    // Add summary statistics
+    nlohmann::json summary;
+    summary["correlated_count"] = sessions_.size();
+    summary["sip_only_count"] = sip_only_manager_->getSessions().size();
+    auto sip_stats = sip_only_manager_->getStats();
+    summary["sip_only_active"] = sip_stats.active_sessions;
+    summary["sip_only_completed"] = sip_stats.completed_sessions;
+    summary["total_sessions"] = sessions_.size() + sip_only_manager_->getSessions().size();
+
+    all_sessions["summary"] = summary;
+
+    return all_sessions;
+}
+
 void callflow::EnhancedSessionCorrelator::processSipMessage(const SipMessage& msg,
                                                             const PacketMetadata& packet) {
     // 1. Update Dialog Tracker
@@ -1339,7 +1373,21 @@ void callflow::EnhancedSessionCorrelator::processSipMessage(const SipMessage& ms
     s_msg.dst_port = packet.five_tuple.dst_port;
     s_msg.payload_length = packet.packet_length;
 
-    addMessage(s_msg);
+    // Try normal correlation first
+    // Check if any correlation key exists
+    bool has_correlation_key = key.imsi.has_value() || key.supi.has_value() ||
+                               key.msisdn.has_value() || key.icid.has_value() ||
+                               key.ue_ipv4.has_value() || key.ue_ipv6.has_value();
+
+    if (has_correlation_key) {
+        // Attempt to add to correlated session
+        addMessage(s_msg);
+    } else {
+        // No correlation keys found - create standalone SIP session
+        LOG_DEBUG("No correlation keys found for SIP Call-ID: " << msg.call_id
+                  << ", creating standalone SIP session");
+        sip_only_manager_->processSipMessage(msg, packet);
+    }
 }
 
 }  // namespace callflow
