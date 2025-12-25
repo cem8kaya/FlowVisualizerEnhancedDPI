@@ -41,6 +41,7 @@ target_include_directories(session_correlation PUBLIC
 target_link_libraries(session_correlation PUBLIC
     callflow_common
     protocol_parsers
+    sip_correlation
 )
 
 # Identity correlation library
