@@ -34,7 +34,6 @@ target_link_libraries(config_manager PUBLIC
 add_library(session_correlation STATIC
     session/session_types.cpp
     session/session_correlator.cpp
-    correlation/sip_dialog_tracker.cpp
 )
 target_include_directories(session_correlation PUBLIC
     ${PROJECT_SOURCE_DIR}/include
@@ -70,6 +69,8 @@ add_library(sip_correlation STATIC
     correlation/sip/sip_call_detector.cpp
     correlation/sip/sip_session.cpp
     correlation/sip/sip_correlator.cpp
+    correlation/sip_session_manager.cpp
+    correlation/sip_dialog_tracker.cpp
 )
 target_include_directories(sip_correlation PUBLIC
     ${PROJECT_SOURCE_DIR}/include
@@ -77,6 +78,7 @@ target_include_directories(sip_correlation PUBLIC
 target_link_libraries(sip_correlation PUBLIC
     callflow_common
     identity_correlation
+    protocol_parsers
 )
 
 # Diameter correlation library

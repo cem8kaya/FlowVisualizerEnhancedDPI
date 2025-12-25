@@ -1,10 +1,12 @@
 #pragma once
 
-#include "correlation/sip/sip_types.h"
+#include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <optional>
+
+#include "correlation/sip/sip_types.h"
 
 namespace callflow {
 namespace correlation {
@@ -94,9 +96,7 @@ public:
     const std::vector<SipMediaInfo>& getMediaInfo() const { return media_info_; }
 
     // Generic headers
-    void setHeader(const std::string& name, const std::string& value) {
-        headers_[name] = value;
-    }
+    void setHeader(const std::string& name, const std::string& value) { headers_[name] = value; }
     std::optional<std::string> getHeader(const std::string& name) const {
         auto it = headers_.find(name);
         if (it != headers_.end()) {
@@ -143,6 +143,9 @@ public:
     // Dialog key generation
     std::string getDialogId() const;
     std::string getTransactionId() const;
+
+    // Serialization
+    nlohmann::json toJson() const;
 
 private:
     // Message type
@@ -191,5 +194,5 @@ private:
     uint16_t dest_port_ = 0;
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

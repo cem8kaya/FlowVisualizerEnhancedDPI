@@ -1,4 +1,11 @@
 #include "correlation/sip_session_manager.h"
+
+#include <memory>
+#include <mutex>
+#include <sstream>
+#include <string>
+#include <vector>
+
 #include "common/logger.h"
 #include "common/utils.h"
 
@@ -9,35 +16,61 @@ SipSessionManager::SipSessionManager() {
     dialog_tracker_ = std::make_unique<SipDialogTracker>();
 }
 
-void SipSessionManager::processSipMessage(const SipMessage& msg,
-                                           const PacketMetadata& metadata) {
+void SipSessionManager::processSipMessage(const SipMessage& msg, const PacketMetadata& metadata) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    if (msg.call_id.empty()) {
+    if (msg.getCallId().empty()) {
         LOG_WARN("SIP message without Call-ID, skipping");
         return;
     }
 
     // Get or create session
-    auto& session = sessions_[msg.call_id];
+    auto& session = sessions_[msg.getCallId()];
     if (!session) {
         session = createSession(msg, metadata);
-        LOG_INFO("Created standalone SIP session: " << msg.call_id);
+        LOG_INFO("Created standalone SIP session: " << msg.getCallId());
     }
 
     // Add message to session
     session->addMessage(msg);
 
     // Update dialog tracker
-    dialog_tracker_->processMessage(msg, metadata.five_tuple.src_ip,
-                                     metadata.five_tuple.dst_ip,
-                                     metadata.timestamp);
+    // Create struct SipMessage from Class SipMessage for dialog tracker
+    ::callflow::SipMessage struct_msg;
+    struct_msg.is_request = msg.isRequest();
+
+    if (msg.isRequest()) {
+        struct_msg.method = msg.getMethod();
+        struct_msg.request_uri = msg.getRequestUri();
+    } else {
+        struct_msg.status_code = msg.getStatusCode();
+        struct_msg.reason_phrase = msg.getReasonPhrase();
+        // Response CSeq method is needed for transaction matching
+        struct_msg.method = msg.getCSeqMethod();
+    }
+
+    struct_msg.call_id = msg.getCallId();
+    struct_msg.from_tag = msg.getFromTag();
+    struct_msg.to_tag = msg.getToTag();
+
+    // Use stringstream to convert CSeq to string (safer than to_string in some contexts)
+    std::ostringstream oss;
+    oss << msg.getCSeq();
+    struct_msg.cseq = oss.str();
+
+    // Copy Via branch for transaction matching
+    auto top_via = msg.getTopVia();
+    if (top_via.has_value()) {
+        struct_msg.via_branch = top_via->branch;
+    }
+
+    dialog_tracker_->processMessage(struct_msg, metadata.five_tuple.src_ip,
+                                    metadata.five_tuple.dst_ip, metadata.timestamp);
 }
 
-std::shared_ptr<SipSession> SipSessionManager::createSession(
-    const SipMessage& msg, const PacketMetadata& metadata) {
-
-    auto session = std::make_shared<SipSession>(msg.call_id);
+std::shared_ptr<SipSession> SipSessionManager::createSession(const SipMessage& msg,
+                                                             const PacketMetadata& metadata) {
+    auto session = std::make_shared<SipSession>(msg.getCallId());
 
     // Session will auto-populate during addMessage()
     return session;
@@ -56,7 +89,8 @@ std::vector<std::shared_ptr<SipSession>> SipSessionManager::getSessions() const 
     return result;
 }
 
-std::shared_ptr<SipSession> SipSessionManager::getSessionByCallId(const std::string& call_id) const {
+std::shared_ptr<SipSession> SipSessionManager::getSessionByCallId(
+    const std::string& call_id) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = sessions_.find(call_id);
@@ -105,7 +139,8 @@ nlohmann::json SipSessionManager::exportSessions() const {
             for (const auto& msg_ref : generic_session.legs[0].messages) {
                 nlohmann::json event;
                 event["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    msg_ref.timestamp.time_since_epoch()).count();
+                                         msg_ref.timestamp.time_since_epoch())
+                                         .count();
                 event["protocol"] = protocolTypeToString(msg_ref.protocol);
                 event["message_type"] = msg_ref.message_type;
                 event["data"] = msg_ref.parsed_data;
@@ -134,15 +169,15 @@ Session SipSessionManager::toGenericSession(const SipSession& sip_session) const
         msg_ref.protocol = ProtocolType::SIP;
 
         // Determine message type
-        if (sip_msg.is_request) {
-            msg_ref.message_type = sip_msg.method;
+        if (sip_msg.isRequest()) {
+            msg_ref.message_type = sip_msg.getMethod();
         } else {
-            msg_ref.message_type = std::to_string(sip_msg.status_code);
+            msg_ref.message_type = std::to_string(sip_msg.getStatusCode());
         }
 
         // Set timestamp (use session start time + offset for now)
-        msg_ref.timestamp = std::chrono::system_clock::from_time_t(
-            static_cast<time_t>(sip_session.getStartTime()));
+        msg_ref.timestamp =
+            std::chrono::system_clock::from_time_t(static_cast<time_t>(sip_session.getStartTime()));
 
         // Store parsed data as JSON
         msg_ref.parsed_data = sip_msg.toJson();
@@ -168,7 +203,7 @@ SipSessionManager::Stats SipSessionManager::getStats() const {
         const auto& messages = session->getMessages();
         bool completed = false;
         for (const auto& msg : messages) {
-            if (msg.is_request && msg.method == "BYE") {
+            if (msg.isRequest() && msg.getMethod() == "BYE") {
                 completed = true;
                 break;
             }
@@ -192,14 +227,14 @@ void SipSessionManager::cleanup(std::chrono::seconds max_age) {
 
     while (it != sessions_.end()) {
         const auto& session = it->second;
-        auto session_end = std::chrono::system_clock::from_time_t(
-            static_cast<time_t>(session->getEndTime()));
+        auto session_end =
+            std::chrono::system_clock::from_time_t(static_cast<time_t>(session->getEndTime()));
 
         auto age = std::chrono::duration_cast<std::chrono::seconds>(now - session_end);
 
         if (age > max_age) {
-            LOG_DEBUG("Removing old SIP session: " << it->first
-                      << " (age: " << age.count() << "s)");
+            LOG_DEBUG("Removing old SIP session: " << it->first << " (age: " << age.count()
+                                                   << "s)");
             it = sessions_.erase(it);
         } else {
             ++it;
@@ -207,4 +242,5 @@ void SipSessionManager::cleanup(std::chrono::seconds max_age) {
     }
 }
 
-}} // namespace callflow::correlation
+}  // namespace correlation
+}  // namespace callflow
