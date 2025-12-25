@@ -8,6 +8,7 @@
 
 #include "common/types.h"
 #include "correlation/sip_dialog_tracker.h"
+#include "correlation/sip_session_manager.h"
 #include "protocol_parsers/sip_parser.h"
 #include "session/session_types.h"
 
@@ -28,7 +29,7 @@ namespace callflow {
  */
 class EnhancedSessionCorrelator {
 public:
-    EnhancedSessionCorrelator() = default;
+    EnhancedSessionCorrelator();
     ~EnhancedSessionCorrelator() = default;
 
     /**
@@ -185,6 +186,13 @@ public:
     nlohmann::json exportToJson() const;
 
     /**
+     * Export all sessions including SIP-only sessions
+     *
+     * @return JSON object with both correlated and SIP-only sessions
+     */
+    nlohmann::json exportAllSessions() const;
+
+    /**
      * Process a packet and correlate it to a session
      */
     void processPacket(const PacketMetadata& packet, ProtocolType protocol,
@@ -222,6 +230,9 @@ private:
 
     // SIP Dialog Tracking
     SipDialogTracker dialog_tracker_;
+
+    // SIP-only session management (for SIP messages with no cross-protocol correlation)
+    std::unique_ptr<correlation::SipSessionManager> sip_only_manager_;
 
     // Thread safety
     mutable std::mutex mutex_;

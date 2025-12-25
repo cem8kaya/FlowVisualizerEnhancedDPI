@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <mutex>
+#include <set>
 #include <unordered_map>
 
 #include "common/types.h"
@@ -16,6 +17,43 @@
 #include "transport/sctp_parser.h"
 
 namespace callflow {
+
+/**
+ * SipPortTracker - Tracks non-standard SIP ports discovered during processing
+ *
+ * When SIP is detected on a non-standard port (e.g., via content inspection),
+ * this tracker registers that port for future fast-path detection.
+ */
+class SipPortTracker {
+public:
+    SipPortTracker();
+
+    /**
+     * Register a non-standard SIP port
+     *
+     * @param port Port number to register
+     */
+    void registerSipPort(uint16_t port);
+
+    /**
+     * Check if a port is a known SIP port (standard or registered)
+     *
+     * @param port Port to check
+     * @return true if port is registered as SIP port
+     */
+    bool isSipPort(uint16_t port) const;
+
+    /**
+     * Get all known SIP ports
+     *
+     * @return Set of all known SIP ports
+     */
+    std::set<uint16_t> getAllSipPorts() const;
+
+private:
+    mutable std::mutex mutex_;
+    std::set<uint16_t> known_sip_ports_;
+};
 
 /**
  * DynamicPortTracker - Tracks RTP ports learned from SDP negotiation
@@ -117,8 +155,50 @@ private:
         std::vector<uint8_t> buffer;
     };
 
+    /**
+     * Enhanced TCP stream buffer for SIP with message boundary detection
+     * Handles fragmented SIP messages and multiple messages in single TCP segment
+     */
+    class SipTcpStreamBuffer {
+    public:
+        SipTcpStreamBuffer() = default;
+
+        /**
+         * Append data to buffer
+         */
+        void appendData(const uint8_t* data, size_t len);
+
+        /**
+         * Extract all complete SIP messages from buffer
+         * @return Vector of complete SIP messages
+         */
+        std::vector<std::vector<uint8_t>> extractCompleteMessages();
+
+        /**
+         * Reset buffer (overflow protection)
+         */
+        void reset();
+
+        /**
+         * Get current buffer size
+         */
+        size_t getBufferSize() const { return buffer_.size(); }
+
+    private:
+        std::vector<uint8_t> buffer_;
+        static constexpr size_t MAX_SIP_MESSAGE_SIZE = 64 * 1024;  // 64KB
+        static constexpr size_t MAX_BUFFER_SIZE = 256 * 1024;      // 256KB total
+
+        /**
+         * Detect complete SIP message boundaries
+         * @param start_pos Starting position in buffer
+         * @return Length of complete message if found, nullopt otherwise
+         */
+        std::optional<size_t> findMessageBoundary(size_t start_pos) const;
+    };
+
     // TCP Buffers for SIP and Diameter
-    std::unordered_map<FiveTuple, TcpStreamBuffer> sip_tcp_sessions_;
+    std::unordered_map<FiveTuple, SipTcpStreamBuffer> sip_tcp_buffers_;
     std::unordered_map<FiveTuple, TcpStreamBuffer> diameter_sessions_;
 
     // Parsers
@@ -127,6 +207,9 @@ private:
 
     // Dynamic port tracker for RTP
     DynamicPortTracker dynamic_port_tracker_;
+
+    // SIP port tracker for non-standard ports
+    SipPortTracker sip_port_tracker_;
 
     void processIpPacket(const std::vector<uint8_t>& ip_packet, Timestamp ts, uint32_t frame_number,
                          int recursion_depth = 0);
@@ -144,6 +227,17 @@ public:
      * Used by SIP parser to register RTP ports from SDP
      */
     DynamicPortTracker& getDynamicPortTracker() { return dynamic_port_tracker_; }
+
+private:
+    /**
+     * Check if port is a known SIP port (standard: 5060, 5061, 5062, 5063)
+     */
+    static bool isSipPort(uint16_t port);
+
+    /**
+     * Create PacketMetadata from TCP five-tuple
+     */
+    PacketMetadata createMetadataFromTcp(const FiveTuple& ft, Timestamp ts) const;
 };
 
 }  // namespace callflow

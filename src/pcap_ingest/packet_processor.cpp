@@ -309,68 +309,50 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
         return;
     }
 
-    // SIP (UDP/TCP 5060, 5061)
-    if (metadata.five_tuple.src_port == 5060 || metadata.five_tuple.dst_port == 5060 ||
-        metadata.five_tuple.src_port == 5061 || metadata.five_tuple.dst_port == 5061) {
+    // SIP (UDP/TCP) - Enhanced with dynamic port tracking and message boundary detection
+    if (sip_port_tracker_.isSipPort(metadata.five_tuple.src_port) ||
+        sip_port_tracker_.isSipPort(metadata.five_tuple.dst_port)) {
         if (metadata.five_tuple.protocol == IPPROTO_TCP) {
-            auto& session = sip_tcp_sessions_[metadata.five_tuple];
-            session.buffer.insert(session.buffer.end(), payload.begin(), payload.end());
+            // Enhanced TCP reassembly with SipTcpStreamBuffer
+            auto& buffer = sip_tcp_buffers_[metadata.five_tuple];
+            buffer.appendData(payload.data(), payload.size());
 
-            while (true) {
-                // Find double CRLF (end of headers)
-                const std::string crlf2 = "\r\n\r\n";
-                // Search in buffer
-                auto it = std::search(session.buffer.begin(), session.buffer.end(), crlf2.begin(),
-                                      crlf2.end());
-
-                if (it == session.buffer.end()) {
-                    break;  // Headers incomplete
-                }
-
-                // Calculate header length including double CRLF
-                size_t headers_len = std::distance(session.buffer.begin(), it) + 4;
-
-                // Parse headers to find Content-Length
-                // We do a lightweight parse or convert to string
-                std::string headers(session.buffer.begin(), session.buffer.begin() + headers_len);
-                int content_len = 0;
-
-                // Simple case-insensitive search for Content-Length
-                // Note: robustness improvement would use regex or proper parser,
-                // but for now simple string find is okay if standard compliant.
-                auto pos = headers.find("Content-Length:");
-                if (pos == std::string::npos) {
-                    pos = headers.find("l:");  // Compact form
-                }
-
-                if (pos != std::string::npos) {
-                    // Extract number
-                    size_t val_start = headers.find_first_of("0123456789", pos);
-                    if (val_start != std::string::npos) {
-                        content_len = std::atoi(headers.c_str() + val_start);
-                    }
-                }
-
-                size_t total_len = headers_len + content_len;
-
-                if (session.buffer.size() >= total_len) {
-                    SipParser parser;
-                    auto msg = parser.parse(session.buffer.data(), total_len);
-                    if (msg.has_value()) {
-                        correlator_.processPacket(metadata, ProtocolType::SIP, msg->toJson());
-                    }
-                    session.buffer.erase(session.buffer.begin(),
-                                         session.buffer.begin() + total_len);
-                } else {
-                    break;  // Body incomplete
+            // Extract all complete messages
+            auto messages = buffer.extractCompleteMessages();
+            for (const auto& msg_data : messages) {
+                SipParser parser;
+                auto sip_msg = parser.parse(msg_data.data(), msg_data.size());
+                if (sip_msg.has_value()) {
+                    correlator_.processSipMessage(sip_msg.value(), metadata);
                 }
             }
+
+            // Cleanup if buffer too large (overflow protection)
+            if (buffer.getBufferSize() > SipTcpStreamBuffer::MAX_BUFFER_SIZE) {
+                LOG_WARN("SIP TCP buffer overflow, resetting for "
+                         << metadata.five_tuple.src_ip << ":" << metadata.five_tuple.src_port
+                         << " -> " << metadata.five_tuple.dst_ip << ":"
+                         << metadata.five_tuple.dst_port);
+                buffer.reset();
+            }
         } else {
-            // UDP
+            // UDP - Enhanced with fragmentation validation
+            // Check for minimum SIP message size
+            if (payload.size() < 10) {
+                LOG_DEBUG("SIP payload too small, likely incomplete: " << payload.size());
+                return;
+            }
+
+            // Validate SIP message structure before parsing
+            if (!SipParser::isSipMessage(payload.data(), payload.size())) {
+                LOG_DEBUG("Invalid SIP message structure, possibly incomplete fragmentation");
+                return;
+            }
+
             SipParser parser;
             auto msg = parser.parse(payload.data(), payload.size());
             if (msg.has_value()) {
-                correlator_.processPacket(metadata, ProtocolType::SIP, msg->toJson());
+                correlator_.processSipMessage(msg.value(), metadata);
             }
         }
         return;
@@ -425,11 +407,20 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
             // Route to appropriate parser based on detected protocol
             switch (detected_protocol) {
                 case ProtocolType::SIP: {
-                    SipParser parser;
-                    auto msg = parser.parse(payload.data(), payload.size());
-                    if (msg.has_value()) {
-                        correlator_.processSipMessage(msg.value(), metadata);
-                        return;
+                    // Validate message completeness before parsing
+                    if (payload.size() >= 10 && SipParser::isSipMessage(payload.data(), payload.size())) {
+                        // Register non-standard SIP ports for future fast-path detection
+                        sip_port_tracker_.registerSipPort(metadata.five_tuple.src_port);
+                        sip_port_tracker_.registerSipPort(metadata.five_tuple.dst_port);
+
+                        SipParser parser;
+                        auto msg = parser.parse(payload.data(), payload.size());
+                        if (msg.has_value()) {
+                            correlator_.processSipMessage(msg.value(), metadata);
+                            return;
+                        }
+                    } else {
+                        LOG_DEBUG("SIP detected but message incomplete or invalid");
                     }
                     break;
                 }
@@ -624,6 +615,26 @@ void PacketProcessor::processSctpMessage(const SctpReassembledMessage& message,
 
     // Route based on PPID (Payload Protocol Identifier)
     switch (message.payload_protocol) {
+        case 0: {  // Unstructured data - could be SIP
+            LOG_DEBUG("SCTP PPID 0 (unstructured) - attempting SIP detection");
+
+            // Try SIP detection
+            if (message.data.size() >= 10 &&
+                SipParser::isSipMessage(message.data.data(), message.data.size())) {
+                SipParser parser;
+                auto sip_msg = parser.parse(message.data.data(), message.data.size());
+                if (sip_msg.has_value()) {
+                    LOG_INFO("SIP message detected over SCTP (PPID 0)");
+                    correlator_.processSipMessage(sip_msg.value(), metadata);
+                    return;
+                }
+            }
+
+            // If not SIP, log and continue
+            LOG_DEBUG("SCTP PPID 0 data is not SIP, length=" << message.data.size());
+            break;
+        }
+
         case 18: {  // S1AP
             LOG_DEBUG("Routing SCTP payload to S1AP parser");
             s1ap::S1APParser s1ap_parser;
@@ -757,6 +768,148 @@ size_t DynamicPortTracker::cleanupExpired(Timestamp current_time) {
     }
 
     return removed;
+}
+
+// ============================================================================
+// SipPortTracker Implementation
+// ============================================================================
+
+SipPortTracker::SipPortTracker() {
+    // Initialize with standard SIP ports
+    known_sip_ports_.insert(5060);  // SIP
+    known_sip_ports_.insert(5061);  // SIP over TLS
+    known_sip_ports_.insert(5062);  // SIP (alternative)
+    known_sip_ports_.insert(5063);  // SIP (alternative)
+}
+
+void SipPortTracker::registerSipPort(uint16_t port) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (known_sip_ports_.insert(port).second) {
+        LOG_INFO("Registered non-standard SIP port: " << port);
+    }
+}
+
+bool SipPortTracker::isSipPort(uint16_t port) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return known_sip_ports_.count(port) > 0;
+}
+
+std::set<uint16_t> SipPortTracker::getAllSipPorts() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return known_sip_ports_;
+}
+
+// ============================================================================
+// SipTcpStreamBuffer Implementation
+// ============================================================================
+
+void PacketProcessor::SipTcpStreamBuffer::appendData(const uint8_t* data, size_t len) {
+    buffer_.insert(buffer_.end(), data, data + len);
+}
+
+std::vector<std::vector<uint8_t>> PacketProcessor::SipTcpStreamBuffer::extractCompleteMessages() {
+    std::vector<std::vector<uint8_t>> messages;
+
+    while (true) {
+        auto boundary_opt = findMessageBoundary(0);
+        if (!boundary_opt.has_value()) {
+            break;  // No complete message found
+        }
+
+        size_t msg_len = boundary_opt.value();
+
+        // Sanity check
+        if (msg_len > MAX_SIP_MESSAGE_SIZE) {
+            LOG_WARN("SIP message exceeds maximum size (" << msg_len << " > "
+                     << MAX_SIP_MESSAGE_SIZE << "), skipping");
+            buffer_.erase(buffer_.begin(), buffer_.begin() + msg_len);
+            continue;
+        }
+
+        // Extract message
+        std::vector<uint8_t> message(buffer_.begin(), buffer_.begin() + msg_len);
+        messages.push_back(std::move(message));
+
+        // Remove from buffer
+        buffer_.erase(buffer_.begin(), buffer_.begin() + msg_len);
+    }
+
+    return messages;
+}
+
+void PacketProcessor::SipTcpStreamBuffer::reset() {
+    buffer_.clear();
+}
+
+std::optional<size_t> PacketProcessor::SipTcpStreamBuffer::findMessageBoundary(size_t start_pos) const {
+    if (start_pos >= buffer_.size()) {
+        return std::nullopt;
+    }
+
+    // Look for "\r\n\r\n" (end of SIP headers)
+    const std::string crlf2 = "\r\n\r\n";
+    auto it = std::search(buffer_.begin() + start_pos, buffer_.end(),
+                          crlf2.begin(), crlf2.end());
+
+    if (it == buffer_.end()) {
+        return std::nullopt;  // Headers incomplete
+    }
+
+    // Calculate header length including double CRLF
+    size_t headers_len = std::distance(buffer_.begin(), it) + 4;
+
+    // Parse headers to find Content-Length
+    std::string headers(buffer_.begin() + start_pos,
+                        buffer_.begin() + start_pos + headers_len);
+    int content_len = 0;
+
+    // Search for Content-Length header (case-insensitive)
+    auto pos = headers.find("Content-Length:");
+    if (pos == std::string::npos) {
+        pos = headers.find("content-length:");  // lowercase
+    }
+    if (pos == std::string::npos) {
+        pos = headers.find("l:");  // Compact form
+    }
+    if (pos == std::string::npos) {
+        pos = headers.find("L:");  // Compact form uppercase
+    }
+
+    if (pos != std::string::npos) {
+        // Extract number
+        size_t val_start = headers.find_first_of("0123456789", pos);
+        if (val_start != std::string::npos) {
+            content_len = std::atoi(headers.c_str() + val_start);
+        }
+    }
+
+    size_t total_len = headers_len + content_len;
+
+    // Check if we have the complete message
+    if (buffer_.size() >= start_pos + total_len) {
+        return total_len;
+    }
+
+    return std::nullopt;  // Body incomplete
+}
+
+// ============================================================================
+// Helper Methods
+// ============================================================================
+
+bool PacketProcessor::isSipPort(uint16_t port) {
+    // Use standard SIP ports for static check
+    // For dynamic tracking, use sip_port_tracker_ instance method
+    return port == 5060 || port == 5061 || port == 5062 || port == 5063;
+}
+
+PacketMetadata PacketProcessor::createMetadataFromTcp(const FiveTuple& ft, Timestamp ts) const {
+    PacketMetadata metadata;
+    metadata.packet_id = utils::generateUuid();
+    metadata.timestamp = ts;
+    metadata.five_tuple = ft;
+    metadata.detected_protocol = ProtocolType::SIP;
+    return metadata;
 }
 
 }  // namespace callflow
