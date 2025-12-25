@@ -3,7 +3,7 @@
 ## System Requirements
 
 - **OS**: Linux (Ubuntu 20.04+, Debian 11+, CentOS 8+)
-- **Compiler**: GCC 7+ or Clang 6+ with C++17 support
+- **Compiler**: GCC 9+ or Clang 10+ with C++17 support
 - **CMake**: Version 3.14 or higher
 - **RAM**: Minimum 2GB, recommended 8GB+
 - **Disk**: ~500MB for build artifacts
@@ -13,13 +13,23 @@
 ### Required
 
 - **libpcap** (>= 1.9.0): Packet capture library
-- **nlohmann/json** (>= 3.11.0): JSON library (fetched automatically by CMake)
+- **SQLite3** (>= 3.35.0): Database persistence
+- **OpenSSL** (>= 3.0): Cryptography and TLS support
+- **yaml-cpp**: Protocol configuration parsing
 - **pthreads**: POSIX threads library (usually included with system)
+
+### Automatically Fetched by CMake (FetchContent)
+
+- **nlohmann/json** (3.11.2): JSON parsing library
+- **cpp-httplib** (0.15.3): HTTP/HTTPS server
+- **jwt-cpp** (0.7.0): JWT authentication
+- **fmt** (10.1.1): Structured logging
+- **Google Test**: Unit testing framework
+- **Google Benchmark**: Performance benchmarking
 
 ### Optional
 
-- **nDPI** (>= 4.0): Deep packet inspection library (full integration in M2)
-- **Google Test**: For unit tests (not yet implemented)
+- **nDPI** (>= 4.0): Deep packet inspection library (enhanced protocol detection)
 - **Doxygen**: For generating API documentation
 
 ## Installing Dependencies
@@ -33,6 +43,9 @@ sudo apt-get install -y \
     cmake \
     git \
     libpcap-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libyaml-cpp-dev \
     pkg-config
 ```
 
@@ -44,6 +57,9 @@ sudo dnf install -y \
     cmake \
     git \
     libpcap-devel \
+    sqlite-devel \
+    openssl-devel \
+    yaml-cpp-devel \
     pkgconfig
 
 # Or for older versions with yum:
@@ -52,13 +68,16 @@ sudo yum install -y \
     cmake \
     git \
     libpcap-devel \
+    sqlite-devel \
+    openssl-devel \
+    yaml-cpp-devel \
     pkgconfig
 ```
 
 ### macOS
 
 ```bash
-brew install cmake libpcap pkg-config
+brew install cmake libpcap sqlite openssl yaml-cpp pkg-config
 ```
 
 ### Installing nDPI (Optional, for M2+)
