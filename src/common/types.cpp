@@ -188,6 +188,18 @@ std::string messageTypeToString(MessageType type) {
             return "UPDATE";
         case MessageType::SIP_PRACK:
             return "PRACK";
+        case MessageType::SIP_INFO:
+            return "INFO";
+        case MessageType::SIP_MESSAGE:
+            return "MESSAGE";
+        case MessageType::SIP_NOTIFY:
+            return "NOTIFY";
+        case MessageType::SIP_SUBSCRIBE:
+            return "SUBSCRIBE";
+        case MessageType::SIP_REFER:
+            return "REFER";
+        case MessageType::SIP_PUBLISH:
+            return "PUBLISH";
         case MessageType::DIAMETER_CCR:
             return "CCR";
         case MessageType::DIAMETER_CCA:

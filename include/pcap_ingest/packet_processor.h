@@ -3,9 +3,12 @@
 #include <pcap/pcap.h>  // for pcap_pkthdr
 
 #include <chrono>
+#include <deque>
+#include <functional>
 #include <mutex>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "common/types.h"
 #include "pcap_ingest/ip_reassembler.h"
@@ -17,6 +20,72 @@
 #include "transport/sctp_parser.h"
 
 namespace callflow {
+
+/**
+ * PacketDeduplicator - Detects and filters duplicate packets from multiple capture interfaces
+ *
+ * When capturing on multiple interfaces (e.g., ingress and egress), the same packet
+ * may appear multiple times. This class maintains a sliding window of recent packet
+ * signatures to detect duplicates based on:
+ * - Source/Destination IP (hashed)
+ * - Source/Destination ports
+ * - TCP sequence number or UDP identifier
+ * - Payload length and CRC
+ * - Timestamp (within tolerance window)
+ */
+class PacketDeduplicator {
+public:
+    explicit PacketDeduplicator(size_t window_size = 2000);
+
+    /**
+     * Check if a packet is a duplicate of a recently seen packet
+     * @param meta Packet metadata (5-tuple, timestamp, etc.)
+     * @param payload Packet payload for CRC calculation
+     * @return true if this packet is a duplicate
+     */
+    bool isDuplicate(const PacketMetadata& meta, const std::vector<uint8_t>& payload);
+
+    /**
+     * Get deduplication statistics
+     */
+    struct Stats {
+        uint64_t total_packets = 0;
+        uint64_t duplicates_detected = 0;
+    };
+    Stats getStats() const;
+
+private:
+    struct PacketSignature {
+        uint32_t src_ip_hash;
+        uint32_t dst_ip_hash;
+        uint16_t src_port;
+        uint16_t dst_port;
+        uint8_t protocol;
+        uint32_t seq_or_id;      // TCP seq or UDP/IP ID
+        uint16_t payload_len;
+        uint32_t payload_crc;
+        uint64_t timestamp_us;
+
+        bool operator==(const PacketSignature& other) const;
+    };
+
+    struct SignatureHash {
+        size_t operator()(const PacketSignature& sig) const;
+    };
+
+    // CRC-32 for payload
+    static uint32_t calculateCrc32(const uint8_t* data, size_t len);
+    static uint32_t hashIpAddress(const std::string& ip);
+
+    mutable std::mutex mutex_;
+    std::unordered_set<PacketSignature, SignatureHash> recent_packets_;
+    std::deque<PacketSignature> signature_queue_;
+    size_t max_window_size_;
+    Stats stats_;
+
+    // Duplicate detection tolerance: packets within 1ms are considered potential duplicates
+    static constexpr uint64_t DUPLICATE_TIME_WINDOW_US = 1000;
+};
 
 /**
  * SipPortTracker - Tracks non-standard SIP ports discovered during processing
@@ -212,6 +281,9 @@ private:
 
     // SIP port tracker for non-standard ports
     SipPortTracker sip_port_tracker_;
+
+    // Packet deduplicator for multi-interface captures
+    PacketDeduplicator packet_deduplicator_;
 
     void processIpPacket(const std::vector<uint8_t>& ip_packet, Timestamp ts, uint32_t frame_number,
                          int recursion_depth = 0);

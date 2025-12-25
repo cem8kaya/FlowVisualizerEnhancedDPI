@@ -1214,4 +1214,24 @@ set_tests_properties(test_sip_correlation PROPERTIES
     LABELS "unit"
 )
 
+# SIP Method Detection Tests (IMS/VoLTE)
+add_executable(test_sip_methods
+    unit/test_sip_methods.cpp
+)
+
+target_link_libraries(test_sip_methods PRIVATE
+    callflow_common
+    protocol_parsers
+    ndpi_engine
+    GTest::gtest
+    GTest::gtest_main
+)
+
+add_test(NAME test_sip_methods COMMAND test_sip_methods)
+
+set_tests_properties(test_sip_methods PROPERTIES
+    TIMEOUT 30
+    LABELS "unit"
+)
+
 message(STATUS "Unit tests configured successfully")
