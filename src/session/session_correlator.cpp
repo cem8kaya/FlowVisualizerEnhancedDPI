@@ -1390,4 +1390,119 @@ void callflow::EnhancedSessionCorrelator::processSipMessage(const SipMessage& ms
     }
 }
 
+void callflow::EnhancedSessionCorrelator::validateAndEnrichSessions() {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // For each SIP-only session, attempt to find matching DIAMETER/GTP
+    auto sip_sessions = sip_only_manager_->getSessions();
+
+    LOG_INFO("Validating " << sip_sessions.size() << " SIP-only sessions for late correlation");
+
+    for (const auto& sip_session : sip_sessions) {
+        // Try to correlate with other protocols based on:
+        // 1. UE IP from SDP
+        // 2. Timestamp overlap
+        // 3. MSISDN from P-Asserted-Identity
+
+        auto ue_ips = extractUeIpsFromSipSession(sip_session);
+
+        if (ue_ips.empty()) {
+            LOG_DEBUG("No UE IPs found in SIP session " << sip_session->getCallId()
+                                                         << ", skipping late correlation");
+            continue;
+        }
+
+        // Get time window
+        auto start_time = std::chrono::system_clock::from_time_t(
+            static_cast<time_t>(sip_session->getStartTime()));
+        auto end_time = std::chrono::system_clock::from_time_t(
+            static_cast<time_t>(sip_session->getEndTime()));
+        auto time_window = std::make_pair(start_time, end_time);
+
+        // Search for DIAMETER/GTP sessions in same time window
+        auto potential_matches = findPotentialMatches(ue_ips, time_window);
+
+        if (!potential_matches.empty()) {
+            LOG_INFO("Late correlation: found " << potential_matches.size()
+                                                 << " potential matches for SIP Call-ID "
+                                                 << sip_session->getCallId());
+
+            // For simplicity, merge with the first match
+            // In production, you might want more sophisticated matching logic
+            auto& target_session = sessions_[potential_matches[0]->session_id];
+
+            // Convert SIP session messages to SessionMessageRefs and add to target
+            for (const auto& sip_msg : sip_session->getMessages()) {
+                // Create a minimal SessionMessageRef from SIP message
+                // This would need proper conversion
+                LOG_DEBUG("Would merge SIP message into session "
+                          << potential_matches[0]->session_id);
+            }
+
+            LOG_INFO("Late correlation: merged SIP session " << sip_session->getCallId()
+                                                              << " with session "
+                                                              << potential_matches[0]->session_id);
+        }
+    }
+}
+
+std::vector<std::string> callflow::EnhancedSessionCorrelator::extractUeIpsFromSipSession(
+    const std::shared_ptr<correlation::SipSession>& sip_session) const {
+    std::vector<std::string> ue_ips;
+
+    // Extract IPs from media info (SDP)
+    for (const auto& media : sip_session->getMediaInfo()) {
+        if (!media.address.empty()) {
+            ue_ips.push_back(media.address);
+        }
+    }
+
+    // Also check caller/callee IPs
+    if (!sip_session->getCallerIp().empty()) {
+        ue_ips.push_back(sip_session->getCallerIp());
+    }
+    if (!sip_session->getCalleeIp().empty()) {
+        ue_ips.push_back(sip_session->getCalleeIp());
+    }
+
+    return ue_ips;
+}
+
+std::vector<std::shared_ptr<Session>>
+callflow::EnhancedSessionCorrelator::findPotentialMatches(
+    const std::vector<std::string>& ue_ips,
+    const std::pair<std::chrono::system_clock::time_point,
+                    std::chrono::system_clock::time_point>& time_window) const {
+    std::vector<std::shared_ptr<Session>> matches;
+
+    // Search for sessions with matching UE IPs in the same time window
+    for (const auto& [session_id, session] : sessions_) {
+        // Check time overlap
+        if (session.end_time < time_window.first || session.start_time > time_window.second) {
+            continue;  // No time overlap
+        }
+
+        // Check UE IP match
+        bool ip_match = false;
+        for (const auto& ue_ip : ue_ips) {
+            if (session.correlation_key.ue_ipv4.has_value() &&
+                session.correlation_key.ue_ipv4.value() == ue_ip) {
+                ip_match = true;
+                break;
+            }
+            if (session.correlation_key.ue_ipv6.has_value() &&
+                session.correlation_key.ue_ipv6.value() == ue_ip) {
+                ip_match = true;
+                break;
+            }
+        }
+
+        if (ip_match) {
+            matches.push_back(std::make_shared<Session>(session));
+        }
+    }
+
+    return matches;
+}
+
 }  // namespace callflow

@@ -37,6 +37,7 @@ enum class EnhancedSessionType {
     VIDEO_STREAMING,  // Video streaming session
     WEB_BROWSING,     // HTTP/HTTPS browsing
     DATA_TRANSFER,    // Generic data transfer
+    SIP_SESSION,      // Standalone SIP session (no GTP/Diameter correlation)
 
     // Mixed/special sessions
     MIXED,      // Multiple session types

@@ -95,6 +95,12 @@ class SessionDetailPage {
                 throw new Error('Session data is empty');
             }
 
+            // Check if SIP-only session
+            const isSipOnly = this.sessionData.session_type === 'SIP-Only' ||
+                              this.sessionData.session_type === 'SIP-Session' ||
+                              this.sessionData.type === 'SIP-Only' ||
+                              this.sessionData.type === 'SIP-Session';
+
             // Load diagram data
             let diagramValid = false;
             try {
@@ -110,13 +116,18 @@ class SessionDetailPage {
                     }
                 }
             } catch (e) {
-                console.warn('Diagram API unavailable:', e);
+                console.warn('Diagram API unavailable, using fallback:', e);
             }
 
-            // Fallback if API failed or returned invalid data
+            // Enhanced fallback for SIP-only sessions
             if (!diagramValid) {
-                console.log('Generating diagram from events (fallback)');
-                this.diagramData = this.convertEventsToDiagram(this.sessionData.events);
+                if (isSipOnly) {
+                    console.log('Generating SIP-only diagram (fallback)');
+                    this.diagramData = this.generateSipOnlyDiagram(this.sessionData);
+                } else {
+                    console.log('Generating diagram from events (fallback)');
+                    this.diagramData = this.convertEventsToDiagram(this.sessionData.events);
+                }
             }
 
             // Render all sections
@@ -421,6 +432,96 @@ class SessionDetailPage {
         }
 
         window.packetInspector.show(event, this.sessionData.events, idx);
+    }
+
+    generateSipOnlyDiagram(sessionData) {
+        const messages = sessionData.messages || sessionData.events || [];
+
+        // Extract unique participants
+        const participantMap = new Map();
+        let participantId = 0;
+
+        messages.forEach(msg => {
+            const srcKey = `${msg.src_ip}:${msg.src_port}`;
+            const dstKey = `${msg.dst_ip}:${msg.dst_port}`;
+
+            if (!participantMap.has(srcKey)) {
+                participantMap.set(srcKey, {
+                    id: `p${participantId++}`,
+                    label: this.generateSipLabel(msg.src_ip, msg.src_port, msg),
+                    ip: msg.src_ip,
+                    port: msg.src_port,
+                    type: this.guessSipType(msg.src_port)
+                });
+            }
+
+            if (!participantMap.has(dstKey)) {
+                participantMap.set(dstKey, {
+                    id: `p${participantId++}`,
+                    label: this.generateSipLabel(msg.dst_ip, msg.dst_port, msg),
+                    ip: msg.dst_ip,
+                    port: msg.dst_port,
+                    type: this.guessSipType(msg.dst_port)
+                });
+            }
+        });
+
+        const participants = Array.from(participantMap.values());
+
+        // Convert messages to diagram format
+        const diagramMessages = messages.map((msg, idx) => {
+            const srcKey = `${msg.src_ip}:${msg.src_port}`;
+            const dstKey = `${msg.dst_ip}:${msg.dst_port}`;
+
+            return {
+                id: `msg${idx}`,
+                timestamp: msg.timestamp,
+                from: participantMap.get(srcKey).id,
+                to: participantMap.get(dstKey).id,
+                protocol: 'SIP',
+                type: msg.method || msg.status_code || msg.message_type,
+                label: this.getSipMessageLabel(msg),
+                details: msg
+            };
+        });
+
+        return {
+            title: `SIP Call Flow - ${sessionData.call_id || sessionData.session_id}`,
+            participants: participants,
+            messages: diagramMessages
+        };
+    }
+
+    generateSipLabel(ip, port, msg) {
+        // Try to extract from SIP headers
+        if (msg.from && msg.from.includes('sip:')) {
+            const match = msg.from.match(/sip:([^@]+)/);
+            if (match) return match[1];
+        }
+
+        if (msg.to && msg.to.includes('sip:')) {
+            const match = msg.to.match(/sip:([^@]+)/);
+            if (match) return match[1];
+        }
+
+        // Fallback to IP
+        const lastOctet = ip.split('.').pop();
+        if (port === 5060 || port === 5061) {
+            return `SIP-${lastOctet}`;
+        }
+        return `UE-${lastOctet}`;
+    }
+
+    guessSipType(port) {
+        if (port === 5060 || port === 5061) return 'proxy';
+        return 'endpoint';
+    }
+
+    getSipMessageLabel(msg) {
+        if (msg.method) return msg.method;
+        if (msg.status_code) return `${msg.status_code} ${msg.reason_phrase || ''}`;
+        if (msg.message_type) return msg.message_type;
+        return 'SIP';
     }
 }
 

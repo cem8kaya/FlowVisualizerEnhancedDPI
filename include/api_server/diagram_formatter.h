@@ -38,6 +38,18 @@ private:
         const SessionMessageRef& msg,
         const std::unordered_map<std::string, std::string>& ip_to_participant);
 
+    // Generate SIP-only diagram
+    static nlohmann::json generateSipOnlyDiagram(const Session& session);
+
+    // Determine SIP participant label
+    static std::string determineSipParticipantLabel(const std::string& ip, uint16_t port);
+
+    // Determine SIP participant type
+    static std::string determineSipParticipantType(const std::string& ip, uint16_t port);
+
+    // Generate SIP message label
+    static std::string generateSipMessageLabel(const nlohmann::json& sip_msg);
+
     // Port to network element mapping
     static const std::unordered_map<uint16_t, std::string> PORT_TO_ELEMENT;
 };
