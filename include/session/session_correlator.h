@@ -9,6 +9,7 @@
 #include "common/types.h"
 #include "correlation/sip_dialog_tracker.h"
 #include "correlation/sip_session_manager.h"
+#include "correlation/sip/sip_message.h"
 #include "protocol_parsers/sip_parser.h"
 #include "session/session_types.h"
 
@@ -308,6 +309,12 @@ public:
                                                 ProtocolType protocol) const;
 
 private:
+    /**
+     * Convert parser SipMessage to correlation SipMessage
+     */
+    correlation::SipMessage convertToCorrelationSipMessage(
+        const SipMessage& parser_msg, const PacketMetadata& packet) const;
+
     /**
      * Extract UE IPs from SIP session (from SDP)
      */
