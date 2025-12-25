@@ -12,12 +12,14 @@
 namespace callflow {
 
 std::string JsonExporter::exportSession(const Session& session, bool include_events) {
+    (void)include_events;  // Currently unused, reserved for future use
     nlohmann::json j = session.toJson();
     return formatJson(j, true);
 }
 
 std::string JsonExporter::exportSessions(const std::vector<std::shared_ptr<Session>>& sessions,
                                          bool include_events) {
+    (void)include_events;  // Currently unused, reserved for future use
     nlohmann::json j = nlohmann::json::array();
 
     for (const auto& session : sessions) {

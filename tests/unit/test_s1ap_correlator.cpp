@@ -26,6 +26,8 @@ protected:
      * Create a simple Initial UE Message
      */
     S1apMessage createInitialUeMessage(uint32_t enb_ue_id, uint32_t frame_num, double timestamp) {
+        (void)frame_num;   // Reserved for future use
+        (void)timestamp;   // Reserved for future use
         S1apMessage msg;
         msg.setProcedureCode(S1apProcedureCode::INITIAL_UE_MESSAGE);
         msg.setMessageType(S1apMessageType::INITIAL_UE_MESSAGE);
@@ -41,6 +43,8 @@ protected:
      */
     S1apMessage createInitialContextSetupRequest(uint32_t mme_ue_id, uint32_t enb_ue_id,
                                                   uint32_t frame_num, double timestamp) {
+        (void)frame_num;   // Reserved for future use
+        (void)timestamp;   // Reserved for future use
         S1apMessage msg;
         msg.setProcedureCode(S1apProcedureCode::INITIAL_CONTEXT_SETUP);
         msg.setMessageType(S1apMessageType::INITIAL_CONTEXT_SETUP_REQUEST);
@@ -61,6 +65,8 @@ protected:
      */
     S1apMessage createUeContextReleaseCommand(uint32_t mme_ue_id, uint32_t enb_ue_id,
                                                uint32_t frame_num, double timestamp) {
+        (void)frame_num;   // Reserved for future use
+        (void)timestamp;   // Reserved for future use
         S1apMessage msg;
         msg.setProcedureCode(S1apProcedureCode::UE_CONTEXT_RELEASE);
         msg.setMessageType(S1apMessageType::UE_CONTEXT_RELEASE_COMMAND);
