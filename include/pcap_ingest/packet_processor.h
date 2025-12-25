@@ -184,10 +184,12 @@ private:
          */
         size_t getBufferSize() const { return buffer_.size(); }
 
-    private:
-        std::vector<uint8_t> buffer_;
+        // Public constants for buffer size limits
         static constexpr size_t MAX_SIP_MESSAGE_SIZE = 64 * 1024;  // 64KB
         static constexpr size_t MAX_BUFFER_SIZE = 256 * 1024;      // 256KB total
+
+    private:
+        std::vector<uint8_t> buffer_;
 
         /**
          * Detect complete SIP message boundaries
