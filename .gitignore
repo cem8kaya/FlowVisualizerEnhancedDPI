@@ -10,6 +10,7 @@ out/
 *.dylib
 *.dll
 *.exe
+test_correlation
 
 # IDE files
 .vscode/
@@ -18,6 +19,7 @@ out/
 *.swo
 *~
 .DS_Store
+.cache/
 
 # PCAP files (exclude large test files)
 *.pcap
@@ -54,3 +56,9 @@ yarn-error.log
 *.tmp
 *.bak
 core
+
+# Database files
+db/
+*.db
+*.db-shm
+*.db-wal

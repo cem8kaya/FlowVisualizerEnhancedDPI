@@ -1,2 +1,0 @@
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar qc libtransport.a CMakeFiles/transport.dir/transport/sctp_reassembler.cpp.o CMakeFiles/transport.dir/transport/sctp_parser.cpp.o
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib libtransport.a
