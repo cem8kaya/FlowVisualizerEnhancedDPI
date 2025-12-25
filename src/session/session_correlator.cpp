@@ -1511,7 +1511,7 @@ callflow::correlation::SipMessage callflow::EnhancedSessionCorrelator::convertTo
             }
             // Convert codecs
             for (const auto& codec : sdp.codecs) {
-                media.codecs.push_back(codec.name);
+                media.codecs.push_back(codec.encoding_name);
             }
             corr_msg.addMediaInfo(media);
         }
@@ -1523,7 +1523,9 @@ callflow::correlation::SipMessage callflow::EnhancedSessionCorrelator::convertTo
     corr_msg.setSourcePort(packet.five_tuple.src_port);
     corr_msg.setDestPort(packet.five_tuple.dst_port);
     corr_msg.setFrameNumber(packet.frame_number);
-    corr_msg.setTimestamp(packet.timestamp);
+    // Convert Timestamp (std::chrono::time_point) to double (seconds since epoch)
+    double timestamp_seconds = std::chrono::duration<double>(packet.timestamp.time_since_epoch()).count();
+    corr_msg.setTimestamp(timestamp_seconds);
 
     return corr_msg;
 }
