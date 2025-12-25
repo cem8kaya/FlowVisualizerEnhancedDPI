@@ -665,6 +665,8 @@ std::string enhancedSessionTypeToString(EnhancedSessionType type) {
             return "Web-Browsing";
         case EnhancedSessionType::DATA_TRANSFER:
             return "Data-Transfer";
+        case EnhancedSessionType::SIP_SESSION:
+            return "SIP-Session";
         case EnhancedSessionType::MIXED:
             return "Mixed";
         case EnhancedSessionType::INCOMPLETE:
@@ -705,6 +707,8 @@ EnhancedSessionType stringToEnhancedSessionType(const std::string& str) {
         return EnhancedSessionType::WEB_BROWSING;
     if (str == "Data-Transfer")
         return EnhancedSessionType::DATA_TRANSFER;
+    if (str == "SIP-Session")
+        return EnhancedSessionType::SIP_SESSION;
     if (str == "Mixed")
         return EnhancedSessionType::MIXED;
     if (str == "Incomplete")

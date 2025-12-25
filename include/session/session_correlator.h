@@ -208,6 +208,12 @@ public:
      */
     void finalizeSessions();
 
+    /**
+     * Validate and enrich sessions after all packets are processed
+     * Attempts late correlation of SIP-only sessions with DIAMETER/GTP sessions
+     */
+    void validateAndEnrichSessions();
+
 private:
     // Session storage
     std::unordered_map<std::string, Session> sessions_;  // session_id -> Session
@@ -300,6 +306,21 @@ private:
 public:
     SessionCorrelationKey extractCorrelationKey(const nlohmann::json& parsed_message,
                                                 ProtocolType protocol) const;
+
+private:
+    /**
+     * Extract UE IPs from SIP session (from SDP)
+     */
+    std::vector<std::string> extractUeIpsFromSipSession(
+        const std::shared_ptr<correlation::SipSession>& sip_session) const;
+
+    /**
+     * Find potential matching sessions for late correlation
+     */
+    std::vector<std::shared_ptr<Session>> findPotentialMatches(
+        const std::vector<std::string>& ue_ips,
+        const std::pair<std::chrono::system_clock::time_point,
+                        std::chrono::system_clock::time_point>& time_window) const;
 };
 
 }  // namespace callflow
