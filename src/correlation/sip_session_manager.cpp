@@ -69,7 +69,7 @@ void SipSessionManager::processSipMessage(const SipMessage& msg, const PacketMet
 }
 
 std::shared_ptr<SipSession> SipSessionManager::createSession(const SipMessage& msg,
-                                                             const PacketMetadata& metadata) {
+                                                             const PacketMetadata& /* metadata */) {
     auto session = std::make_shared<SipSession>(msg.getCallId());
 
     // Session will auto-populate during addMessage()
@@ -162,7 +162,7 @@ Session SipSessionManager::toGenericSession(const SipSession& sip_session) const
 
     // Create single leg with all SIP messages
     SessionLeg leg;
-    leg.interface_type = "SIP";
+    leg.interface = InterfaceType::IMS_SIP;
 
     for (const auto& sip_msg : sip_session.getMessages()) {
         SessionMessageRef msg_ref;
@@ -170,9 +170,37 @@ Session SipSessionManager::toGenericSession(const SipSession& sip_session) const
 
         // Determine message type
         if (sip_msg.isRequest()) {
-            msg_ref.message_type = sip_msg.getMethod();
+            std::string method = sip_msg.getMethod();
+            if (method == "INVITE")
+                msg_ref.message_type = MessageType::SIP_INVITE;
+            else if (method == "ACK")
+                msg_ref.message_type = MessageType::SIP_ACK;
+            else if (method == "BYE")
+                msg_ref.message_type = MessageType::SIP_BYE;
+            else if (method == "REGISTER")
+                msg_ref.message_type = MessageType::SIP_REGISTER;
+            else if (method == "OPTIONS")
+                msg_ref.message_type = MessageType::SIP_OPTIONS;
+            else if (method == "PRACK")
+                msg_ref.message_type = MessageType::SIP_PRACK;
+            else if (method == "UPDATE")
+                msg_ref.message_type = MessageType::SIP_UPDATE;
+            else if (method == "CANCEL")
+                msg_ref.message_type = MessageType::SIP_CANCEL;
+            else
+                msg_ref.message_type = MessageType::UNKNOWN;
         } else {
-            msg_ref.message_type = std::to_string(sip_msg.getStatusCode());
+            int status_code = sip_msg.getStatusCode();
+            if (status_code == 100)
+                msg_ref.message_type = MessageType::SIP_TRYING;
+            else if (status_code == 180)
+                msg_ref.message_type = MessageType::SIP_RINGING;
+            else if (status_code == 183)
+                msg_ref.message_type = MessageType::SIP_SESSION_PROGRESS;
+            else if (status_code == 200)
+                msg_ref.message_type = MessageType::SIP_OK;
+            else
+                msg_ref.message_type = MessageType::UNKNOWN;
         }
 
         // Set timestamp (use session start time + offset for now)
