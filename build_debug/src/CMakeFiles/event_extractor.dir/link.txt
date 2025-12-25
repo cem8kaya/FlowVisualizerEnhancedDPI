@@ -1,2 +1,0 @@
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar qc libevent_extractor.a CMakeFiles/event_extractor.dir/event_extractor/event_builder.cpp.o CMakeFiles/event_extractor.dir/event_extractor/json_exporter.cpp.o
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib libevent_extractor.a

@@ -1,2 +1,0 @@
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar qc libsession_correlation.a CMakeFiles/session_correlation.dir/session/session_types.cpp.o CMakeFiles/session_correlation.dir/session/session_correlator.cpp.o
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib libsession_correlation.a
