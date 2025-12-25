@@ -1386,7 +1386,9 @@ void callflow::EnhancedSessionCorrelator::processSipMessage(const SipMessage& ms
         // No correlation keys found - create standalone SIP session
         LOG_DEBUG("No correlation keys found for SIP Call-ID: " << msg.call_id
                   << ", creating standalone SIP session");
-        sip_only_manager_->processSipMessage(msg, packet);
+        // Convert parser SipMessage to correlation SipMessage
+        auto corr_msg = convertToCorrelationSipMessage(msg, packet);
+        sip_only_manager_->processSipMessage(corr_msg, packet);
     }
 }
 
@@ -1429,15 +1431,12 @@ void callflow::EnhancedSessionCorrelator::validateAndEnrichSessions() {
 
             // For simplicity, merge with the first match
             // In production, you might want more sophisticated matching logic
-            auto& target_session = sessions_[potential_matches[0]->session_id];
 
             // Convert SIP session messages to SessionMessageRefs and add to target
-            for (const auto& sip_msg : sip_session->getMessages()) {
-                // Create a minimal SessionMessageRef from SIP message
-                // This would need proper conversion
-                LOG_DEBUG("Would merge SIP message into session "
-                          << potential_matches[0]->session_id);
-            }
+            // This would need proper conversion - currently just logging
+            LOG_DEBUG("Would merge " << sip_session->getMessages().size()
+                      << " SIP messages into session "
+                      << potential_matches[0]->session_id);
 
             LOG_INFO("Late correlation: merged SIP session " << sip_session->getCallId()
                                                               << " with session "
@@ -1446,14 +1445,97 @@ void callflow::EnhancedSessionCorrelator::validateAndEnrichSessions() {
     }
 }
 
+callflow::correlation::SipMessage callflow::EnhancedSessionCorrelator::convertToCorrelationSipMessage(
+    const SipMessage& parser_msg, const PacketMetadata& packet) const {
+    correlation::SipMessage corr_msg;
+
+    // Set request/response type
+    corr_msg.setRequest(parser_msg.is_request);
+
+    // Request line
+    if (parser_msg.is_request) {
+        corr_msg.setMethod(parser_msg.method);
+        corr_msg.setRequestUri(parser_msg.request_uri);
+    } else {
+        corr_msg.setStatusCode(parser_msg.status_code);
+        corr_msg.setReasonPhrase(parser_msg.reason_phrase);
+    }
+
+    // Essential headers
+    corr_msg.setCallId(parser_msg.call_id);
+    corr_msg.setFromUri(parser_msg.from);
+    corr_msg.setFromTag(parser_msg.from_tag);
+    corr_msg.setToUri(parser_msg.to);
+    corr_msg.setToTag(parser_msg.to_tag);
+
+    // CSeq - parse the number from cseq string
+    if (!parser_msg.cseq.empty()) {
+        auto cseq_parts = parser_msg.cseq;
+        size_t space_pos = cseq_parts.find(' ');
+        if (space_pos != std::string::npos) {
+            try {
+                uint32_t cseq_num = std::stoul(cseq_parts.substr(0, space_pos));
+                corr_msg.setCSeq(cseq_num);
+                corr_msg.setCSeqMethod(cseq_parts.substr(space_pos + 1));
+            } catch (...) {
+                // Ignore parse errors
+            }
+        }
+    }
+
+    // P-Asserted-Identity
+    if (parser_msg.p_asserted_identity.has_value() &&
+        !parser_msg.p_asserted_identity.value().empty()) {
+        // Use the first P-Asserted-Identity
+        corr_msg.setPAssertedIdentity(parser_msg.p_asserted_identity.value()[0].uri);
+    }
+
+    // P-Preferred-Identity
+    if (parser_msg.p_preferred_identity.has_value()) {
+        corr_msg.setPPreferredIdentity(parser_msg.p_preferred_identity.value());
+    }
+
+    // SDP body
+    if (parser_msg.sdp.has_value()) {
+        corr_msg.setSdpBody(parser_msg.body);
+
+        // Extract media info from SDP
+        const auto& sdp = parser_msg.sdp.value();
+        if (!sdp.connection_address.empty()) {
+            correlation::SipMediaInfo media;
+            media.media_type = "audio"; // Default, could be enhanced
+            media.connection_ip = sdp.connection_address;
+            media.port = sdp.rtp_port;
+            if (sdp.media_direction.has_value()) {
+                media.direction = sdp.media_direction.value();
+            }
+            // Convert codecs
+            for (const auto& codec : sdp.codecs) {
+                media.codecs.push_back(codec.name);
+            }
+            corr_msg.addMediaInfo(media);
+        }
+    }
+
+    // Network information from packet metadata
+    corr_msg.setSourceIp(packet.five_tuple.src_ip);
+    corr_msg.setDestIp(packet.five_tuple.dst_ip);
+    corr_msg.setSourcePort(packet.five_tuple.src_port);
+    corr_msg.setDestPort(packet.five_tuple.dst_port);
+    corr_msg.setFrameNumber(packet.frame_number);
+    corr_msg.setTimestamp(packet.timestamp);
+
+    return corr_msg;
+}
+
 std::vector<std::string> callflow::EnhancedSessionCorrelator::extractUeIpsFromSipSession(
     const std::shared_ptr<correlation::SipSession>& sip_session) const {
     std::vector<std::string> ue_ips;
 
     // Extract IPs from media info (SDP)
     for (const auto& media : sip_session->getMediaInfo()) {
-        if (!media.address.empty()) {
-            ue_ips.push_back(media.address);
+        if (!media.connection_ip.empty()) {
+            ue_ips.push_back(media.connection_ip);
         }
     }
 
