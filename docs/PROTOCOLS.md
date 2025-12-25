@@ -353,6 +353,151 @@ Benefit: UE1's retransmission doesn't block UE2/UE3 messages
 
 ---
 
+## 5G Service Based Architecture (SBA)
+
+### Overview
+
+5G networks use a Service-Based Architecture (SBA) where Network Functions (NFs) communicate via HTTP/2-based Service-Based Interfaces (SBI). The Callflow Visualizer provides comprehensive SBA protocol support.
+
+### Supported Network Functions
+
+| NF | Full Name | Description |
+|----|-----------|-------------|
+| AMF | Access and Mobility Management Function | UE registration, mobility, access |
+| SMF | Session Management Function | PDU session management |
+| UDM | Unified Data Management | Subscriber data management |
+| AUSF | Authentication Server Function | UE authentication |
+| NRF | Network Repository Function | NF discovery and registration |
+| PCF | Policy Control Function | Policy decisions |
+| NEF | Network Exposure Function | API exposure to external apps |
+| UPF | User Plane Function | User traffic routing |
+
+### SBI Service Discovery
+
+The parser identifies NF types from URI paths:
+
+```
+/namf-comm/* → AMF Communication Service
+/nsmf-pdusession/* → SMF PDU Session Service
+/nausf-auth/* → AUSF Authentication Service
+/nudm-sdm/* → UDM Subscriber Data Management
+/nnrf-disc/* → NRF Discovery Service
+/npcf-smpolicy/* → PCF Session Management Policy
+```
+
+### Key Information Extraction
+
+The SBA parser extracts critical 5G identifiers:
+
+| Identifier | Description | Example |
+|------------|-------------|---------|
+| SUPI | Subscription Permanent Identifier | imsi-123456789012345 |
+| PEI | Permanent Equipment Identifier | imeisv-1234567890123456 |
+| GPSI | Generic Public Subscription Identifier | msisdn-14155551234 |
+| DNN | Data Network Name | internet, ims |
+| S-NSSAI | Network Slice Selection | {sst: 1, sd: "010203"} |
+| 5G-GUTI | Globally Unique Temporary ID | {amf_id, set_id, pointer, tmsi} |
+
+### Procedure Tracking
+
+#### Registration Procedure
+```
+UE → AMF: Registration Request (NGAP)
+AMF → AUSF: Nausf_UEAuthentication_Authenticate
+AUSF → UDM: Nudm_UEAuthentication_Get
+UDM → AUSF: Authentication Vectors
+AUSF → AMF: Authentication Response
+AMF → UE: Authentication Request
+UE → AMF: Authentication Response
+AMF → UDM: Nudm_UECM_Registration
+AMF → UE: Registration Accept (NGAP)
+```
+
+#### PDU Session Establishment
+```
+UE → AMF: PDU Session Establishment Request (NAS)
+AMF → SMF: Nsmf_PDUSession_CreateSMContext
+SMF → UDM: Nudm_SDM_Get (subscription data)
+SMF → PCF: Npcf_SMPolicyControl_Create
+SMF → UPF: PFCP Session Establishment
+SMF → AMF: N1N2MessageTransfer
+AMF → UE: PDU Session Establishment Accept (NAS)
+```
+
+### HTTP/2 Stream Reassembly
+
+The parser handles HTTP/2 complexities:
+
+1. **Frame Types**: DATA, HEADERS, CONTINUATION
+2. **HPACK Decompression**: Static + dynamic table
+3. **Stream Multiplexing**: Multiple concurrent requests
+4. **Fragmented Messages**: Reassemble across DATA frames
+5. **gRPC Support**: Detect and parse gRPC over HTTP/2
+
+### JSON Payload Parsing
+
+SBI messages use JSON bodies. The parser extracts:
+
+```json
+{
+  "supi": "imsi-123456789012345",
+  "pei": "imeisv-1234567890123456",
+  "gpsi": "msisdn-14155551234",
+  "dnn": "internet",
+  "sNssai": {
+    "sst": 1,
+    "sd": "010203"
+  },
+  "servingNetwork": {
+    "mcc": "310",
+    "mnc": "260"
+  }
+}
+```
+
+### Correlation Strategy
+
+The SBA correlator uses multiple keys:
+
+1. **SUPI/PEI**: Primary subscriber/device identity
+2. **PDU Session ID**: Within a UE context
+3. **HTTP/2 Stream ID**: Request-response correlation
+4. **SBI Correlation ID**: Cross-NF transaction tracking
+5. **UE Context ID**: AMF-assigned context reference
+
+### Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `fiveg_sba_parser.h/cpp` | SBA message parsing |
+| `http2_parser.h/cpp` | HTTP/2 frame parsing |
+| `hpack_decoder.h/cpp` | HPACK header decompression |
+| `fiveg_registration_machine.h/cpp` | 5G registration state machine |
+| `sba_correlator.h/cpp` | SBA session correlation |
+
+### Testing
+
+Unit tests cover:
+- HTTP/2 frame parsing
+- HPACK decompression
+- SBI path detection
+- JSON payload extraction
+- Multi-stream correlation
+- Registration procedure tracking
+
+### References
+
+- **3GPP TS 29.500**: 5G SBA Technical Realization
+- **3GPP TS 29.501**: 5G SBA Principles and Guidelines
+- **3GPP TS 29.502**: 5G SMF Services
+- **3GPP TS 29.503**: 5G UDM Services
+- **3GPP TS 29.509**: 5G AUSF Services
+- **3GPP TS 29.518**: 5G AMF Services
+- **RFC 7540**: HTTP/2
+- **RFC 7541**: HPACK Header Compression
+
+---
+
 ## Integration Architecture
 
 ```
