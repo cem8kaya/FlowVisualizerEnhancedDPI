@@ -24,7 +24,7 @@ EnhancedSessionCorrelator::EnhancedSessionCorrelator() {
 // ============================================================================
 
 void EnhancedSessionCorrelator::addMessage(const SessionMessageRef& msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     LOG_DEBUG("Adding message to correlator: " << protocolTypeToString(msg.protocol) << " on "
                                                << interfaceTypeToString(msg.interface));
@@ -92,7 +92,7 @@ void EnhancedSessionCorrelator::addMessage(const SessionMessageRef& msg) {
     }
 }
 std::vector<Session> EnhancedSessionCorrelator::correlateByImsi(const std::string& imsi) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
 
     auto it = imsi_index_.find(imsi);
@@ -109,7 +109,7 @@ std::vector<Session> EnhancedSessionCorrelator::correlateByImsi(const std::strin
 }
 
 std::vector<Session> EnhancedSessionCorrelator::correlateBySupi(const std::string& supi) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
 
     auto it = supi_index_.find(supi);
@@ -126,7 +126,7 @@ std::vector<Session> EnhancedSessionCorrelator::correlateBySupi(const std::strin
 }
 
 std::vector<Session> EnhancedSessionCorrelator::correlateByTeid(uint32_t teid) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
 
     auto it = teid_index_.find(teid);
@@ -143,7 +143,7 @@ std::vector<Session> EnhancedSessionCorrelator::correlateByTeid(uint32_t teid) c
 }
 
 std::vector<Session> EnhancedSessionCorrelator::correlateBySeid(uint64_t seid) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
 
     auto it = seid_index_.find(seid);
@@ -160,7 +160,7 @@ std::vector<Session> EnhancedSessionCorrelator::correlateBySeid(uint64_t seid) c
 }
 
 std::vector<Session> EnhancedSessionCorrelator::correlateByUeIp(const std::string& ue_ip) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
 
     auto it = ue_ip_index_.find(ue_ip);
@@ -177,7 +177,7 @@ std::vector<Session> EnhancedSessionCorrelator::correlateByUeIp(const std::strin
 }
 
 std::vector<Session> EnhancedSessionCorrelator::correlateByMsisdn(const std::string& msisdn) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
 
     auto it = msisdn_index_.find(msisdn);
@@ -193,7 +193,7 @@ std::vector<Session> EnhancedSessionCorrelator::correlateByMsisdn(const std::str
 }
 
 std::vector<Session> EnhancedSessionCorrelator::correlateByIcid(const std::string& icid) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
 
     auto it = icid_index_.find(icid);
@@ -210,7 +210,7 @@ std::vector<Session> EnhancedSessionCorrelator::correlateByIcid(const std::strin
 
 std::vector<Session> EnhancedSessionCorrelator::correlateByKey(
     const SessionCorrelationKey& key) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
     std::unordered_set<std::string> found_session_ids;
 
@@ -262,7 +262,7 @@ std::vector<Session> EnhancedSessionCorrelator::correlateByKey(
 }
 
 std::optional<Session> EnhancedSessionCorrelator::getSession(const std::string& session_id) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     auto it = sessions_.find(session_id);
     if (it != sessions_.end()) {
@@ -273,7 +273,7 @@ std::optional<Session> EnhancedSessionCorrelator::getSession(const std::string& 
 }
 
 std::vector<Session> EnhancedSessionCorrelator::getSessionsByType(EnhancedSessionType type) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
 
     for (const auto& [session_id, session] : sessions_) {
@@ -287,7 +287,7 @@ std::vector<Session> EnhancedSessionCorrelator::getSessionsByType(EnhancedSessio
 
 std::vector<Session> EnhancedSessionCorrelator::getSessionsByInterface(
     InterfaceType interface) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<Session> result;
 
     for (const auto& [session_id, session] : sessions_) {
@@ -302,7 +302,7 @@ std::vector<Session> EnhancedSessionCorrelator::getSessionsByInterface(
 
 std::vector<SessionMessageRef> EnhancedSessionCorrelator::getSessionLegs(
     const std::string& identifier) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<SessionMessageRef> result;
 
     // Search by IMSI
@@ -339,7 +339,7 @@ std::vector<SessionMessageRef> EnhancedSessionCorrelator::getSessionLegs(
 }
 
 SessionStatistics EnhancedSessionCorrelator::getStatistics() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     SessionStatistics stats;
     stats.total_sessions = sessions_.size();
@@ -387,7 +387,7 @@ SessionStatistics EnhancedSessionCorrelator::getStatistics() const {
 }
 
 void EnhancedSessionCorrelator::clear() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     sessions_.clear();
     imsi_index_.clear();
@@ -402,7 +402,7 @@ void EnhancedSessionCorrelator::clear() {
 }
 
 void EnhancedSessionCorrelator::finalize() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     LOG_INFO("Finalizing " << sessions_.size() << " sessions");
 
@@ -417,17 +417,19 @@ void EnhancedSessionCorrelator::finalize() {
 }
 
 size_t EnhancedSessionCorrelator::getSessionCount() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return sessions_.size();
 }
 
 size_t EnhancedSessionCorrelator::getSipOnlySessionCount() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return sip_only_manager_->getSessions().size();
 }
 
 nlohmann::json EnhancedSessionCorrelator::exportToJson() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    LOG_DEBUG("exportToJson: Attempting to acquire lock - THIS WILL DEADLOCK IF CALLED FROM exportAllSessions()");
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    LOG_DEBUG("exportToJson: Lock acquired (this message will never print if deadlocked)");
 
     nlohmann::json j = nlohmann::json::array();
 
@@ -440,7 +442,7 @@ nlohmann::json EnhancedSessionCorrelator::exportToJson() const {
 
 std::optional<VolteMasterSession> EnhancedSessionCorrelator::getMasterSession(
     const std::string& imsi) const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto it = master_sessions_.find(imsi);
     if (it != master_sessions_.end()) {
         return it->second;
@@ -450,7 +452,7 @@ std::optional<VolteMasterSession> EnhancedSessionCorrelator::getMasterSession(
 
 const std::unordered_map<std::string, VolteMasterSession>&
 EnhancedSessionCorrelator::getAllMasterSessions() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     return master_sessions_;
 }
 
@@ -1247,7 +1249,7 @@ void callflow::EnhancedSessionCorrelator::processPacket(const PacketMetadata& pa
 }
 
 void callflow::EnhancedSessionCorrelator::finalizeSessions() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     for (auto& [id, session] : sessions_) {
         session.finalize();
         // Detect session type after collecting all messages
@@ -1257,7 +1259,7 @@ void callflow::EnhancedSessionCorrelator::finalizeSessions() {
 
 std::vector<std::shared_ptr<callflow::Session>>
 callflow::EnhancedSessionCorrelator::getAllSessions() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<std::shared_ptr<Session>> result;
     result.reserve(sessions_.size());
     for (const auto& [id, session] : sessions_) {
@@ -1267,12 +1269,15 @@ callflow::EnhancedSessionCorrelator::getAllSessions() const {
 }
 
 nlohmann::json EnhancedSessionCorrelator::exportAllSessions() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    LOG_DEBUG("exportAllSessions: Attempting to acquire lock");
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    LOG_DEBUG("exportAllSessions: Lock acquired, calling exportToJson()");
 
     nlohmann::json all_sessions;
 
     // Export correlated sessions
     all_sessions["correlated"] = exportToJson();
+    LOG_DEBUG("exportAllSessions: exportToJson() completed");
 
     // Export SIP-only sessions
     all_sessions["sip_only"] = sip_only_manager_->exportSessions();
@@ -1432,7 +1437,7 @@ void callflow::EnhancedSessionCorrelator::processSipMessage(const SipMessage& ms
 }
 
 void callflow::EnhancedSessionCorrelator::validateAndEnrichSessions() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
 
     // For each SIP-only session, attempt to find matching DIAMETER/GTP
     auto sip_sessions = sip_only_manager_->getSessions();

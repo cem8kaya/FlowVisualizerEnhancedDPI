@@ -260,10 +260,13 @@ std::string JsonExporter::exportMasterSessions(const EnhancedSessionCorrelator& 
 }
 
 std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorrelator& correlator) {
+    LOG_INFO("exportAllSessionsWithSipOnly: START");
     nlohmann::json root = nlohmann::json::array();
 
     // First, export all master sessions (correlated VoLTE calls)
+    LOG_INFO("exportAllSessionsWithSipOnly: Calling getAllMasterSessions()");
     auto master_sessions = correlator.getAllMasterSessions();
+    LOG_INFO("exportAllSessionsWithSipOnly: Got " << master_sessions.size() << " master sessions");
     for (const auto& [imsi, master] : master_sessions) {
         nlohmann::json j_master;
         j_master["master_id"] = master.master_uuid;
@@ -293,19 +296,23 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                 return;
             processed_sessions.insert(sid);
 
+            LOG_DEBUG("exportAllSessionsWithSipOnly: collect_msgs calling getSession(" << sid << ")");
             auto session_opt = correlator.getSession(sid);
             if (session_opt) {
                 auto msgs = session_opt->getAllMessages();
                 all_messages.insert(all_messages.end(), msgs.begin(), msgs.end());
+                LOG_DEBUG("exportAllSessionsWithSipOnly: Got " << msgs.size() << " messages from session " << sid);
             }
         };
 
+        LOG_DEBUG("exportAllSessionsWithSipOnly: Processing master session for IMSI " << imsi);
         if (master.gtp_session_id.has_value())
             collect_msgs(master.gtp_session_id.value());
         for (const auto& sid : master.sip_session_ids)
             collect_msgs(sid);
         for (const auto& sid : master.diameter_session_ids)
             collect_msgs(sid);
+        LOG_DEBUG("exportAllSessionsWithSipOnly: Finished collecting messages for IMSI " << imsi);
 
         // Sort by timestamp
         std::sort(all_messages.begin(), all_messages.end(),
@@ -387,8 +394,11 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
         root.push_back(j_master);
     }
 
+    LOG_INFO("exportAllSessionsWithSipOnly: Finished processing " << master_sessions.size() << " master sessions");
     // Now export SIP-only sessions (standalone SIP without GTP correlation)
+    LOG_INFO("exportAllSessionsWithSipOnly: Calling exportAllSessions() - THIS MAY DEADLOCK!");
     auto all_sessions_json = correlator.exportAllSessions();
+    LOG_INFO("exportAllSessionsWithSipOnly: exportAllSessions() completed successfully");
     if (all_sessions_json.contains("sip_only") && all_sessions_json["sip_only"].is_array()) {
         for (const auto& sip_session : all_sessions_json["sip_only"]) {
             nlohmann::json j_sip;
