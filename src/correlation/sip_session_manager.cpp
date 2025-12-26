@@ -116,7 +116,7 @@ nlohmann::json SipSessionManager::exportSessions() const {
         // Export to JSON
         nlohmann::json session_json;
         session_json["session_id"] = generic_session.session_id;
-        session_json["session_type"] = "SIP_ONLY";
+        session_json["session_type"] = sipSessionTypeToString(sip_session->getType());
         session_json["call_id"] = call_id;
         // Convert timestamps from seconds to milliseconds
         session_json["start_time"] = static_cast<uint64_t>(sip_session->getStartTime() * 1000);

@@ -157,23 +157,26 @@ class SessionDetailPage {
             if (el) el.textContent = text;
         };
 
-        const startTime = new Date(this.sessionData.start_time * 1000); // Assuming seconds
-        const endTime = new Date(this.sessionData.end_time * 1000);
-        const duration = ((this.sessionData.end_time - this.sessionData.start_time)).toFixed(3);
+        // Backend sends timestamps in milliseconds, use directly
+        const startTime = new Date(this.sessionData.start_time);
+        const endTime = new Date(this.sessionData.end_time);
+        // Duration is in milliseconds, convert to seconds
+        const durationSeconds = ((this.sessionData.end_time - this.sessionData.start_time) / 1000).toFixed(3);
 
         // Handle potentially different timestamp formats
         const formatTime = (ts) => {
             if (!ts) return '-';
-            const date = new Date(ts > 2000000000000 ? ts : ts * 1000); // Handle ms vs s
+            // Detect if timestamp is in seconds (< 10 billion) or milliseconds
+            const date = new Date(ts < 10000000000 ? ts * 1000 : ts);
             return date.toLocaleString();
         };
 
         updateText('sessionId', this.sessionId);
-        updateText('sessionType', this.sessionData.type || 'Unknown');
+        updateText('sessionType', this.sessionData.type || this.sessionData.session_type || 'Unknown');
         updateText('startTime', formatTime(this.sessionData.start_time));
-        updateText('duration', `${duration}s`);
+        updateText('duration', `${durationSeconds}s`);
         updateText('packetCount', this.sessionData.packet_count || this.sessionData.events?.length || 0);
-        updateText('byteCount', window.app?.formatBytes(this.sessionData.byte_count || 0) || '0 B');
+        updateText('byteCount', window.app?.formatBytes(this.sessionData.byte_count || this.sessionData.metrics?.bytes || 0) || '0 B');
 
         // Render participants
         const participantsList = document.getElementById('participants');
@@ -201,13 +204,17 @@ class SessionDetailPage {
         const tbody = document.getElementById('metricsTableBody');
         if (!tbody || !this.sessionData) return;
 
+        // Timestamps are in milliseconds
+        const durationMs = this.sessionData.end_time - this.sessionData.start_time;
+        const durationSeconds = (durationMs / 1000).toFixed(3);
+
         const metrics = [
-            ['Type', this.sessionData.type || 'Generic'],
-            ['Start Time', new Date(this.sessionData.start_time * 1000).toISOString()],
-            ['End Time', new Date(this.sessionData.end_time * 1000).toISOString()],
-            ['Duration', `${(this.sessionData.end_time - this.sessionData.start_time).toFixed(3)}s`],
-            ['Packets', this.sessionData.packet_count || this.sessionData.events?.length],
-            ['Bytes', this.sessionData.byte_count],
+            ['Type', this.sessionData.type || this.sessionData.session_type || 'Generic'],
+            ['Start Time', new Date(this.sessionData.start_time).toISOString()],
+            ['End Time', new Date(this.sessionData.end_time).toISOString()],
+            ['Duration', `${durationSeconds}s`],
+            ['Packets', this.sessionData.packet_count || this.sessionData.metrics?.packets || this.sessionData.events?.length || 0],
+            ['Bytes', this.sessionData.byte_count || this.sessionData.metrics?.bytes || 0],
             ['State', this.sessionData.state || 'Closed']
         ];
 
