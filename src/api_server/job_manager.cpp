@@ -325,73 +325,9 @@ void JobManager::processJob(const JobTask& task) {
             throw std::runtime_error("Failed to open PCAPNG file: " + task.input_file);
         }
 
-        // PcapngReader uses a block-based loop or processPackets with callback.
-        // But we want to intercept comments and stats.
-        // PcapngReader::processPackets only gives us packets.
-        // We need to iterate blocks manually?
-        // PcapngReader API: readNextBlock(), getCurrentBlockType().
+        updateProgress(task.job_id, 10, "PCAPNG file opened");
 
-        while (reader.readNextBlock()) {
-            auto block_type = reader.getCurrentBlockType();
-
-            if (block_type == PcapngBlockType::ENHANCED_PACKET) {
-                uint32_t interface_id;
-                uint64_t timestamp;
-                std::vector<uint8_t> packet_data;
-                uint32_t original_length;
-                PcapngPacketMetadata metadata;
-
-                if (reader.readEnhancedPacket(interface_id, timestamp, packet_data, original_length,
-                                              metadata)) {
-                    // Convert timestamp ns to systemclock
-                    auto ts = std::chrono::system_clock::time_point(
-                        std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                            std::chrono::nanoseconds(timestamp)));
-
-                    // TODO: Pass DLT? Pcapng interface has link type.
-                    const PcapngInterface* iface = reader.getInterface(interface_id);
-                    int dlt = iface ? iface->link_type : 1;  // Default to Ethernet
-
-                    processor.processPacket(packet_data.data(), packet_data.size(), ts,
-                                            packet_count, dlt);
-
-                    packet_count++;
-                    total_bytes += packet_data.size();
-                }
-            } else if (block_type == PcapngBlockType::INTERFACE_STATISTICS) {
-                // Parse stats
-                // Need to expose parseInterfaceStatistics or access the stats?
-                // The reader parses it automatically if we call parseInterfaceStatistics() but that
-                // is private? Wait, processPackets calls it. If we manually loop, we need to call
-                // the parse methods. BUT they are private helpers in PcapngReader. We should
-                // probably enhance PcapngReader public API or just use `processPackets` and extract
-                // stats afterwards? `reader.getInterfaceStatistics()` returns the vector of parsed
-                // stats. So if we just continue loop, does it parse? Look at `readNextBlock`: it
-                // reads type and data. That's it. Calling `processPackets` (API) does the dispatch.
-                // `processPackets` takes a callback for PACKETS. It handles other blocks
-                // internally. So we can use `processPackets`.
-            }
-
-            if (packet_count % 1000 == 0 && packet_count > 0) {
-                int progress = 10 + (packet_count % 10000) * 60 / 10000;
-                updateProgress(task.job_id, progress,
-                               "Processed " + std::to_string(packet_count) + " packets");
-            }
-        }
-
-        // Use processPackets for simplicity? No, we started manual loop logic.
-        // Actually manual loop logic above is incomplete because `parseInterfaceStatistics` is
-        // private. I checked `PcapngReader` code earlier. `parseInterfaceStatistics` is private.
-        // Accessing `current_block_type_` is public.
-
-        // FIX: I will use `processPackets` and let it handle parsing.
-        // Then I will retrieve stats via `getInterfaceStatistics()` AFTER processing.
-        // And `processPackets` handles logic for all blocks internally (calls parseXxxx).
-
-        // Re-opening reader or resetting? No, just use processPackets.
-        // Need to close/re-open? I just opened it. I haven't consumed loop yet (logic above was
-        // just hypothetical). So I will use `reader.processPackets`.
-
+        // Use processPackets to handle all block types and parse packets
         auto callback = [&](uint32_t interface_id, uint64_t timestamp_ns, const uint8_t* data,
                             uint32_t cap_len, uint32_t /*orig_len*/,
                             const PcapngPacketMetadata& meta) {
@@ -415,6 +351,12 @@ void JobManager::processJob(const JobTask& task) {
 
             packet_count++;
             total_bytes += cap_len;
+
+            if (packet_count % 1000 == 0) {
+                int progress = 10 + (packet_count % 10000) * 60 / 10000;
+                updateProgress(task.job_id, progress,
+                               "Processed " + std::to_string(packet_count) + " packets");
+            }
         };
 
         reader.processPackets(callback);
