@@ -107,6 +107,9 @@ nlohmann::json SipSessionManager::exportSessions() const {
     nlohmann::json result = nlohmann::json::array();
 
     for (const auto& [call_id, sip_session] : sessions_) {
+        // Finalize session to extract call parties and session type
+        sip_session->finalize();
+
         // Convert to generic Session format
         Session generic_session = toGenericSession(*sip_session);
 
@@ -115,8 +118,9 @@ nlohmann::json SipSessionManager::exportSessions() const {
         session_json["session_id"] = generic_session.session_id;
         session_json["session_type"] = "SIP_ONLY";
         session_json["call_id"] = call_id;
-        session_json["start_time"] = sip_session->getStartTime();
-        session_json["end_time"] = sip_session->getEndTime();
+        // Convert timestamps from seconds to milliseconds
+        session_json["start_time"] = static_cast<uint64_t>(sip_session->getStartTime() * 1000);
+        session_json["end_time"] = static_cast<uint64_t>(sip_session->getEndTime() * 1000);
         session_json["message_count"] = sip_session->getMessageCount();
         session_json["dialog_count"] = sip_session->getDialogs().size();
 

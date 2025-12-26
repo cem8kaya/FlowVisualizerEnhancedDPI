@@ -431,11 +431,34 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
             } else if (sip_session.contains("messages")) {
                 // Convert messages to events format
                 nlohmann::json events = nlohmann::json::array();
+                std::set<std::string> participants_set;
+
                 for (const auto& msg : sip_session["messages"]) {
                     nlohmann::json event;
-                    event["timestamp"] = msg.value("timestamp", 0);
+                    // Convert timestamp from seconds to milliseconds if needed
+                    double timestamp = msg.value("timestamp", 0.0);
+                    event["timestamp"] = static_cast<uint64_t>(timestamp * 1000);
                     event["proto"] = "SIP";
                     event["protocol"] = "SIP";
+
+                    // Extract network information
+                    std::string src_ip = msg.value("source_ip", "");
+                    std::string dst_ip = msg.value("dest_ip", "");
+                    uint16_t src_port = msg.value("source_port", 0);
+                    uint16_t dst_port = msg.value("dest_port", 0);
+
+                    event["src_ip"] = src_ip;
+                    event["dst_ip"] = dst_ip;
+                    event["src_port"] = src_port;
+                    event["dst_port"] = dst_port;
+
+                    // Add to participants
+                    if (!src_ip.empty()) {
+                        participants_set.insert(src_ip + ":" + std::to_string(src_port));
+                    }
+                    if (!dst_ip.empty()) {
+                        participants_set.insert(dst_ip + ":" + std::to_string(dst_port));
+                    }
 
                     // Determine message type
                     if (msg.value("is_request", true)) {
@@ -447,9 +470,24 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                         event["short"] = std::to_string(status) + " " + msg.value("reason_phrase", "");
                     }
 
+                    // Add details object
+                    event["details"] = {
+                        {"src_ip", src_ip},
+                        {"dst_ip", dst_ip},
+                        {"src_port", src_port},
+                        {"dst_port", dst_port},
+                        {"payload_len", 0}
+                    };
+
                     events.push_back(event);
                 }
                 j_sip["events"] = events;
+
+                // Update participants from actual message data
+                j_sip["participants"] = nlohmann::json::array();
+                for (const auto& p : participants_set) {
+                    j_sip["participants"].push_back(p);
+                }
             } else {
                 j_sip["events"] = nlohmann::json::array();
             }
@@ -460,13 +498,15 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                                 {"bytes", 0},
                                 {"duration_ms", j_sip["duration_ms"]}};
 
-            // Participants from caller/callee
-            j_sip["participants"] = nlohmann::json::array();
-            if (sip_session.contains("caller_ip") && !sip_session["caller_ip"].get<std::string>().empty()) {
-                j_sip["participants"].push_back(sip_session["caller_ip"].get<std::string>());
-            }
-            if (sip_session.contains("callee_ip") && !sip_session["callee_ip"].get<std::string>().empty()) {
-                j_sip["participants"].push_back(sip_session["callee_ip"].get<std::string>());
+            // Participants - if not already set from messages, try caller/callee
+            if (!j_sip.contains("participants") || j_sip["participants"].empty()) {
+                j_sip["participants"] = nlohmann::json::array();
+                if (sip_session.contains("caller_ip") && !sip_session["caller_ip"].get<std::string>().empty()) {
+                    j_sip["participants"].push_back(sip_session["caller_ip"].get<std::string>());
+                }
+                if (sip_session.contains("callee_ip") && !sip_session["callee_ip"].get<std::string>().empty()) {
+                    j_sip["participants"].push_back(sip_session["callee_ip"].get<std::string>());
+                }
             }
 
             root.push_back(j_sip);
