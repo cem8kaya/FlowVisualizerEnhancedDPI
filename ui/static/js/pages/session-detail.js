@@ -18,6 +18,12 @@ class SessionDetailPage {
             return;
         }
 
+        // Update back button link to preserve job context
+        const backLink = document.getElementById('backLink');
+        if (backLink && this.jobId) {
+            backLink.href = `/sessions.html?job=${this.jobId}`;
+        }
+
         // Custom Tab Switching Implementation (Bypassing Bootstrap JS)
         const tabButtons = document.querySelectorAll('#sessionTabs button');
         const tabPanes = document.querySelectorAll('.tab-pane');

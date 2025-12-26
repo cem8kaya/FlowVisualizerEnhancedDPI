@@ -1,12 +1,13 @@
 #include "correlation/sip/sip_session.h"
 #include "correlation/sip/sip_call_detector.h"
+#include "common/utils.h"
 #include <algorithm>
 
 namespace callflow {
 namespace correlation {
 
 SipSession::SipSession(const std::string& call_id)
-    : call_id_(call_id) {
+    : call_id_(call_id), session_id_(utils::generateUuid()) {
 }
 
 void SipSession::addMessage(const SipMessage& msg) {
