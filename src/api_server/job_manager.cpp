@@ -201,10 +201,31 @@ std::vector<SessionId> JobManager::getJobSessions(const JobId& job_id) {
 void JobManager::cleanupOldJobs() {
     auto now = utils::now();
     auto retention_duration = std::chrono::hours(config_.retention_hours);
+    auto hung_job_timeout = std::chrono::hours(1);  // Mark jobs as failed after 1 hour of running
 
     std::lock_guard<std::mutex> lock(jobs_mutex_);
     for (auto it = jobs_.begin(); it != jobs_.end();) {
         const auto& job = it->second;
+
+        // Check for hung RUNNING jobs
+        if (job->status == JobStatus::RUNNING) {
+            auto running_duration = now - job->started_at;
+            if (running_duration > hung_job_timeout) {
+                LOG_WARN("Marking hung job as FAILED: " << job->job_id
+                         << " (running for " << std::chrono::duration_cast<std::chrono::minutes>(running_duration).count()
+                         << " minutes)");
+                job->status = JobStatus::FAILED;
+                job->completed_at = now;
+                job->error_message = "Job timeout: exceeded maximum processing time";
+
+                // Update database if available
+                if (db_) {
+                    db_->updateJob(job->job_id, *job);
+                }
+            }
+            ++it;
+            continue;
+        }
 
         // Only cleanup completed or failed jobs
         if (job->status != JobStatus::COMPLETED && job->status != JobStatus::FAILED) {
