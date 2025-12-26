@@ -119,8 +119,17 @@ nlohmann::json SipSessionManager::exportSessions() const {
         session_json["session_type"] = sipSessionTypeToString(sip_session->getType());
         session_json["call_id"] = call_id;
         // Convert timestamps from seconds to milliseconds
-        session_json["start_time"] = static_cast<uint64_t>(sip_session->getStartTime() * 1000);
-        session_json["end_time"] = static_cast<uint64_t>(sip_session->getEndTime() * 1000);
+        double start_time_sec = sip_session->getStartTime();
+        double end_time_sec = sip_session->getEndTime();
+
+        // Validate timestamps (should be after year 2000: 946684800 seconds)
+        if (start_time_sec < 946684800.0 || end_time_sec < 946684800.0) {
+            LOG_WARN("Invalid timestamp detected for SIP session " << call_id
+                     << ": start=" << start_time_sec << ", end=" << end_time_sec);
+        }
+
+        session_json["start_time"] = static_cast<uint64_t>(start_time_sec * 1000);
+        session_json["end_time"] = static_cast<uint64_t>(end_time_sec * 1000);
         session_json["message_count"] = sip_session->getMessageCount();
         session_json["dialog_count"] = sip_session->getDialogs().size();
 

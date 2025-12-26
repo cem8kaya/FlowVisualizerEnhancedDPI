@@ -70,9 +70,16 @@
 
             <!-- Session Header Card -->
             <div class="card mb-6">
-                <div class="card-header">
-                    <span><i class="bi bi-info-circle me-2"></i> Session Information</span>
-                    <span id="sessionType" class="badge bg-primary text-white"></span>
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span><i class="bi bi-info-circle me-2"></i> Session Information</span>
+                        <span id="sessionType" class="badge bg-primary text-white"></span>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-secondary" id="btnExportJson" title="Export session as JSON">
+                            <i class="bi bi-download"></i> Export JSON
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4"
