@@ -432,20 +432,27 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                 // Convert messages to events format
                 nlohmann::json events = nlohmann::json::array();
                 std::set<std::string> participants_set;
+                uint64_t total_bytes = 0;
 
                 for (const auto& msg : sip_session["messages"]) {
+                    // Extract network information first to validate
+                    std::string src_ip = msg.value("source_ip", "");
+                    std::string dst_ip = msg.value("dest_ip", "");
+                    uint16_t src_port = msg.value("source_port", 0);
+                    uint16_t dst_port = msg.value("dest_port", 0);
+
+                    // Skip messages with invalid/missing IP addresses
+                    if (src_ip.empty() || dst_ip.empty() ||
+                        src_ip == "0.0.0.0" || dst_ip == "0.0.0.0") {
+                        continue;
+                    }
+
                     nlohmann::json event;
                     // Convert timestamp from seconds to milliseconds if needed
                     double timestamp = msg.value("timestamp", 0.0);
                     event["timestamp"] = static_cast<uint64_t>(timestamp * 1000);
                     event["proto"] = "SIP";
                     event["protocol"] = "SIP";
-
-                    // Extract network information
-                    std::string src_ip = msg.value("source_ip", "");
-                    std::string dst_ip = msg.value("dest_ip", "");
-                    uint16_t src_port = msg.value("source_port", 0);
-                    uint16_t dst_port = msg.value("dest_port", 0);
 
                     event["src_ip"] = src_ip;
                     event["dst_ip"] = dst_ip;
@@ -459,6 +466,14 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                     if (!dst_ip.empty()) {
                         participants_set.insert(dst_ip + ":" + std::to_string(dst_port));
                     }
+
+                    // Estimate payload size: SIP messages are typically 500-2000 bytes
+                    // For better accuracy, check if body field exists
+                    uint32_t payload_len = 600; // Default estimate for SIP message
+                    if (msg.contains("body") && msg["body"].is_string()) {
+                        payload_len = msg["body"].get<std::string>().size() + 400; // Body + headers
+                    }
+                    total_bytes += payload_len;
 
                     // Determine message type
                     if (msg.value("is_request", true)) {
@@ -476,7 +491,7 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                         {"dst_ip", dst_ip},
                         {"src_port", src_port},
                         {"dst_port", dst_port},
-                        {"payload_len", 0}
+                        {"payload_len", payload_len}
                     };
 
                     events.push_back(event);
@@ -488,14 +503,18 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                 for (const auto& p : participants_set) {
                     j_sip["participants"].push_back(p);
                 }
+
+                // Store total bytes for metrics
+                j_sip["byte_count"] = total_bytes;
             } else {
                 j_sip["events"] = nlohmann::json::array();
             }
 
-            // Metrics
+            // Metrics - use calculated byte count
             size_t event_count = j_sip["events"].size();
+            uint64_t byte_count = j_sip.value("byte_count", 0);
             j_sip["metrics"] = {{"packets", event_count},
-                                {"bytes", 0},
+                                {"bytes", byte_count},
                                 {"duration_ms", j_sip["duration_ms"]}};
 
             // Participants - if not already set from messages, try caller/callee

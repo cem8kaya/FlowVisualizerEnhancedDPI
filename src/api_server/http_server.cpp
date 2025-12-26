@@ -304,23 +304,71 @@ void HttpServer::setupRoutes() {
                                 }
                                 diagram = {{"items", items}};
                             } else {
-                                // Ladder
-                                // Calls DiagramFormatter? We can't pass Session easily.
-                                // I will output a TODO entry in the response and just return the
-                                // session JSON with a note, or better, implement a lightweight
-                                // adapter.
+                                // Ladder diagram - extract participants and messages from events
+                                std::map<std::string, nlohmann::json> participant_map;
+                                nlohmann::json participants = nlohmann::json::array();
+                                nlohmann::json messages = nlohmann::json::array();
+                                int participant_id = 0;
 
-                                // Temporary: Return raw session for now, client might handle it if
-                                // we are lucky? User said: "Session detail doesn't return
-                                // diagram-ready format" So I MUST transform it.
+                                // Get events from session
+                                auto events = session_json.contains("events")
+                                    ? session_json["events"]
+                                    : session_json.value("messages", nlohmann::json::array());
 
-                                // I'll modify the DiagramFormatter to accept JSON in a subsequent
-                                // step if needed. For now, I'll return an error explaining
-                                // limitation or try to populate basic fields.
-                                diagram = session_json;
-                                diagram["_warning"] =
-                                    "Diagram formatting requires Session object reconstruction. "
-                                    "Returning raw session.";
+                                if (events.is_array()) {
+                                    for (const auto& event : events) {
+                                        // Extract source and destination
+                                        std::string src_ip = event.value("src_ip", event.value("source_ip", "unknown"));
+                                        std::string dst_ip = event.value("dst_ip", event.value("dest_ip", "unknown"));
+                                        uint16_t src_port = event.value("src_port", event.value("source_port", 0));
+                                        uint16_t dst_port = event.value("dst_port", event.value("dest_port", 0));
+
+                                        std::string src_key = src_ip + ":" + std::to_string(src_port);
+                                        std::string dst_key = dst_ip + ":" + std::to_string(dst_port);
+
+                                        // Add source participant if not exists
+                                        if (participant_map.find(src_key) == participant_map.end()) {
+                                            std::string pid = "p" + std::to_string(participant_id++);
+                                            nlohmann::json p;
+                                            p["id"] = pid;
+                                            p["ip"] = src_ip;
+                                            p["port"] = src_port;
+                                            p["type"] = (src_port == 5060 || src_port == 5061) ? "SERVER" :
+                                                        (src_port > 10000 ? "UE" : "SERVER");
+                                            p["label"] = src_ip;
+                                            participants.push_back(p);
+                                            participant_map[src_key] = p;
+                                        }
+
+                                        // Add destination participant if not exists
+                                        if (participant_map.find(dst_key) == participant_map.end()) {
+                                            std::string pid = "p" + std::to_string(participant_id++);
+                                            nlohmann::json p;
+                                            p["id"] = pid;
+                                            p["ip"] = dst_ip;
+                                            p["port"] = dst_port;
+                                            p["type"] = (dst_port == 5060 || dst_port == 5061) ? "SERVER" :
+                                                        (dst_port > 10000 ? "UE" : "SERVER");
+                                            p["label"] = dst_ip;
+                                            participants.push_back(p);
+                                            participant_map[dst_key] = p;
+                                        }
+
+                                        // Create message entry
+                                        nlohmann::json msg;
+                                        msg["from"] = participant_map[src_key]["id"];
+                                        msg["to"] = participant_map[dst_key]["id"];
+                                        msg["protocol"] = event.value("protocol", event.value("proto", "UNKNOWN"));
+                                        msg["label"] = event.value("message_type", event.value("short", ""));
+                                        msg["timestamp"] = event.value("timestamp", 0);
+                                        msg["details"] = event.value("details", nlohmann::json::object());
+                                        messages.push_back(msg);
+                                    }
+                                }
+
+                                diagram["participants"] = participants;
+                                diagram["messages"] = messages;
+                                diagram["title"] = session_json.value("call_id", session_id);
                             }
 
                             res.set_content(diagram.dump(), "application/json");
