@@ -650,6 +650,7 @@ size_t PcapngReader::processPackets(PacketCallback callback) {
                 callback(interface_id, timestamp, packet_data.data(),
                         static_cast<uint32_t>(packet_data.size()), original_length, metadata);
                 packet_count++;
+                stats_.enhanced_packets++;  // Track enhanced packet count for close() logging
 
                 if (packet_count % 100000 == 0) {
                     LOG_INFO("Processed " << packet_count << " packets...");
