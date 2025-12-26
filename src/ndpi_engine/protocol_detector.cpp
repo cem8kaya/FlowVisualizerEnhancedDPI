@@ -2,6 +2,7 @@
 #include "common/logger.h"
 
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <string_view>
 
@@ -72,66 +73,74 @@ std::optional<ProtocolType> ProtocolDetector::detectFromPayload(
 }
 
 bool ProtocolDetector::isSipPayload(const uint8_t* data, size_t len) {
-    if (!data || len < 8) {
+    if (!data || len < 12) {
         return false;
     }
 
-    // Convert to string for analysis (check up to 4KB for large messages)
-    size_t check_len = std::min(len, size_t(4096));
-    std::string text(reinterpret_cast<const char*>(data), check_len);
+    // Use string_view for efficient string comparisons without allocation
+    std::string_view text(reinterpret_cast<const char*>(data),
+                          std::min(len, static_cast<size_t>(200)));
 
-    // Method 1: Check for SIP/2.0 version identifier (MUST be present in all SIP messages)
-    bool has_sip_version = (text.find("SIP/2.0") != std::string::npos);
-    if (!has_sip_version) {
-        return false;
-    }
-
-    // Method 2: Check for SIP methods (request line)
-    static const std::vector<std::string> sip_methods = {
-        "INVITE ", "ACK ", "BYE ", "CANCEL ", "OPTIONS ",
-        "REGISTER ", "UPDATE ", "PRACK ", "SUBSCRIBE ",
-        "NOTIFY ", "PUBLISH ", "MESSAGE ", "INFO ", "REFER "
-    };
-
-    for (const auto& method : sip_methods) {
-        if (text.find(method) == 0) { // Must be at start
+    // SIP response: "SIP/2.0 " followed by 3-digit status code
+    if (text.size() >= 12 && text.substr(0, 8) == "SIP/2.0 ") {
+        char c1 = text[8], c2 = text[9], c3 = text[10];
+        if (c1 >= '1' && c1 <= '6' && c2 >= '0' && c2 <= '9' && c3 >= '0' && c3 <= '9') {
             return true;
         }
     }
 
-    // Method 3: Check for SIP status line (response)
-    // Format: "SIP/2.0 <status-code> <reason>"
-    if (text.find("SIP/2.0 ") == 0) {
-        // Check if followed by 3-digit status code
-        if (text.length() >= 12) {
-            std::string status = text.substr(8, 3);
-            if (std::isdigit(status[0]) && std::isdigit(status[1]) &&
-                std::isdigit(status[2])) {
+    // SIP request methods with space (all 14 methods per RFC 3261 + extensions)
+    // RFC 3261: INVITE, ACK, BYE, CANCEL, OPTIONS, REGISTER
+    // RFC 3265: SUBSCRIBE, NOTIFY
+    // RFC 3311: UPDATE
+    // RFC 3262: PRACK
+    // RFC 3428: MESSAGE (SMS-over-IMS)
+    // RFC 3515: REFER (call transfer)
+    // RFC 3903: PUBLISH
+    // RFC 6086: INFO
+    static constexpr std::array<std::string_view, 14> methods = {{
+        "INVITE ", "ACK ", "BYE ", "CANCEL ", "OPTIONS ", "REGISTER ",
+        "UPDATE ", "PRACK ", "INFO ", "MESSAGE ", "NOTIFY ", "SUBSCRIBE ",
+        "REFER ", "PUBLISH "
+    }};
+
+    for (const auto& method : methods) {
+        if (text.size() > method.size() + 4 && text.substr(0, method.size()) == method) {
+            // Verify SIP URI scheme follows (sip:, sips:, or tel: for IMS)
+            size_t uri_start = method.size();
+            if (text.substr(uri_start, 4) == "sip:" ||
+                text.substr(uri_start, 4) == "tel:" ||
+                text.substr(uri_start, 5) == "sips:") {
+                return true;
+            }
+            // Also accept if followed by bracket (IPv6 addresses: sip:user@[2a01::2]:port)
+            // or just digits (for simple tel: URIs)
+            if (text[uri_start] == '<' || (text[uri_start] >= '0' && text[uri_start] <= '9') ||
+                text[uri_start] == '+') {
                 return true;
             }
         }
     }
 
-    // Method 4: Check for mandatory SIP headers (more reliable for fragments)
-    // According to RFC 3261, these headers are mandatory in all SIP requests/responses
-    static const std::vector<std::string> mandatory_headers = {
-        "Call-ID:", "i:", // Call-ID (or compact form)
-        "From:", "f:",    // From
-        "To:", "t:",      // To
-        "CSeq:",          // CSeq
-        "Via:", "v:"      // Via
-    };
-
-    int header_count = 0;
-    for (const auto& header : mandatory_headers) {
-        if (text.find(header) != std::string::npos) {
-            header_count++;
+    // Fallback: Check for SIP/2.0 + mandatory headers (for fragments)
+    if (text.find("SIP/2.0") != std::string_view::npos) {
+        // Check for mandatory SIP headers (RFC 3261)
+        int header_count = 0;
+        static constexpr std::array<std::string_view, 5> mandatory_headers = {{
+            "Call-ID:", "From:", "To:", "CSeq:", "Via:"
+        }};
+        for (const auto& header : mandatory_headers) {
+            if (text.find(header) != std::string_view::npos) {
+                header_count++;
+            }
+        }
+        // If we have SIP/2.0 + at least 2 mandatory headers, likely SIP
+        if (header_count >= 2) {
+            return true;
         }
     }
 
-    // If we have SIP/2.0 + at least 2 mandatory headers, likely SIP
-    // This catches fragmented messages where the request/status line might be in a different segment
-    return has_sip_version && header_count >= 2;
+    return false;
 }
 
 bool ProtocolDetector::isDiameterPayload(const uint8_t* data, size_t len) {

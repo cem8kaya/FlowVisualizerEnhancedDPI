@@ -80,6 +80,12 @@ enum class MessageType {
     SIP_OPTIONS,
     SIP_UPDATE,
     SIP_PRACK,
+    SIP_INFO,
+    SIP_MESSAGE,
+    SIP_NOTIFY,
+    SIP_SUBSCRIBE,
+    SIP_REFER,
+    SIP_PUBLISH,
     // DIAMETER
     DIAMETER_CCR,
     DIAMETER_CCA,
@@ -246,6 +252,11 @@ struct PacketMetadata {
     FiveTuple five_tuple;
     ProtocolType detected_protocol;
     std::vector<uint8_t> raw_data;
+
+    // GTP encapsulation context (for inner payloads)
+    std::optional<uint32_t> gtp_teid;      // GTP Tunnel Endpoint ID
+    bool is_gtp_encapsulated = false;       // True if this is inner payload of GTP-U
+    uint32_t interface_id = 0;              // Capture interface ID (for deduplication)
 };
 
 // Session metrics

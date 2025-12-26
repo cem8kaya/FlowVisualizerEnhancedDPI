@@ -1,8 +1,10 @@
 #include "protocol_parsers/sip_parser.h"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <sstream>
+#include <string_view>
 
 #include "common/field_registry.h"
 #include "common/logger.h"
@@ -511,17 +513,47 @@ std::optional<SipMessage> SipParser::parse(const uint8_t* data, size_t len) {
 }
 
 bool SipParser::isSipMessage(const uint8_t* data, size_t len) {
-    if (!data || len < 8) {
+    if (!data || len < 10) {
         return false;
     }
 
-    std::string text(reinterpret_cast<const char*>(data), std::min(len, size_t(200)));
+    std::string_view text(reinterpret_cast<const char*>(data),
+                          std::min(len, static_cast<size_t>(200)));
 
-    // Check for SIP methods or status line
-    return text.find("SIP/2.0") != std::string::npos &&
-           (text.find("INVITE") == 0 || text.find("ACK") == 0 || text.find("BYE") == 0 ||
-            text.find("CANCEL") == 0 || text.find("OPTIONS") == 0 || text.find("REGISTER") == 0 ||
-            text.find("UPDATE") == 0 || text.find("PRACK") == 0 || text.find("SIP/2.0") == 0);
+    // Must contain SIP/2.0
+    if (text.find("SIP/2.0") == std::string_view::npos) {
+        return false;
+    }
+
+    // Check for SIP response (starts with "SIP/2.0")
+    if (text.substr(0, 7) == "SIP/2.0") {
+        return true;
+    }
+
+    // All SIP methods per RFC 3261 + RFC 3265 + RFC 3311 + RFC 3428 + RFC 3515 + RFC 3903
+    // INVITE, ACK, BYE, CANCEL, OPTIONS, REGISTER - RFC 3261 (core)
+    // SUBSCRIBE, NOTIFY - RFC 3265 (events)
+    // UPDATE - RFC 3311 (session update)
+    // MESSAGE - RFC 3428 (instant messaging)
+    // REFER - RFC 3515 (call transfer)
+    // PUBLISH - RFC 3903 (event state publication)
+    // PRACK - RFC 3262 (provisional responses)
+    // INFO - RFC 6086 (info packages)
+    static constexpr std::array<std::string_view, 14> methods = {{
+        "INVITE", "ACK", "BYE", "CANCEL", "OPTIONS", "REGISTER",
+        "UPDATE", "PRACK", "INFO", "MESSAGE", "NOTIFY", "SUBSCRIBE",
+        "REFER", "PUBLISH"
+    }};
+
+    for (const auto& method : methods) {
+        if (text.size() > method.size() &&
+            text.substr(0, method.size()) == method &&
+            (text[method.size()] == ' ' || text[method.size()] == '\t')) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 std::optional<std::string> SipParser::extractCallId(const uint8_t* data, size_t len) {
@@ -577,6 +609,19 @@ MessageType SipParser::getMessageType(const SipMessage& msg) {
             return MessageType::SIP_UPDATE;
         if (msg.method == "PRACK")
             return MessageType::SIP_PRACK;
+        // Additional SIP methods for IMS/VoLTE
+        if (msg.method == "INFO")
+            return MessageType::SIP_INFO;
+        if (msg.method == "MESSAGE")
+            return MessageType::SIP_MESSAGE;
+        if (msg.method == "NOTIFY")
+            return MessageType::SIP_NOTIFY;
+        if (msg.method == "SUBSCRIBE")
+            return MessageType::SIP_SUBSCRIBE;
+        if (msg.method == "REFER")
+            return MessageType::SIP_REFER;
+        if (msg.method == "PUBLISH")
+            return MessageType::SIP_PUBLISH;
     } else {
         if (msg.status_code == 100)
             return MessageType::SIP_TRYING;
