@@ -33,21 +33,18 @@ public:
      * @param protocol IP protocol (UDP=17, TCP=6, etc.)
      * @return Detected protocol type or nullopt if unknown
      */
-    static std::optional<ProtocolType> detectFromPayload(
-        const uint8_t* data,
-        size_t len,
-        uint16_t src_port,
-        uint16_t dst_port,
-        uint8_t protocol);
-
-private:
-    // Protocol signature matchers
+    static std::optional<ProtocolType> detectFromPayload(const uint8_t* data, size_t len,
+                                                         uint16_t src_port, uint16_t dst_port,
+                                                         uint8_t protocol);
 
     /**
      * Detect SIP protocol from payload
      * Checks for SIP request methods (INVITE, ACK, etc.) and response signatures
      */
     static bool isSipPayload(const uint8_t* data, size_t len);
+
+private:
+    // Protocol signature matchers
 
     /**
      * Detect DIAMETER protocol from payload
@@ -84,10 +81,8 @@ private:
 
     // SIP method signatures (requests)
     static constexpr const char* SIP_METHODS[] = {
-        "INVITE", "ACK", "BYE", "CANCEL", "REGISTER",
-        "OPTIONS", "INFO", "UPDATE", "PRACK", "SUBSCRIBE",
-        "NOTIFY", "REFER", "MESSAGE", "PUBLISH"
-    };
+        "INVITE", "ACK",   "BYE",       "CANCEL", "REGISTER", "OPTIONS", "INFO",
+        "UPDATE", "PRACK", "SUBSCRIBE", "NOTIFY", "REFER",    "MESSAGE", "PUBLISH"};
 
     // SIP response signature
     static constexpr const char* SIP_RESPONSE_PREFIX = "SIP/2.0 ";
@@ -104,4 +99,4 @@ private:
     static constexpr uint16_t PORT_PFCP = 8805;
 };
 
-} // namespace callflow
+}  // namespace callflow
