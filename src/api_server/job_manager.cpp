@@ -278,6 +278,26 @@ void JobManager::workerThread() {
             }
 
             sendEvent(task.job_id, "status", {{"status", "failed"}, {"error", e.what()}});
+        } catch (...) {
+            LOG_ERROR("Job " << task.job_id << " failed with unknown exception");
+
+            // Mark job as failed
+            {
+                std::lock_guard<std::mutex> lock(jobs_mutex_);
+                auto it = jobs_.find(task.job_id);
+                if (it != jobs_.end()) {
+                    it->second->status = JobStatus::FAILED;
+                    it->second->error_message = "Unknown exception during job processing";
+                    it->second->completed_at = utils::now();
+
+                    // Update database
+                    if (db_) {
+                        db_->updateJob(task.job_id, *it->second);
+                    }
+                }
+            }
+
+            sendEvent(task.job_id, "status", {{"status", "failed"}, {"error", "Unknown exception"}});
         }
     }
 
@@ -419,43 +439,90 @@ void JobManager::processJob(const JobTask& task) {
         reader.close();
     }
 
+    LOG_INFO("Job " << task.job_id << ": Starting post-processing after " << packet_count << " packets");
     updateProgress(task.job_id, 70, "Finalizing sessions");
 
-    // Finalize sessions
-    // Finalize sessions
-    correlator.finalizeSessions();
+    // Finalize sessions with detailed error handling
+    LOG_INFO("Job " << task.job_id << ": Calling finalizeSessions()");
+    try {
+        correlator.finalizeSessions();
+        LOG_INFO("Job " << task.job_id << ": finalizeSessions() completed successfully");
+    } catch (const std::exception& e) {
+        LOG_ERROR("Job " << task.job_id << ": finalizeSessions() failed: " << e.what());
+        throw;
+    }
 
     // Get raw sessions for stats
-    auto sessions = correlator.getAllSessions();
+    LOG_INFO("Job " << task.job_id << ": Calling getAllSessions()");
+    std::vector<std::shared_ptr<Session>> sessions;
+    try {
+        sessions = correlator.getAllSessions();
+        LOG_INFO("Job " << task.job_id << ": getAllSessions() returned " << sessions.size() << " sessions");
+    } catch (const std::exception& e) {
+        LOG_ERROR("Job " << task.job_id << ": getAllSessions() failed: " << e.what());
+        throw;
+    }
+
     // Get master sessions for export
-    auto master_sessions = correlator.getAllMasterSessions();
+    LOG_INFO("Job " << task.job_id << ": Calling getAllMasterSessions()");
+    std::unordered_map<std::string, VolteMasterSession> master_sessions;
+    try {
+        master_sessions = correlator.getAllMasterSessions();
+        LOG_INFO("Job " << task.job_id << ": getAllMasterSessions() returned " << master_sessions.size() << " master sessions");
+    } catch (const std::exception& e) {
+        LOG_ERROR("Job " << task.job_id << ": getAllMasterSessions() failed: " << e.what());
+        throw;
+    }
 
     updateProgress(task.job_id, 80, "Exporting results");
 
     // Export all sessions including SIP-only (standalone SIP sessions without GTP correlation)
     // This ensures SIP traffic is visible even when there's no GTP anchor for correlation
+    LOG_INFO("Job " << task.job_id << ": Calling exportAllSessionsWithSipOnly()");
     JsonExporter exporter;
-    std::string all_sessions_json_str = exporter.exportAllSessionsWithSipOnly(correlator);
+    std::string all_sessions_json_str;
+    try {
+        all_sessions_json_str = exporter.exportAllSessionsWithSipOnly(correlator);
+        LOG_INFO("Job " << task.job_id << ": exportAllSessionsWithSipOnly() returned " << all_sessions_json_str.size() << " bytes");
+    } catch (const std::exception& e) {
+        LOG_ERROR("Job " << task.job_id << ": exportAllSessionsWithSipOnly() failed: " << e.what());
+        throw;
+    }
 
     // Wrap in object structure
+    LOG_INFO("Job " << task.job_id << ": Parsing JSON output");
     nlohmann::json final_output;
-    final_output["sessions"] = nlohmann::json::parse(all_sessions_json_str);
-    final_output["metadata"] = {{"job_id", task.job_id},
-                                {"timestamp", utils::timestampToIso8601(utils::now())},
-                                {"exporter", "VolteMasterSessionWithSipOnly"}};
+    try {
+        final_output["sessions"] = nlohmann::json::parse(all_sessions_json_str);
+        final_output["metadata"] = {{"job_id", task.job_id},
+                                    {"timestamp", utils::timestampToIso8601(utils::now())},
+                                    {"exporter", "VolteMasterSessionWithSipOnly"}};
+        LOG_INFO("Job " << task.job_id << ": JSON parsing completed successfully");
+    } catch (const std::exception& e) {
+        LOG_ERROR("Job " << task.job_id << ": JSON parsing failed: " << e.what());
+        throw;
+    }
 
     // Write to file
-    std::ofstream out(task.output_file);
-    if (!out) {
-        throw std::runtime_error("Failed to open output file: " + task.output_file);
+    LOG_INFO("Job " << task.job_id << ": Writing output to " << task.output_file);
+    try {
+        std::ofstream out(task.output_file);
+        if (!out) {
+            throw std::runtime_error("Failed to open output file: " + task.output_file);
+        }
+        out << final_output.dump(4);  // Pretty print
+        out.close();
+        LOG_INFO("Job " << task.job_id << ": Output file written successfully");
+    } catch (const std::exception& e) {
+        LOG_ERROR("Job " << task.job_id << ": File write failed: " << e.what());
+        throw;
     }
-    out << final_output.dump(4);  // Pretty print
-    out.close();
 
     updateProgress(task.job_id, 100, "Completed");
 
-    // Update job info
-    {
+    // Update job info with error handling
+    LOG_INFO("Job " << task.job_id << ": Updating job status and database");
+    try {
         std::lock_guard<std::mutex> lock(jobs_mutex_);
         auto it = jobs_.find(task.job_id);
         if (it != jobs_.end()) {
@@ -469,19 +536,22 @@ void JobManager::processJob(const JobTask& task) {
             it->second->session_count = master_sessions.size() + sip_only_count;
 
             // Store Master Session IDs
-            // Store Master Session IDs
             it->second->session_ids.clear();
             for (const auto& [imsi, ms] : master_sessions) {
                 it->second->session_ids.push_back(ms.master_uuid);
             }
 
+            LOG_INFO("Job " << task.job_id << ": Job info updated, session_count=" << it->second->session_count);
+
             // Update database
             if (db_) {
+                LOG_INFO("Job " << task.job_id << ": Updating database");
                 db_->updateJob(task.job_id, *it->second);
 
                 // Insert Master Sessions into DB
                 // Mapping VolteMasterSession to SessionRecord (best effort)
                 std::set<std::string> inserted_ids;
+                size_t db_insert_count = 0;
                 for (const auto& [imsi, ms] : master_sessions) {
                     if (inserted_ids.count(ms.master_uuid)) {
                         continue;
@@ -513,12 +583,6 @@ void JobManager::processJob(const JobTask& task) {
                                              ? (record.end_time - record.start_time)
                                              : 0;
 
-                    // Metrics: Aggregate from children?
-                    // Currently VolteMasterSession doesn't store aggregate counts.
-                    // We can skip or calculate if needed. For now setting to 0 or arbitrary.
-                    // To do it right, we'd need to sum up children events.
-                    // But we already exported JSON so the UI has the data.
-                    // DB is secondary.
                     record.packet_count = 0;
                     record.byte_count = 0;
 
@@ -527,9 +591,14 @@ void JobManager::processJob(const JobTask& task) {
                     record.metadata = "{}";
 
                     db_->insertSession(record);
+                    db_insert_count++;
                 }
+                LOG_INFO("Job " << task.job_id << ": Inserted " << db_insert_count << " sessions into database");
             }
         }
+    } catch (const std::exception& e) {
+        LOG_ERROR("Job " << task.job_id << ": Database update failed: " << e.what());
+        throw;
     }
 
     sendEvent(task.job_id, "status",
