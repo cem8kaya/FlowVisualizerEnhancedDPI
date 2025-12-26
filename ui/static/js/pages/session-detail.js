@@ -142,6 +142,7 @@ class SessionDetailPage {
             this.renderTimeline();
             this.renderLadderDiagram();
             this.renderMetrics();
+            this.enableExportButton();
 
         } catch (e) {
             console.error('Failed to load session:', e);
@@ -386,6 +387,57 @@ class SessionDetailPage {
                 btn.onclick = handler;
             }
         });
+    }
+
+    enableExportButton() {
+        const btn = document.getElementById('btnExportJson');
+        if (btn) {
+            btn.onclick = () => this.exportSessionAsJson();
+        }
+    }
+
+    exportSessionAsJson() {
+        if (!this.sessionData) {
+            window.Toast?.error('No session data to export');
+            return;
+        }
+
+        // Prepare the export data with all relevant information
+        const exportData = {
+            session_id: this.sessionId,
+            job_id: this.jobId,
+            session_type: this.sessionData.type || this.sessionData.session_type,
+            start_time: this.sessionData.start_time,
+            end_time: this.sessionData.end_time,
+            duration_ms: this.sessionData.end_time - this.sessionData.start_time,
+            packet_count: this.sessionData.packet_count || this.sessionData.events?.length || 0,
+            byte_count: this.sessionData.byte_count || this.sessionData.metrics?.bytes || 0,
+            events: this.sessionData.events || [],
+            messages: this.sessionData.messages || [],
+            call_id: this.sessionData.call_id,
+            caller_msisdn: this.sessionData.caller_msisdn,
+            callee_msisdn: this.sessionData.callee_msisdn,
+            caller_ip: this.sessionData.caller_ip,
+            callee_ip: this.sessionData.callee_ip,
+            participants: this.diagramData?.participants || [],
+            exported_at: new Date().toISOString()
+        };
+
+        // Convert to JSON string with pretty formatting
+        const jsonString = JSON.stringify(exportData, null, 2);
+
+        // Create a blob and download it
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `session-${this.sessionId}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        window.Toast?.success('Session exported successfully');
     }
 
     renderEvents() {

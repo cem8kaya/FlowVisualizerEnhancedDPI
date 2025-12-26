@@ -450,7 +450,19 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                     nlohmann::json event;
                     // Convert timestamp from seconds to milliseconds if needed
                     double timestamp = msg.value("timestamp", 0.0);
-                    event["timestamp"] = static_cast<uint64_t>(timestamp * 1000);
+                    // Validate timestamp - if it's 0 or unreasonably small, skip or log warning
+                    if (timestamp < 946684800.0) {  // Before year 2000 (likely invalid)
+                        LOG_WARN("Invalid timestamp detected in SIP message: " << timestamp);
+                        // Try to use session start time as fallback
+                        uint64_t session_start = sip_session.value("start_time", 0);
+                        if (session_start > 0) {
+                            event["timestamp"] = session_start;
+                        } else {
+                            event["timestamp"] = static_cast<uint64_t>(timestamp * 1000);
+                        }
+                    } else {
+                        event["timestamp"] = static_cast<uint64_t>(timestamp * 1000);
+                    }
                     event["proto"] = "SIP";
                     event["protocol"] = "SIP";
 
