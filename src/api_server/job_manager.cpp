@@ -490,16 +490,17 @@ void JobManager::processJob(const JobTask& task) {
 
     updateProgress(task.job_id, 80, "Exporting results");
 
-    // Export Master Sessions to JSON
+    // Export all sessions including SIP-only (standalone SIP sessions without GTP correlation)
+    // This ensures SIP traffic is visible even when there's no GTP anchor for correlation
     JsonExporter exporter;
-    std::string master_json_str = exporter.exportMasterSessions(correlator);
+    std::string all_sessions_json_str = exporter.exportAllSessionsWithSipOnly(correlator);
 
     // Wrap in object structure
     nlohmann::json final_output;
-    final_output["sessions"] = nlohmann::json::parse(master_json_str);
+    final_output["sessions"] = nlohmann::json::parse(all_sessions_json_str);
     final_output["metadata"] = {{"job_id", task.job_id},
                                 {"timestamp", utils::timestampToIso8601(utils::now())},
-                                {"exporter", "VolteMasterSession"}};
+                                {"exporter", "VolteMasterSessionWithSipOnly"}};
 
     // Write to file
     std::ofstream out(task.output_file);
@@ -521,7 +522,9 @@ void JobManager::processJob(const JobTask& task) {
             it->second->completed_at = utils::now();
             it->second->total_packets = packet_count;
             it->second->total_bytes = total_bytes;
-            it->second->session_count = master_sessions.size();
+            // Include both master sessions and SIP-only sessions in the count
+            size_t sip_only_count = correlator.getSipOnlySessionCount();
+            it->second->session_count = master_sessions.size() + sip_only_count;
 
             // Store Master Session IDs
             // Store Master Session IDs

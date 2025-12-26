@@ -54,6 +54,12 @@ public:
     std::string exportMasterSessions(const EnhancedSessionCorrelator& correlator,
                                      const std::vector<std::string>& export_fields = {});
 
+    /**
+     * Export all sessions including SIP-only (standalone SIP sessions without GTP correlation)
+     * This combines master sessions with SIP-only sessions for complete visibility
+     */
+    std::string exportAllSessionsWithSipOnly(const EnhancedSessionCorrelator& correlator);
+
 private:
     std::string formatJson(const nlohmann::json& j, bool pretty_print = true);
 };
