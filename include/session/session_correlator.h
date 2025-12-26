@@ -180,6 +180,11 @@ public:
     size_t getSessionCount() const;
 
     /**
+     * Get number of SIP-only sessions (standalone SIP without GTP correlation)
+     */
+    size_t getSipOnlySessionCount() const;
+
+    /**
      * Export sessions to JSON
      *
      * @return JSON array of all sessions

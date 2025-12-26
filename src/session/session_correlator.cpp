@@ -421,6 +421,11 @@ size_t EnhancedSessionCorrelator::getSessionCount() const {
     return sessions_.size();
 }
 
+size_t EnhancedSessionCorrelator::getSipOnlySessionCount() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return sip_only_manager_->getSessions().size();
+}
+
 nlohmann::json EnhancedSessionCorrelator::exportToJson() const {
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -620,18 +625,52 @@ void EnhancedSessionCorrelator::updateMasterSession(const std::string& session_i
     }
 
     // 2. LINKING: SIP Logic (Lookup by IP or explicit IMSI)
+    // Strategy: Try multiple correlation methods for IMS/VoLTE SIP traffic
+    // IMS SIP traffic goes through network nodes (P-CSCF, S-CSCF, etc.) so packet
+    // source/destination IPs are not the UE's IP. The UE's IP is in the SDP body.
     if (msg.protocol == ProtocolType::SIP) {
-        // Try explicit IMSI first
+        // Try explicit IMSI first (from Authorization header or P-Asserted-Identity)
         if (msg.correlation_key.imsi.has_value()) {
             imsi = msg.correlation_key.imsi.value();
             found_imsi = true;
+            LOG_DEBUG("SIP: Found IMSI from header: " << imsi);
         }
-        // Fallback: Look up by Source IP
-        else {
+        // Try UE IPv4 from SDP body (connection address)
+        if (!found_imsi && msg.correlation_key.ue_ipv4.has_value()) {
+            auto it = ip_to_imsi_map_.find(msg.correlation_key.ue_ipv4.value());
+            if (it != ip_to_imsi_map_.end()) {
+                imsi = it->second;
+                found_imsi = true;
+                LOG_DEBUG("SIP: Found IMSI via UE IPv4 from SDP: " << msg.correlation_key.ue_ipv4.value()
+                          << " -> " << imsi);
+            }
+        }
+        // Try UE IPv6 from SDP body
+        if (!found_imsi && msg.correlation_key.ue_ipv6.has_value()) {
+            auto it = ip_to_imsi_map_.find(msg.correlation_key.ue_ipv6.value());
+            if (it != ip_to_imsi_map_.end()) {
+                imsi = it->second;
+                found_imsi = true;
+                LOG_DEBUG("SIP: Found IMSI via UE IPv6 from SDP: " << msg.correlation_key.ue_ipv6.value()
+                          << " -> " << imsi);
+            }
+        }
+        // Fallback: Look up by packet Source IP (works for UE-originated traffic on direct paths)
+        if (!found_imsi) {
             auto it = ip_to_imsi_map_.find(msg.src_ip);
             if (it != ip_to_imsi_map_.end()) {
                 imsi = it->second;
                 found_imsi = true;
+                LOG_DEBUG("SIP: Found IMSI via source IP: " << msg.src_ip << " -> " << imsi);
+            }
+        }
+        // Also try destination IP (for responses or incoming calls)
+        if (!found_imsi) {
+            auto it = ip_to_imsi_map_.find(msg.dst_ip);
+            if (it != ip_to_imsi_map_.end()) {
+                imsi = it->second;
+                found_imsi = true;
+                LOG_DEBUG("SIP: Found IMSI via dest IP: " << msg.dst_ip << " -> " << imsi);
             }
         }
     }
