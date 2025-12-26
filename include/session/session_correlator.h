@@ -247,7 +247,9 @@ private:
     std::unique_ptr<correlation::SipSessionManager> sip_only_manager_;
 
     // Thread safety
-    mutable std::mutex mutex_;
+    // Using recursive_mutex to allow the same thread to acquire the lock multiple times
+    // This is necessary because exportAllSessions() calls exportToJson(), both of which acquire the lock
+    mutable std::recursive_mutex mutex_;
 
     // Helper to update indices when adding a message
     void updateIndices(const std::string& session_id, const SessionCorrelationKey& key);
