@@ -447,7 +447,16 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
                 SipParser parser;
                 auto sip_msg = parser.parse(msg_data.data(), msg_data.size());
                 if (sip_msg.has_value()) {
-                    correlator_.processSipMessage(sip_msg.value(), metadata);
+                    // Fix timestamp discrepancy: Propagate timestamp from metadata
+                    auto& m = sip_msg.value();
+                    double ts_sec =
+                        std::chrono::duration<double>(metadata.timestamp.time_since_epoch())
+                            .count();
+                    LOG_INFO("PacketProcessor: Processing TCP SIP message. Metadata TS: "
+                             << std::fixed << ts_sec << " Frame: " << metadata.frame_number);
+                    m.timestamp = ts_sec;
+
+                    correlator_.processSipMessage(m, metadata);
                 }
             }
 
@@ -476,7 +485,15 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
             SipParser parser;
             auto msg = parser.parse(payload.data(), payload.size());
             if (msg.has_value()) {
-                correlator_.processSipMessage(msg.value(), metadata);
+                auto& m = msg.value();
+                double ts_sec =
+                    std::chrono::duration<double>(metadata.timestamp.time_since_epoch()).count();
+                LOG_INFO("PacketProcessor: Processing UDP SIP message. Metadata TS: "
+                         << std::fixed << ts_sec << " Frame: " << metadata.frame_number);
+                m.timestamp = ts_sec;
+
+                // Pass to correlator
+                correlator_.processSipMessage(m, metadata);
             }
         }
         return;
@@ -541,7 +558,12 @@ void PacketProcessor::processTransportAndPayload(const PacketMetadata& metadata,
                         SipParser parser;
                         auto msg = parser.parse(payload.data(), payload.size());
                         if (msg.has_value()) {
-                            correlator_.processSipMessage(msg.value(), metadata);
+                            // Fix timestamp discrepancy: Propagate timestamp from metadata
+                            auto& m = msg.value();
+                            m.timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(
+                                              metadata.timestamp.time_since_epoch())
+                                              .count();
+                            correlator_.processSipMessage(m, metadata);
                             return;
                         }
                     } else {
@@ -750,7 +772,12 @@ void PacketProcessor::processSctpMessage(const SctpReassembledMessage& message,
                 auto sip_msg = parser.parse(message.data.data(), message.data.size());
                 if (sip_msg.has_value()) {
                     LOG_INFO("SIP message detected over SCTP (PPID 0)");
-                    correlator_.processSipMessage(sip_msg.value(), metadata);
+                    // Fix timestamp discrepancy: Propagate timestamp from metadata
+                    auto& msg = sip_msg.value();
+                    msg.timestamp = std::chrono::duration_cast<std::chrono::duration<double>>(
+                                        metadata.timestamp.time_since_epoch())
+                                        .count();
+                    correlator_.processSipMessage(msg, metadata);
                     return;
                 }
             }

@@ -1,7 +1,10 @@
 #include "pcap_ingest/pcapng_reader.h"
-#include "common/utils.h"
-#include <cstring>
+
 #include <arpa/inet.h>
+
+#include <cstring>
+
+#include "common/utils.h"
 
 namespace callflow {
 
@@ -112,8 +115,8 @@ void PcapngReader::close() {
     is_open_ = false;
 
     if (!filename_.empty()) {
-        LOG_INFO("Closed PCAPNG file: " << filename_
-                 << " (processed " << stats_.enhanced_packets << " packets)");
+        LOG_INFO("Closed PCAPNG file: " << filename_ << " (processed " << stats_.enhanced_packets
+                                        << " packets)");
         filename_.clear();
     }
 
@@ -253,29 +256,31 @@ bool PcapngReader::parseSectionHeader() {
     data += 2;
 
     // Section length
-    section_header_.section_length = static_cast<int64_t>(toHost64(*reinterpret_cast<const uint64_t*>(data)));
+    section_header_.section_length =
+        static_cast<int64_t>(toHost64(*reinterpret_cast<const uint64_t*>(data)));
     data += 8;
 
     // Parse options
     size_t options_offset = data - current_block_data_.data();
     size_t options_length = current_block_data_.size() - options_offset;
 
-    parseOptions(data, options_length, [this](uint16_t code, const uint8_t* value, uint16_t length) {
-        switch (code) {
-            case SHB_HARDWARE:
-                section_header_.hardware = extractString(value, length);
-                break;
-            case SHB_OS:
-                section_header_.os = extractString(value, length);
-                break;
-            case SHB_USERAPPL:
-                section_header_.user_application = extractString(value, length);
-                break;
-            case OPT_COMMENT:
-                section_header_.comment = extractString(value, length);
-                break;
-        }
-    });
+    parseOptions(data, options_length,
+                 [this](uint16_t code, const uint8_t* value, uint16_t length) {
+                     switch (code) {
+                         case SHB_HARDWARE:
+                             section_header_.hardware = extractString(value, length);
+                             break;
+                         case SHB_OS:
+                             section_header_.os = extractString(value, length);
+                             break;
+                         case SHB_USERAPPL:
+                             section_header_.user_application = extractString(value, length);
+                             break;
+                         case OPT_COMMENT:
+                             section_header_.comment = extractString(value, length);
+                             break;
+                     }
+                 });
 
     stats_.section_headers++;
     return true;
@@ -307,46 +312,51 @@ bool PcapngReader::parseInterfaceDescription() {
     size_t options_offset = data - current_block_data_.data();
     size_t options_length = current_block_data_.size() - options_offset;
 
-    parseOptions(data, options_length, [&interface, this](uint16_t code, const uint8_t* value, uint16_t length) {
-        switch (code) {
-            case IF_NAME:
-                interface.name = extractString(value, length);
-                break;
-            case IF_DESCRIPTION:
-                interface.description = extractString(value, length);
-                break;
-            case IF_HARDWARE:
-                interface.hardware = extractString(value, length);
-                break;
-            case IF_TSRESOL:
-                if (length >= 1) {
-                    interface.timestamp_resolution = value[0];
-                }
-                break;
-            case IF_SPEED:
-                if (length >= 8) {
-                    interface.speed = toHost64(*reinterpret_cast<const uint64_t*>(value));
-                }
-                break;
-            case IF_OS:
-                interface.os = extractString(value, length);
-                break;
-            case IF_FILTER:
-                interface.filter = extractString(value, length);
-                break;
-            default:
-                // Store custom options
-                interface.custom_options[code] = std::vector<uint8_t>(value, value + length);
-                break;
-        }
-    });
+    parseOptions(
+        data, options_length,
+        [&interface, this](uint16_t code, const uint8_t* value, uint16_t length) {
+            switch (code) {
+                case IF_NAME:
+                    interface.name = extractString(value, length);
+                    break;
+                case IF_DESCRIPTION:
+                    interface.description = extractString(value, length);
+                    break;
+                case IF_HARDWARE:
+                    interface.hardware = extractString(value, length);
+                    break;
+                case IF_TSRESOL:
+                    if (length >= 1) {
+                        interface.timestamp_resolution = value[0];
+                    }
+                    break;
+                case IF_SPEED:
+                    if (length >= 8) {
+                        interface.speed = toHost64(*reinterpret_cast<const uint64_t*>(value));
+                    }
+                    break;
+                case IF_OS:
+                    interface.os = extractString(value, length);
+                    break;
+                case IF_FILTER:
+                    interface.filter = extractString(value, length);
+                    break;
+                default:
+                    // Store custom options
+                    interface.custom_options[code] = std::vector<uint8_t>(value, value + length);
+                    break;
+            }
+        });
 
     interfaces_.push_back(interface);
     stats_.interface_descriptions++;
 
-    LOG_DEBUG("Parsed Interface Description Block: ID=" << interface.interface_id
-              << ", LinkType=" << interface.link_type
-              << ", SnapLen=" << interface.snap_len);
+    LOG_INFO("Parsed Interface Description Block: ID="
+             << interface.interface_id << ", LinkType=" << interface.link_type
+             << ", SnapLen=" << interface.snap_len << ", TimeRes="
+             << (interface.timestamp_resolution.has_value()
+                     ? std::to_string(interface.timestamp_resolution.value())
+                     : "default(6)"));
 
     return true;
 }
@@ -357,10 +367,8 @@ bool PcapngReader::parseEnhancedPacket() {
     return true;
 }
 
-bool PcapngReader::readEnhancedPacket(uint32_t& interface_id,
-                                      uint64_t& timestamp,
-                                      std::vector<uint8_t>& packet_data,
-                                      uint32_t& original_length,
+bool PcapngReader::readEnhancedPacket(uint32_t& interface_id, uint64_t& timestamp,
+                                      std::vector<uint8_t>& packet_data, uint32_t& original_length,
                                       PcapngPacketMetadata& metadata) {
     if (current_block_type_ != PcapngBlockType::ENHANCED_PACKET) {
         LOG_ERROR("Current block is not an Enhanced Packet Block");
@@ -415,38 +423,40 @@ bool PcapngReader::readEnhancedPacket(uint32_t& interface_id,
     size_t options_offset = data - current_block_data_.data();
     size_t options_length = current_block_data_.size() - options_offset;
 
-    parseOptions(data, options_length, [&metadata, this](uint16_t code, const uint8_t* value, uint16_t length) {
-        switch (code) {
-            case OPT_COMMENT:
-                metadata.comment = extractString(value, length);
-                break;
-            case EPB_FLAGS:
-                if (length >= 4) {
-                    metadata.flags = toHost32(*reinterpret_cast<const uint32_t*>(value));
-                }
-                break;
-            case EPB_DROPCOUNT:
-                if (length >= 8) {
-                    metadata.dropcount = toHost64(*reinterpret_cast<const uint64_t*>(value));
-                }
-                break;
-            case EPB_HASH:
-                if (length >= 8) {
-                    metadata.hash = toHost64(*reinterpret_cast<const uint64_t*>(value));
-                }
-                break;
-            case EPB_VERDICT:
-                if (length >= 4) {
-                    metadata.verdict = toHost32(*reinterpret_cast<const uint32_t*>(value));
-                }
-                break;
-            case EPB_QUEUE:
-                if (length >= 4) {
-                    metadata.queue_id = toHost32(*reinterpret_cast<const uint32_t*>(value));
-                }
-                break;
-        }
-    });
+    parseOptions(
+        data, options_length,
+        [&metadata, this](uint16_t code, const uint8_t* value, uint16_t length) {
+            switch (code) {
+                case OPT_COMMENT:
+                    metadata.comment = extractString(value, length);
+                    break;
+                case EPB_FLAGS:
+                    if (length >= 4) {
+                        metadata.flags = toHost32(*reinterpret_cast<const uint32_t*>(value));
+                    }
+                    break;
+                case EPB_DROPCOUNT:
+                    if (length >= 8) {
+                        metadata.dropcount = toHost64(*reinterpret_cast<const uint64_t*>(value));
+                    }
+                    break;
+                case EPB_HASH:
+                    if (length >= 8) {
+                        metadata.hash = toHost64(*reinterpret_cast<const uint64_t*>(value));
+                    }
+                    break;
+                case EPB_VERDICT:
+                    if (length >= 4) {
+                        metadata.verdict = toHost32(*reinterpret_cast<const uint32_t*>(value));
+                    }
+                    break;
+                case EPB_QUEUE:
+                    if (length >= 4) {
+                        metadata.queue_id = toHost32(*reinterpret_cast<const uint32_t*>(value));
+                    }
+                    break;
+            }
+        });
 
     return true;
 }
@@ -554,38 +564,43 @@ bool PcapngReader::parseInterfaceStatistics() {
     size_t options_offset = data - current_block_data_.data();
     size_t options_length = current_block_data_.size() - options_offset;
 
-    parseOptions(data, options_length, [&stats, this](uint16_t code, const uint8_t* value, uint16_t length) {
-        switch (code) {
-            case ISB_IFRECV:
-                if (length >= 8) {
-                    stats.packets_received = toHost64(*reinterpret_cast<const uint64_t*>(value));
-                }
-                break;
-            case ISB_IFDROP:
-                if (length >= 8) {
-                    stats.packets_dropped = toHost64(*reinterpret_cast<const uint64_t*>(value));
-                }
-                break;
-            case ISB_FILTERACCEPT:
-                if (length >= 8) {
-                    stats.packets_accepted_by_filter = toHost64(*reinterpret_cast<const uint64_t*>(value));
-                }
-                break;
-            case ISB_OSDROP:
-                if (length >= 8) {
-                    stats.packets_dropped_by_os = toHost64(*reinterpret_cast<const uint64_t*>(value));
-                }
-                break;
-            case ISB_USRDELIV:
-                if (length >= 8) {
-                    stats.packets_delivered_to_user = toHost64(*reinterpret_cast<const uint64_t*>(value));
-                }
-                break;
-            case OPT_COMMENT:
-                stats.comment = extractString(value, length);
-                break;
-        }
-    });
+    parseOptions(
+        data, options_length, [&stats, this](uint16_t code, const uint8_t* value, uint16_t length) {
+            switch (code) {
+                case ISB_IFRECV:
+                    if (length >= 8) {
+                        stats.packets_received =
+                            toHost64(*reinterpret_cast<const uint64_t*>(value));
+                    }
+                    break;
+                case ISB_IFDROP:
+                    if (length >= 8) {
+                        stats.packets_dropped = toHost64(*reinterpret_cast<const uint64_t*>(value));
+                    }
+                    break;
+                case ISB_FILTERACCEPT:
+                    if (length >= 8) {
+                        stats.packets_accepted_by_filter =
+                            toHost64(*reinterpret_cast<const uint64_t*>(value));
+                    }
+                    break;
+                case ISB_OSDROP:
+                    if (length >= 8) {
+                        stats.packets_dropped_by_os =
+                            toHost64(*reinterpret_cast<const uint64_t*>(value));
+                    }
+                    break;
+                case ISB_USRDELIV:
+                    if (length >= 8) {
+                        stats.packets_delivered_to_user =
+                            toHost64(*reinterpret_cast<const uint64_t*>(value));
+                    }
+                    break;
+                case OPT_COMMENT:
+                    stats.comment = extractString(value, length);
+                    break;
+            }
+        });
 
     interface_statistics_.push_back(stats);
     stats_.interface_statistics_blocks++;
@@ -646,9 +661,10 @@ size_t PcapngReader::processPackets(PacketCallback callback) {
             uint32_t original_length;
             PcapngPacketMetadata metadata;
 
-            if (readEnhancedPacket(interface_id, timestamp, packet_data, original_length, metadata)) {
+            if (readEnhancedPacket(interface_id, timestamp, packet_data, original_length,
+                                   metadata)) {
                 callback(interface_id, timestamp, packet_data.data(),
-                        static_cast<uint32_t>(packet_data.size()), original_length, metadata);
+                         static_cast<uint32_t>(packet_data.size()), original_length, metadata);
                 packet_count++;
                 stats_.enhanced_packets++;  // Track enhanced packet count for close() logging
 
@@ -708,14 +724,10 @@ uint64_t PcapngReader::toHost64(uint64_t value) const {
         return value;
     }
     // Swap bytes for big endian
-    return ((value & 0xFF00000000000000ULL) >> 56) |
-           ((value & 0x00FF000000000000ULL) >> 40) |
-           ((value & 0x0000FF0000000000ULL) >> 24) |
-           ((value & 0x000000FF00000000ULL) >> 8) |
-           ((value & 0x00000000FF000000ULL) << 8) |
-           ((value & 0x0000000000FF0000ULL) << 24) |
-           ((value & 0x000000000000FF00ULL) << 40) |
-           ((value & 0x00000000000000FFULL) << 56);
+    return ((value & 0xFF00000000000000ULL) >> 56) | ((value & 0x00FF000000000000ULL) >> 40) |
+           ((value & 0x0000FF0000000000ULL) >> 24) | ((value & 0x000000FF00000000ULL) >> 8) |
+           ((value & 0x00000000FF000000ULL) << 8) | ((value & 0x0000000000FF0000ULL) << 24) |
+           ((value & 0x000000000000FF00ULL) << 40) | ((value & 0x00000000000000FFULL) << 56);
 }
 
 std::string PcapngReader::extractString(const uint8_t* data, size_t length) const {

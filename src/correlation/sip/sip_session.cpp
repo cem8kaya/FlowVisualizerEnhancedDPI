@@ -1,14 +1,21 @@
 #include "correlation/sip/sip_session.h"
-#include "correlation/sip/sip_call_detector.h"
-#include "common/utils.h"
+
 #include <algorithm>
+
+#include "common/utils.h"
+#include "correlation/sip/sip_call_detector.h"
 
 namespace callflow {
 namespace correlation {
 
 SipSession::SipSession(const std::string& call_id)
-    : call_id_(call_id), session_id_(utils::generateUuid()) {
-}
+    : call_id_(call_id),
+      session_id_(utils::generateUuid()),
+      type_(SipSessionType::UNKNOWN),
+      start_time_(0.0),
+      end_time_(0.0),
+      start_frame_(0),
+      end_frame_(0) {}
 
 void SipSession::addMessage(const SipMessage& msg) {
     messages_.push_back(msg);
@@ -51,8 +58,33 @@ void SipSession::updateTimeWindow(const SipMessage& msg) {
     }
 }
 
-SipDialog* SipSession::getOrCreateDialog(const std::string& from_tag,
-                                          const std::string& to_tag) {
+void SipSession::recalculateTimeWindow() {
+    if (messages_.empty()) {
+        return;
+    }
+
+    // Reset loop
+    start_time_ = 0.0;
+    end_time_ = 0.0;
+    start_frame_ = 0;
+    end_frame_ = 0;
+
+    for (const auto& msg : messages_) {
+        double ts = msg.getTimestamp();
+        uint32_t fr = msg.getFrameNumber();
+
+        if (start_time_ == 0.0 || ts < start_time_) {
+            start_time_ = ts;
+            start_frame_ = fr;
+        }
+        if (end_time_ == 0.0 || ts > end_time_) {
+            end_time_ = ts;
+            end_frame_ = fr;
+        }
+    }
+}
+
+SipDialog* SipSession::getOrCreateDialog(const std::string& from_tag, const std::string& to_tag) {
     // Create dialog key
     std::string dialog_key = call_id_ + ":" + from_tag;
     if (!to_tag.empty()) {
@@ -85,8 +117,7 @@ SipDialog* SipSession::getOrCreateDialog(const std::string& from_tag,
     return ptr;
 }
 
-SipDialog* SipSession::findDialog(const std::string& from_tag,
-                                   const std::string& to_tag) const {
+SipDialog* SipSession::findDialog(const std::string& from_tag, const std::string& to_tag) const {
     std::string dialog_key = call_id_ + ":" + from_tag;
     if (!to_tag.empty()) {
         dialog_key += ":" + to_tag;
@@ -101,6 +132,7 @@ SipDialog* SipSession::findDialog(const std::string& from_tag,
 }
 
 void SipSession::finalize() {
+    recalculateTimeWindow();  // Ensure timestamps are correct before export
     detectSessionType();
     extractCallParties();
     extractMediaInfo();
@@ -148,5 +180,5 @@ std::string SipSession::extractMsisdnFromHeader(const std::string& header_value)
     return SipCallDetector::extractMsisdn(header_value);
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

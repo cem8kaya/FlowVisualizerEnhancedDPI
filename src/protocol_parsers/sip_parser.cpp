@@ -3,8 +3,11 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <map>
 #include <sstream>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "common/field_registry.h"
 #include "common/logger.h"
@@ -57,6 +60,7 @@ nlohmann::json SipMessage::toJson() const {
         j["reason_phrase"] = reason_phrase;
     }
 
+    j["timestamp"] = timestamp;
     j["call_id"] = call_id;
     j["call_id"] = call_id;
     j["from"] = from;
@@ -539,15 +543,12 @@ bool SipParser::isSipMessage(const uint8_t* data, size_t len) {
     // PUBLISH - RFC 3903 (event state publication)
     // PRACK - RFC 3262 (provisional responses)
     // INFO - RFC 6086 (info packages)
-    static constexpr std::array<std::string_view, 14> methods = {{
-        "INVITE", "ACK", "BYE", "CANCEL", "OPTIONS", "REGISTER",
-        "UPDATE", "PRACK", "INFO", "MESSAGE", "NOTIFY", "SUBSCRIBE",
-        "REFER", "PUBLISH"
-    }};
+    static constexpr std::array<std::string_view, 14> methods = {
+        {"INVITE", "ACK", "BYE", "CANCEL", "OPTIONS", "REGISTER", "UPDATE", "PRACK", "INFO",
+         "MESSAGE", "NOTIFY", "SUBSCRIBE", "REFER", "PUBLISH"}};
 
     for (const auto& method : methods) {
-        if (text.size() > method.size() &&
-            text.substr(0, method.size()) == method &&
+        if (text.size() > method.size() && text.substr(0, method.size()) == method &&
             (text[method.size()] == ' ' || text[method.size()] == '\t')) {
             return true;
         }

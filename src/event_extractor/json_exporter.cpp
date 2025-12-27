@@ -259,7 +259,8 @@ std::string JsonExporter::exportMasterSessions(const EnhancedSessionCorrelator& 
     return formatJson(root, true);
 }
 
-std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorrelator& correlator) {
+std::string JsonExporter::exportAllSessionsWithSipOnly(
+    const EnhancedSessionCorrelator& correlator) {
     LOG_INFO("exportAllSessionsWithSipOnly: START");
     nlohmann::json root = nlohmann::json::array();
 
@@ -296,12 +297,14 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                 return;
             processed_sessions.insert(sid);
 
-            LOG_DEBUG("exportAllSessionsWithSipOnly: collect_msgs calling getSession(" << sid << ")");
+            LOG_DEBUG("exportAllSessionsWithSipOnly: collect_msgs calling getSession(" << sid
+                                                                                       << ")");
             auto session_opt = correlator.getSession(sid);
             if (session_opt) {
                 auto msgs = session_opt->getAllMessages();
                 all_messages.insert(all_messages.end(), msgs.begin(), msgs.end());
-                LOG_DEBUG("exportAllSessionsWithSipOnly: Got " << msgs.size() << " messages from session " << sid);
+                LOG_DEBUG("exportAllSessionsWithSipOnly: Got " << msgs.size()
+                                                               << " messages from session " << sid);
             }
         };
 
@@ -394,7 +397,8 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
         root.push_back(j_master);
     }
 
-    LOG_INFO("exportAllSessionsWithSipOnly: Finished processing " << master_sessions.size() << " master sessions");
+    LOG_INFO("exportAllSessionsWithSipOnly: Finished processing " << master_sessions.size()
+                                                                  << " master sessions");
     // Now export SIP-only sessions (standalone SIP without GTP correlation)
     LOG_INFO("exportAllSessionsWithSipOnly: Calling exportAllSessions() - THIS MAY DEADLOCK!");
     auto all_sessions_json = correlator.exportAllSessions();
@@ -409,7 +413,7 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
 
             j_sip["session_id"] = session_id;
             j_sip["master_id"] = session_id;  // For compatibility
-            j_sip["imsi"] = "";  // SIP-only sessions don't have IMSI
+            j_sip["imsi"] = "";               // SIP-only sessions don't have IMSI
             j_sip["msisdn"] = sip_session.value("caller_msisdn", "");
             j_sip["call_id"] = call_id;
             j_sip["session_type"] = "SIP_ONLY";
@@ -418,8 +422,9 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
             j_sip["protocols"] = nlohmann::json::array({"SIP"});
 
             // Timestamps
-            j_sip["start_time"] = sip_session.value("start_time", 0);
-            j_sip["end_time"] = sip_session.value("end_time", 0);
+            // FIX: Use 0LL (long long) to ensure int64_t is inferred, preventing 32-bit truncation
+            j_sip["start_time"] = sip_session.value("start_time", 0LL);
+            j_sip["end_time"] = sip_session.value("end_time", 0LL);
 
             uint64_t start_ms = j_sip["start_time"].get<uint64_t>();
             uint64_t end_ms = j_sip["end_time"].get<uint64_t>();
@@ -442,8 +447,8 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                     uint16_t dst_port = msg.value("dest_port", 0);
 
                     // Skip messages with invalid/missing IP addresses
-                    if (src_ip.empty() || dst_ip.empty() ||
-                        src_ip == "0.0.0.0" || dst_ip == "0.0.0.0") {
+                    if (src_ip.empty() || dst_ip.empty() || src_ip == "0.0.0.0" ||
+                        dst_ip == "0.0.0.0") {
                         continue;
                     }
 
@@ -452,9 +457,8 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                     double timestamp = msg.value("timestamp", 0.0);
                     // Validate timestamp - if it's 0 or unreasonably small, skip or log warning
                     if (timestamp < 946684800.0) {  // Before year 2000 (likely invalid)
-                        LOG_WARN("Invalid timestamp detected in SIP message: " << timestamp);
                         // Try to use session start time as fallback
-                        uint64_t session_start = sip_session.value("start_time", 0);
+                        int64_t session_start = sip_session.value("start_time", 0LL);
                         if (session_start > 0) {
                             event["timestamp"] = session_start;
                         } else {
@@ -481,9 +485,10 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
 
                     // Estimate payload size: SIP messages are typically 500-2000 bytes
                     // For better accuracy, check if body field exists
-                    uint32_t payload_len = 600; // Default estimate for SIP message
+                    uint32_t payload_len = 600;  // Default estimate for SIP message
                     if (msg.contains("body") && msg["body"].is_string()) {
-                        payload_len = msg["body"].get<std::string>().size() + 400; // Body + headers
+                        payload_len =
+                            msg["body"].get<std::string>().size() + 400;  // Body + headers
                     }
                     total_bytes += payload_len;
 
@@ -494,17 +499,16 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
                     } else {
                         int status = msg.value("status_code", 0);
                         event["message_type"] = "SIP_" + std::to_string(status);
-                        event["short"] = std::to_string(status) + " " + msg.value("reason_phrase", "");
+                        event["short"] =
+                            std::to_string(status) + " " + msg.value("reason_phrase", "");
                     }
 
                     // Add details object
-                    event["details"] = {
-                        {"src_ip", src_ip},
-                        {"dst_ip", dst_ip},
-                        {"src_port", src_port},
-                        {"dst_port", dst_port},
-                        {"payload_len", payload_len}
-                    };
+                    event["details"] = {{"src_ip", src_ip},
+                                        {"dst_ip", dst_ip},
+                                        {"src_port", src_port},
+                                        {"dst_port", dst_port},
+                                        {"payload_len", payload_len}};
 
                     events.push_back(event);
                 }
@@ -532,10 +536,12 @@ std::string JsonExporter::exportAllSessionsWithSipOnly(const EnhancedSessionCorr
             // Participants - if not already set from messages, try caller/callee
             if (!j_sip.contains("participants") || j_sip["participants"].empty()) {
                 j_sip["participants"] = nlohmann::json::array();
-                if (sip_session.contains("caller_ip") && !sip_session["caller_ip"].get<std::string>().empty()) {
+                if (sip_session.contains("caller_ip") &&
+                    !sip_session["caller_ip"].get<std::string>().empty()) {
                     j_sip["participants"].push_back(sip_session["caller_ip"].get<std::string>());
                 }
-                if (sip_session.contains("callee_ip") && !sip_session["callee_ip"].get<std::string>().empty()) {
+                if (sip_session.contains("callee_ip") &&
+                    !sip_session["callee_ip"].get<std::string>().empty()) {
                     j_sip["participants"].push_back(sip_session["callee_ip"].get<std::string>());
                 }
             }

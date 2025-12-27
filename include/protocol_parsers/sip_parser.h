@@ -26,6 +26,9 @@ struct SipMessage {
     int status_code;
     std::string reason_phrase;
 
+    // Timestamp
+    double timestamp = 0.0;
+
     // Headers
     std::string call_id;
     std::string from;

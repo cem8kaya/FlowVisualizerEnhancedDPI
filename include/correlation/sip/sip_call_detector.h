@@ -1,10 +1,11 @@
 #pragma once
 
-#include "correlation/sip/sip_types.h"
-#include "correlation/sip/sip_message.h"
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
+
+#include "correlation/sip/sip_message.h"
+#include "correlation/sip/sip_types.h"
 
 namespace callflow {
 namespace correlation {
@@ -17,17 +18,17 @@ class SipSession;
  */
 struct CallPartyInfo {
     std::string caller_msisdn;
-    std::string caller_imsi;
+    std::string caller_imsi;  // Added IMSI field
     std::string caller_ip;
     std::string caller_ipv6_prefix;
 
     std::string callee_msisdn;
-    std::string callee_imsi;
+    std::string callee_imsi;  // Added IMSI field
     std::string callee_ip;
     std::string callee_ipv6_prefix;
 
     std::optional<std::string> forward_target_msisdn;
-    std::optional<std::string> forward_target_imsi;
+    std::optional<std::string> forward_target_imsi;  // Added IMSI field
 
     SipDirection direction = SipDirection::ORIGINATING;
 };
@@ -130,5 +131,5 @@ private:
     static std::string normalizePhoneNumber(const std::string& number);
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

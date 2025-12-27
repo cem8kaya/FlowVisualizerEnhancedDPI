@@ -1,7 +1,10 @@
 #include "correlation/sip/sip_call_detector.h"
-#include <regex>
+
 #include <algorithm>
+#include <optional>
+#include <regex>
 #include <sstream>
+#include <vector>
 
 namespace callflow {
 namespace correlation {
@@ -30,8 +33,7 @@ SipSessionType SipCallDetector::detectSessionType(const std::vector<SipMessage>&
     if (method == "REGISTER") {
         // Check Contact header for expires=0
         auto contact = first_request->getContactHeader();
-        if (contact.has_value() && contact->expires.has_value() &&
-            contact->expires.value() == 0) {
+        if (contact.has_value() && contact->expires.has_value() && contact->expires.value() == 0) {
             return SipSessionType::DEREGISTRATION;
         }
         // Check Expires header
@@ -109,10 +111,20 @@ CallPartyInfo SipCallDetector::extractCallParties(const std::vector<SipMessage>&
     }
 
     // Extract caller identity
-    info.caller_msisdn = getBestCallerIdentity(*first_request);
+    std::string caller_id = getBestCallerIdentity(*first_request);
+    if (caller_id.length() >= 14 && caller_id.length() <= 15) {
+        info.caller_imsi = caller_id;
+    } else {
+        info.caller_msisdn = caller_id;
+    }
 
     // Extract callee identity
-    info.callee_msisdn = getBestCalleeIdentity(*first_request);
+    std::string callee_id = getBestCalleeIdentity(*first_request);
+    if (callee_id.length() >= 14 && callee_id.length() <= 15) {
+        info.callee_imsi = callee_id;
+    } else {
+        info.callee_msisdn = callee_id;
+    }
 
     // Extract IPs from Contact headers and SDP
     for (const auto& msg : messages) {
@@ -129,8 +141,7 @@ CallPartyInfo SipCallDetector::extractCallParties(const std::vector<SipMessage>&
                     info.caller_ip = sdp_ip.value();
                 }
             }
-        } else if (msg.isResponse() && msg.isSuccess() &&
-                   msg.getCSeqMethod() == "INVITE") {
+        } else if (msg.isResponse() && msg.isSuccess() && msg.getCSeqMethod() == "INVITE") {
             // Callee IP from 200 OK
             auto ip = extractIpFromContact(msg);
             if (ip.has_value() && info.callee_ip.empty()) {
@@ -154,7 +165,6 @@ CallPartyInfo SipCallDetector::extractCallParties(const std::vector<SipMessage>&
 
 std::vector<SipMediaInfo> SipCallDetector::extractMediaInfo(
     const std::vector<SipMessage>& messages) {
-
     std::vector<SipMediaInfo> media_list;
 
     for (const auto& msg : messages) {
@@ -165,8 +175,7 @@ std::vector<SipMediaInfo> SipCallDetector::extractMediaInfo(
                 auto media = parseSdp(sdp.value());
                 media_list.insert(media_list.end(), media.begin(), media.end());
             }
-        } else if (msg.isResponse() && msg.isSuccess() &&
-                   msg.getCSeqMethod() == "INVITE") {
+        } else if (msg.isResponse() && msg.isSuccess() && msg.getCSeqMethod() == "INVITE") {
             auto sdp = msg.getSdpBody();
             if (sdp.has_value()) {
                 auto media = parseSdp(sdp.value());
@@ -293,7 +302,8 @@ std::vector<SipMediaInfo> SipCallDetector::parseSdp(const std::string& sdp) {
     std::string connection_ip;
 
     while (std::getline(iss, line)) {
-        if (line.empty()) continue;
+        if (line.empty())
+            continue;
 
         // Remove trailing \r
         if (!line.empty() && line.back() == '\r') {
@@ -326,8 +336,8 @@ std::vector<SipMediaInfo> SipCallDetector::parseSdp(const std::string& sdp) {
             std::string attr = line.substr(2);
 
             // Check for direction attributes
-            if (attr == "sendrecv" || attr == "sendonly" ||
-                attr == "recvonly" || attr == "inactive") {
+            if (attr == "sendrecv" || attr == "sendonly" || attr == "recvonly" ||
+                attr == "inactive") {
                 current_media.direction = attr;
             }
 
@@ -399,7 +409,8 @@ std::optional<std::string> SipCallDetector::extractIpFromSdp(const std::string& 
     std::string line;
 
     while (std::getline(iss, line)) {
-        if (line.empty()) continue;
+        if (line.empty())
+            continue;
 
         if (line[0] == 'c' && line[1] == '=') {
             // c=IN IP4 <address>
@@ -472,5 +483,5 @@ std::string SipCallDetector::normalizePhoneNumber(const std::string& number) {
     return result;
 }
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

@@ -1,11 +1,12 @@
 #pragma once
 
-#include "correlation/sip/sip_types.h"
-#include "correlation/sip/sip_dialog.h"
-#include "correlation/sip/sip_message.h"
-#include <vector>
 #include <memory>
 #include <unordered_map>
+#include <vector>
+
+#include "correlation/sip/sip_dialog.h"
+#include "correlation/sip/sip_message.h"
+#include "correlation/sip/sip_types.h"
 
 namespace callflow {
 namespace correlation {
@@ -36,20 +37,19 @@ public:
     size_t getMessageCount() const { return messages_.size(); }
 
     // Dialog management
-    SipDialog* getOrCreateDialog(const std::string& from_tag,
-                                  const std::string& to_tag);
-    SipDialog* findDialog(const std::string& from_tag,
-                          const std::string& to_tag) const;
-    const std::vector<std::unique_ptr<SipDialog>>& getDialogs() const {
-        return dialogs_;
-    }
+    SipDialog* getOrCreateDialog(const std::string& from_tag, const std::string& to_tag);
+    SipDialog* findDialog(const std::string& from_tag, const std::string& to_tag) const;
+    const std::vector<std::unique_ptr<SipDialog>>& getDialogs() const { return dialogs_; }
 
     // Call party information
     std::string getCallerMsisdn() const { return caller_msisdn_; }
+    std::string getCallerImsi() const { return caller_imsi_; }  // Added getter
     std::string getCalleeMsisdn() const { return callee_msisdn_; }
-    std::optional<std::string> getForwardTargetMsisdn() const {
-        return forward_target_msisdn_;
-    }
+    std::string getCalleeImsi() const { return callee_imsi_; }  // Added getter
+    std::optional<std::string> getForwardTargetMsisdn() const { return forward_target_msisdn_; }
+    std::optional<std::string> getForwardTargetImsi() const {
+        return forward_target_imsi_;
+    }  // Added getter
 
     std::string getCallerIp() const { return caller_ip_; }
     std::string getCalleeIp() const { return callee_ip_; }
@@ -77,7 +77,7 @@ public:
 
 private:
     std::string call_id_;
-    std::string session_id_;     // Generated: timestamp_S_sequence
+    std::string session_id_;  // Generated: timestamp_S_sequence
     SipSessionType type_ = SipSessionType::UNKNOWN;
 
     std::vector<SipMessage> messages_;
@@ -85,9 +85,13 @@ private:
     std::unordered_map<std::string, SipDialog*> dialog_map_;
 
     // Call parties (normalized MSISDNs)
+    // Call parties (normalized MSISDNs)
     std::string caller_msisdn_;
+    std::string caller_imsi_;  // Added IMSI member
     std::string callee_msisdn_;
+    std::string callee_imsi_;  // Added IMSI member
     std::optional<std::string> forward_target_msisdn_;
+    std::optional<std::string> forward_target_imsi_;  // Added IMSI member
 
     // UE IP addresses (for cross-protocol correlation)
     std::string caller_ip_;
@@ -95,14 +99,16 @@ private:
     std::string callee_ip_;
     std::string callee_ipv6_prefix_;
 
-    // Media
-    std::vector<SipMediaInfo> media_;
-
     // Time window
     double start_time_ = 0.0;
     double end_time_ = 0.0;
     uint32_t start_frame_ = 0;
     uint32_t end_frame_ = 0;
+
+    // Media
+    std::vector<SipMediaInfo> media_;
+
+    // Time window
 
     // Correlation IDs
     std::string intra_correlator_;
@@ -114,9 +120,10 @@ private:
     void extractMediaInfo();
     void extractUeIpAddresses();
     void updateTimeWindow(const SipMessage& msg);
+    void recalculateTimeWindow();
 
     std::string extractMsisdnFromHeader(const std::string& header_value);
 };
 
-} // namespace correlation
-} // namespace callflow
+}  // namespace correlation
+}  // namespace callflow

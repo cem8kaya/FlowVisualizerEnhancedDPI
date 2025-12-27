@@ -34,6 +34,8 @@ docker builder prune
 docker build --no-cache -t callflow-visualizer .
 docker run -d --name callflowd -p 8080:8080 -p 8081:8081 -v $(pwd)/data:/app/data -v $(pwd)/output:/app/output -v $(pwd)/db:/app/db callflowd:latest
 
+docker compose build --no-cache && docker compose up -d --force-recreate callflowd
+
 ```
 
 ### Access the Application

@@ -1,14 +1,15 @@
 #pragma once
 
-#include "common/types.h"
-#include "common/logger.h"
 #include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
-#include <map>
-#include <optional>
-#include <functional>
-#include <memory>
+
+#include "common/logger.h"
+#include "common/types.h"
 
 namespace callflow {
 
@@ -53,7 +54,8 @@ struct PcapngInterface {
     std::optional<std::string> name;
     std::optional<std::string> description;
     std::optional<std::string> hardware;
-    std::optional<uint8_t> timestamp_resolution;  // Resolution of timestamps (default: 6 = microseconds)
+    std::optional<uint8_t>
+        timestamp_resolution;       // Resolution of timestamps (default: 6 = microseconds)
     std::optional<uint64_t> speed;  // Interface speed in bits per second
     std::optional<std::string> os;
     std::optional<std::string> filter;
@@ -66,7 +68,7 @@ struct PcapngInterface {
      */
     uint64_t getTimestampResolutionNs() const {
         if (!timestamp_resolution.has_value()) {
-            return 1000000;  // Default: microseconds
+            return 1000;  // Default: microseconds (10^-6) -> 1000 ns
         }
         uint8_t res = timestamp_resolution.value();
         if (res & 0x80) {
@@ -100,22 +102,22 @@ struct PcapngInterfaceInfo {
      */
     enum class TelecomInterface {
         UNKNOWN,
-        S1_MME,      // S1-MME (Control plane between eNodeB and MME) - SCTP port 36412
-        S1_U,        // S1-U (User plane between eNodeB and S-GW) - GTP-U port 2152
-        S5_S8_C,     // S5/S8 Control Plane - GTP-C port 2123
-        S5_S8_U,     // S5/S8 User Plane - GTP-U port 2152
-        S6A,         // S6a (MME to HSS) - Diameter port 3868
-        SG_I,        // SGi (P-GW to external PDN) - HTTP/HTTPS
-        GX,          // Gx (PCEF to PCRF) - Diameter port 3868
-        RX,          // Rx (P-CSCF to PCRF) - Diameter port 3868
-        GY,          // Gy (PCEF to OCS) - Diameter port 3868
-        X2_C,        // X2 Control Plane (eNodeB to eNodeB) - SCTP port 36422
-        N2,          // N2 (5G: gNB to AMF) - SCTP port 38412
-        N3,          // N3 (5G: gNB to UPF) - GTP-U port 2152
-        N4,          // N4 (5G: SMF to UPF) - PFCP port 8805
-        N6,          // N6 (5G: UPF to Data Network) - HTTP/HTTPS
-        IMS_SIP,     // IMS SIP Interface - SIP port 5060/5061
-        RTP_MEDIA    // RTP Media Interface - RTP ports 10000-20000
+        S1_MME,    // S1-MME (Control plane between eNodeB and MME) - SCTP port 36412
+        S1_U,      // S1-U (User plane between eNodeB and S-GW) - GTP-U port 2152
+        S5_S8_C,   // S5/S8 Control Plane - GTP-C port 2123
+        S5_S8_U,   // S5/S8 User Plane - GTP-U port 2152
+        S6A,       // S6a (MME to HSS) - Diameter port 3868
+        SG_I,      // SGi (P-GW to external PDN) - HTTP/HTTPS
+        GX,        // Gx (PCEF to PCRF) - Diameter port 3868
+        RX,        // Rx (P-CSCF to PCRF) - Diameter port 3868
+        GY,        // Gy (PCEF to OCS) - Diameter port 3868
+        X2_C,      // X2 Control Plane (eNodeB to eNodeB) - SCTP port 36422
+        N2,        // N2 (5G: gNB to AMF) - SCTP port 38412
+        N3,        // N3 (5G: gNB to UPF) - GTP-U port 2152
+        N4,        // N4 (5G: SMF to UPF) - PFCP port 8805
+        N6,        // N6 (5G: UPF to Data Network) - HTTP/HTTPS
+        IMS_SIP,   // IMS SIP Interface - SIP port 5060/5061
+        RTP_MEDIA  // RTP Media Interface - RTP ports 10000-20000
     };
 
     TelecomInterface telecom_type = TelecomInterface::UNKNOWN;
@@ -175,10 +177,13 @@ struct PcapngPacketInfo {
      * Get packet direction from flags
      */
     Direction getDirection() const {
-        if (!flags.has_value()) return Direction::UNKNOWN;
+        if (!flags.has_value())
+            return Direction::UNKNOWN;
         uint32_t dir = flags.value() & 0x03;
-        if (dir == 1) return Direction::INBOUND;
-        if (dir == 2) return Direction::OUTBOUND;
+        if (dir == 1)
+            return Direction::INBOUND;
+        if (dir == 2)
+            return Direction::OUTBOUND;
         return Direction::UNKNOWN;
     }
 
@@ -211,21 +216,18 @@ struct PcapngPacketInfo {
  */
 struct PcapngPacketMetadata {
     std::optional<std::string> comment;
-    std::optional<uint32_t> flags;  // Direction and reception type
+    std::optional<uint32_t> flags;      // Direction and reception type
     std::optional<uint64_t> dropcount;  // Packets dropped since last packet
-    std::optional<uint64_t> hash;  // Hash of packet data
-    std::optional<uint32_t> verdict;  // Verdict (e.g., from firewall)
-    std::optional<uint32_t> queue_id;  // Queue where packet was received
+    std::optional<uint64_t> hash;       // Hash of packet data
+    std::optional<uint32_t> verdict;    // Verdict (e.g., from firewall)
+    std::optional<uint32_t> queue_id;   // Queue where packet was received
 
     // Direction flags (from flags field)
-    enum Direction {
-        INFO_UNKNOWN = 0,
-        INFO_INBOUND = 1,
-        INFO_OUTBOUND = 2
-    };
+    enum Direction { INFO_UNKNOWN = 0, INFO_INBOUND = 1, INFO_OUTBOUND = 2 };
 
     Direction getDirection() const {
-        if (!flags.has_value()) return INFO_UNKNOWN;
+        if (!flags.has_value())
+            return INFO_UNKNOWN;
         return static_cast<Direction>(flags.value() & 0x03);
     }
 
@@ -239,7 +241,8 @@ struct PcapngPacketMetadata {
     };
 
     ReceptionType getReceptionType() const {
-        if (!flags.has_value()) return RECEPTION_UNKNOWN;
+        if (!flags.has_value())
+            return RECEPTION_UNKNOWN;
         return static_cast<ReceptionType>(flags.value() & 0x0C);
     }
 };
@@ -248,14 +251,10 @@ struct PcapngPacketMetadata {
  * Name Resolution Record
  */
 struct NameResolutionRecord {
-    enum RecordType : uint16_t {
-        NRB_RECORD_END = 0,
-        NRB_RECORD_IPV4 = 1,
-        NRB_RECORD_IPV6 = 2
-    };
+    enum RecordType : uint16_t { NRB_RECORD_END = 0, NRB_RECORD_IPV4 = 1, NRB_RECORD_IPV6 = 2 };
 
     RecordType type;
-    std::string address;  // IP address
+    std::string address;             // IP address
     std::vector<std::string> names;  // Resolved names
 };
 
@@ -368,23 +367,16 @@ public:
      * @param metadata Output: packet metadata from options
      * @return true if packet was read successfully
      */
-    bool readEnhancedPacket(uint32_t& interface_id,
-                           uint64_t& timestamp,
-                           std::vector<uint8_t>& packet_data,
-                           uint32_t& original_length,
-                           PcapngPacketMetadata& metadata);
+    bool readEnhancedPacket(uint32_t& interface_id, uint64_t& timestamp,
+                            std::vector<uint8_t>& packet_data, uint32_t& original_length,
+                            PcapngPacketMetadata& metadata);
 
     /**
      * Packet callback type for batch processing
      */
     using PacketCallback = std::function<void(
-        uint32_t interface_id,
-        uint64_t timestamp_ns,
-        const uint8_t* packet_data,
-        uint32_t captured_length,
-        uint32_t original_length,
-        const PcapngPacketMetadata& metadata
-    )>;
+        uint32_t interface_id, uint64_t timestamp_ns, const uint8_t* packet_data,
+        uint32_t captured_length, uint32_t original_length, const PcapngPacketMetadata& metadata)>;
 
     /**
      * Process all packets using callback
@@ -448,8 +440,9 @@ private:
     bool parseInterfaceStatistics();
 
     // Option parsing
-    bool parseOptions(const uint8_t* data, size_t length,
-                     std::function<void(uint16_t code, const uint8_t* value, uint16_t value_length)> callback);
+    bool parseOptions(
+        const uint8_t* data, size_t length,
+        std::function<void(uint16_t code, const uint8_t* value, uint16_t value_length)> callback);
 
     // Byte order conversion
     uint16_t toHost16(uint16_t value) const;

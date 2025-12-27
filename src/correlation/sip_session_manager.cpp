@@ -70,6 +70,8 @@ void SipSessionManager::processSipMessage(const SipMessage& msg, const PacketMet
 
 std::shared_ptr<SipSession> SipSessionManager::createSession(const SipMessage& msg,
                                                              const PacketMetadata& /* metadata */) {
+    LOG_INFO("SipSessionManager: Creating new session for Call-ID: "
+             << msg.getCallId() << " Initial TS: " << std::fixed << msg.getTimestamp());
     auto session = std::make_shared<SipSession>(msg.getCallId());
 
     // Session will auto-populate during addMessage()
@@ -124,18 +126,42 @@ nlohmann::json SipSessionManager::exportSessions() const {
 
         // Validate timestamps (should be after year 2000: 946684800 seconds)
         if (start_time_sec < 946684800.0 || end_time_sec < 946684800.0) {
-            LOG_WARN("Invalid timestamp detected for SIP session " << call_id
-                     << ": start=" << start_time_sec << ", end=" << end_time_sec);
+            LOG_WARN("Invalid timestamp detected for SIP session "
+                     << call_id << ": start=" << start_time_sec << ", end=" << end_time_sec);
         }
 
-        session_json["start_time"] = static_cast<uint64_t>(start_time_sec * 1000);
-        session_json["end_time"] = static_cast<uint64_t>(end_time_sec * 1000);
+        // Explicitly use int64_t to avoid potential 32-bit truncation or uint64 interpretation
+        // issues
+        int64_t start_time_ms = static_cast<int64_t>(start_time_sec * 1000.0);
+        int64_t end_time_ms = static_cast<int64_t>(end_time_sec * 1000.0);
+
+        // Debug logging for timestamp truncation investigation
+        if (start_time_ms > 4294967296LL || start_time_ms < 0) {
+            // Log only if it looks large enough or negative (which shouldn't happen for valid
+            // dates)
+            LOG_DEBUG("Exporting SIP Session " << call_id << ": start_sec=" << start_time_sec
+                                               << ", start_ms=" << start_time_ms
+                                               << ", end_ms=" << end_time_ms);
+        }
+
+        session_json["start_time"] = start_time_ms;
+        session_json["end_time"] = end_time_ms;
+
+        // Debug fields to diagnose 1970/2004 issues
+        session_json["debug_start_time_sec"] = start_time_sec;
+        session_json["debug_end_time_sec"] = end_time_sec;
+
         session_json["message_count"] = sip_session->getMessageCount();
         session_json["dialog_count"] = sip_session->getDialogs().size();
 
         // Add call party information
         session_json["caller_msisdn"] = sip_session->getCallerMsisdn();
         session_json["callee_msisdn"] = sip_session->getCalleeMsisdn();
+        session_json["caller_imsi"] = sip_session->getCallerImsi();
+        session_json["callee_imsi"] = sip_session->getCalleeImsi();
+        // Fallback for UI 'imsi' column if needed
+        session_json["imsi"] = sip_session->getCallerImsi().empty() ? sip_session->getCalleeImsi()
+                                                                    : sip_session->getCallerImsi();
         session_json["caller_ip"] = sip_session->getCallerIp();
         session_json["callee_ip"] = sip_session->getCalleeIp();
 
@@ -151,11 +177,72 @@ nlohmann::json SipSessionManager::exportSessions() const {
         if (!generic_session.legs.empty()) {
             for (const auto& msg_ref : generic_session.legs[0].messages) {
                 nlohmann::json event;
-                event["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                         msg_ref.timestamp.time_since_epoch())
-                                         .count();
+                if (msg_ref.timestamp.time_since_epoch().count() > 0) {
+                    event["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                             msg_ref.timestamp.time_since_epoch())
+                                             .count();
+                } else {
+                    event["timestamp"] = 0;
+                }
                 event["protocol"] = protocolTypeToString(msg_ref.protocol);
-                event["message_type"] = msg_ref.message_type;
+
+                // Convert MessageType to string for UI
+                std::string type_str;
+                switch (msg_ref.message_type) {
+                    case MessageType::SIP_INVITE:
+                        type_str = "INVITE";
+                        break;
+                    case MessageType::SIP_ACK:
+                        type_str = "ACK";
+                        break;
+                    case MessageType::SIP_BYE:
+                        type_str = "BYE";
+                        break;
+                    case MessageType::SIP_REGISTER:
+                        type_str = "REGISTER";
+                        break;
+                    case MessageType::SIP_OPTIONS:
+                        type_str = "OPTIONS";
+                        break;
+                    case MessageType::SIP_PRACK:
+                        type_str = "PRACK";
+                        break;
+                    case MessageType::SIP_UPDATE:
+                        type_str = "UPDATE";
+                        break;
+                    case MessageType::SIP_CANCEL:
+                        type_str = "CANCEL";
+                        break;
+                    case MessageType::SIP_TRYING:
+                        type_str = "100 Trying";
+                        break;
+                    case MessageType::SIP_RINGING:
+                        type_str = "180 Ringing";
+                        break;
+                    case MessageType::SIP_SESSION_PROGRESS:
+                        type_str = "183 Progress";
+                        break;
+                    case MessageType::SIP_OK:
+                        type_str = "200 OK";
+                        break;
+                    default:
+                        // Fallback for responses that don't have a specific MessageType
+                        if (msg_ref.message_type == MessageType::UNKNOWN &&
+                            msg_ref.parsed_data.contains("status_code")) {
+                            int code = msg_ref.parsed_data["status_code"];
+                            std::string phrase = msg_ref.parsed_data.value("reason_phrase", "");
+                            type_str = std::to_string(code) + (phrase.empty() ? "" : " " + phrase);
+                        } else {
+                            type_str = std::to_string(static_cast<int>(msg_ref.message_type));
+                        }
+                        break;
+                }
+                event["message_type"] = type_str;
+
+                // Add IPs for direction arrow
+                event["src_ip"] = msg_ref.src_ip;
+                event["dst_ip"] = msg_ref.dst_ip;
+
                 event["data"] = msg_ref.parsed_data;
                 events_json.push_back(event);
             }
@@ -216,9 +303,23 @@ Session SipSessionManager::toGenericSession(const SipSession& sip_session) const
                 msg_ref.message_type = MessageType::UNKNOWN;
         }
 
-        // Set timestamp (use session start time + offset for now)
-        msg_ref.timestamp =
-            std::chrono::system_clock::from_time_t(static_cast<time_t>(sip_session.getStartTime()));
+        // Set timestamp from specific message
+        double ts = sip_msg.getTimestamp();
+        if (ts > 0) {
+            msg_ref.timestamp = std::chrono::system_clock::time_point(
+                std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                    std::chrono::duration<double>(ts)));
+        } else {
+            // Fallback to session start if message has no timestamp (shouldn't happen with fix)
+            msg_ref.timestamp = std::chrono::system_clock::from_time_t(
+                static_cast<time_t>(sip_session.getStartTime()));
+        }
+
+        // Populate IPs/Ports
+        msg_ref.src_ip = sip_msg.getSourceIp();
+        msg_ref.dst_ip = sip_msg.getDestIp();
+        msg_ref.src_port = sip_msg.getSourcePort();
+        msg_ref.dst_port = sip_msg.getDestPort();
 
         // Store parsed data as JSON
         msg_ref.parsed_data = sip_msg.toJson();
